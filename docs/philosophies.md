@@ -136,3 +136,19 @@ Where Omarchy-mac uses magic — `omarchy-refresh-config hypr/hyprland.lua` copy
 Why: magic hides provenance. macOS already has too much magic (SIP, TCC, quarantine). A derivation has a hash; a copied file has a timestamp. And a derivation does not require you to open `.config` to understand what happened — you read `flake.nix`.
 
 Philosophy: **If you cannot `nix why-depends` it and you had to open a `.toml` to fix it, it is not done.**
+
+---
+
+## 11. Green Users Deserve a Store, Not a Man Page — GUI Is a Widget
+
+A green Mac user who likes Nix should not need to learn `omanix add` on day one. Omarchy's menu is `Super` then type; macOS's App Store is click then install. Omanix needs both.
+
+Philosophy: **The Store is the terminal rendered as a GUI, and it is itself a Nix plugin.** `Omanix Store.app` (`modules/apps/store/` via `lib/mkApp` SwiftUI, GTK on future Linux) is `omanix.widgets.store` / `omanix.apps.store` — a derivation that appears as `/Applications/Omanix Store.app`, as `Super → Store`, and as `omanix store`. It browses `search.nixos.org` + `brew search` (cached), shows `omanix.widgets` toggles and `omanix.theme` previews, and edits `configuration.nix` via the same `lib/omanix-add.sh` helper the CLI uses. Because it is a derivation, `omanix uninstall` removes it like any widget, and `omanix rebuild --rollback` undoes a Store `Install` in 30s. The green user never sees a flake, but the power user can `cat configuration.nix` and see exactly what the Store did — one file, one lock.
+
+---
+
+## 12. AI Should Write Nix, Not Bash — Ready by Skill, Fast by Preview, Safe by Rebuild
+
+Friend's pomodoro magic — *tell Claude, it just appears* — is the right delight, but friend's substrate is NixOS + Quickshell QML + `--impure` Home Manager forever. Omanix is darwin-native (SketchyBar + `launchd` + Swift, systemd + Quickshell on future Linux) and must keep build-time purity for rollback.
+
+Philosophy: **Give the agent a typed Nix contract (`lib/mkWidget`/`lib/mkApp` with `${theme.colors.*}` injection), a machine-readable skill (`skills/omanix/SKILL.md` → `~/.claude/skills/omanix/SKILL.md` with `statix`/`nix fmt`/`nix-instantiate --parse` in PATH), and a two-phase build: *preview* (impure overlay, instant, no generation) then *commit* (pure `configuration.nix` + `flake.lock`, generation).** The agent drafts to `overlays/pomodoro/{default.nix, Sources/*.swift}`, lints, runs `omanix rebuild --preview` (evaluates `overlays/*` via impure overlay, hot-reloads `sketchybar --reload` + `launchctl load` on mac / `quickshell ipc` on linux), asks "keep?" then `omanix add` promotes to `omanix.widgets.pomodoro.enable`. Same delight as friend's `dbus-send` to Quickshell, but mac-native and commit is pure, rollbackable, and visible in the Store toggle the green user already understands. If the agent wrote bash to `~/.config`, it failed the skill.

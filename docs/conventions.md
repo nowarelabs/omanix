@@ -32,9 +32,12 @@ omanix/                              # flake root — cloned to ~/.config/omanix
 │   ├── desktop/                     # branch: if isDarwin then darwin/desktop.nix else linux/hyprland.nix — you just set omanix.theme
 │   ├── theme/                       # themed.nix: themes/*/colors.toml + default/themed/*.tpl → /nix/store
 │   ├── widgets/                     # omanix.widgets.* — pomodoro etc. (launchd on mac, systemd on linux via same option)
-│   │   ├── pomodoro.nix             # uses lib/mkWidget: sketchybar/hyprland item + launchd/systemd timer
+│   │   ├── pomodoro.nix             # uses lib/mkWidget: sketchybar item + launchd timer
 │   │   └── clock.nix
-│   └── apps/                        # Swift apps on mac, GTK/Electron on linux — via lib/mkApp, appear as native apps
+│   ├── apps/                        # Swift apps on mac, GTK/Electron on linux — via lib/mkApp, appear as native apps
+│   │   ├── store/                   # Omanix Store — SwiftUI on mac (GTK on linux) via lib/mkApp, itself a widget (omanix.widgets.store)
+│   │   │   └── Sources/             # ContentView.swift, StoreView.swift — built to /Applications/Omanix Store.app
+│   │   └── pomodoro-app/
 ├── lib/
 │   ├── mkSystem.nix                 # if system == "aarch64-darwin" or "x86_64-darwin" → darwinSystem else → nixosSystem
 │   ├── mkWidget.nix                 # { name, sketchybarConfig|hyprlandConfig, launchdOrSystemd, swiftOrGtkSrc } → module + derivation
@@ -42,8 +45,12 @@ omanix/                              # flake root — cloned to ~/.config/omanix
 │   └── themed.nix                   # colors.toml + *.tpl → store (user never touches tpl)
 ├── themes/                          # vendored omarchy-mac/themes/*/colors.toml — build-time only
 ├── config/ + default/ + shell/      # vendored omarchy-mac taste — read-only, compiled by lib
+├── overlays/                        # git-ignored, AI/agent preview drop-ins: overlays/pomodoro/{default.nix, Sources/*.swift} → `omanix rebuild --preview` (impure, no generation)
+├── skills/
+│   └── omanix/
+│       └── SKILL.md                 # machine-readable schema for agents: mkWidget/mkApp contract, theme tokens, lint (statix/nix fmt), preview→commit flow
 ├── bin/
-│   └── omanix                       # install | rebuild | generations | add <pkg> | remove <pkg> | search <pkg> → search.nixos/brew routing
+│   └── omanix                       # install | rebuild | rebuild --preview | generations | add <pkg> | remove <pkg> | search <pkg> | store → search.nixos/brew routing
 └── docs/
     ├── principles.md
     ├── philosophies.md
@@ -280,3 +287,41 @@ New widget/app needs a test that it appears after rebuild and vanishes after `en
 Hard deletes on Darwin (shim → `not available on Darwin`):
 
 `omarchy-mac-setup`, `omarchy-system-btrfs-migrate`, `omarchy-snapshot`, `omarchy-refresh-pacman*`, `omarchy-refresh-plymouth/limine`, `omarchy-theme-set` (runtime), `omarchy-plugin-add` (runtime git), `omarchy-pkg-*` (→ `nix`), `omarchy-mise-*`, `omarchy-hw-nvidia*`, etc. Append-only; removing requires `tests/cli` update.
+
+---
+
+## 14. Omanix Store — GUI for Green Users, Built as a Widget, Enabled by Default
+
+The Store is `modules/apps/store/` → `lib/mkApp` SwiftUI (mac, `mkApp` GTK on linux), `omanix.widgets.store.enable = true` **by default** in `configuration.nix` (approved: welcoming). It *is* a widget, so it follows all principles: derivation in `/nix/store`, `launchd` plist via `launchd.user.agents`, `/Applications/Omanix Store.app` symlink, removed by `omanix uninstall` (or `omanix.widgets.store.enable = false` + rebuild for power users).
+
+**UX contract:**
+- **Browse:** Nix packages (`nix search` cached JSON) + brew casks/brews + `omanix.widgets` gallery + `omanix.theme` picker. Search box debounces, shows `search.nixos.org` description + `brew info` cask.
+- **Install/Remove:** Buttons call `lib/omanix-add.sh` / `lib/omanix-remove.sh` helpers that edit `configuration.nix` (adds `environment.systemPackages` or `homebrew.casks`), run `nix flake check` dry, show diff preview, then `omanix rebuild` with progress bar. No terminal. On failure, shows `nix` log + `Rollback` button.
+- **Widgets:** Toggles `omanix.widgets.pomodoro.enable` etc., previews live via `sketchybar --reload` (mac) / `quickshell ipc` (linux) without full rebuild — `Store` writes to `overlays/store-preview.nix` then `omanix rebuild --preview`.
+- **OS settings:** Sliders for `system.defaults.dock`, `desktop.aerospace.gaps`, Touch ID toggle — all `omanix.*` options, never raw `defaults write`.
+- **Entry points:** `Super → Omanix Store`, `open -a "Omanix Store"`, `omanix store` CLI. Green user never types `omanix add`.
+
+**Contributor rule:** Store edits `configuration.nix` via structured helpers (`nix edit`-like `yq` for Nix), not `echo` or `sed`. All Store-initiated changes must be `omanix rebuild --rollback`able in 30s and appear as a `git diff` in `~/.config/omanix`.
+
+---
+
+## 15. AI-Agent-Ready — Skill + Two-Phase Build (Preview → Commit), Mac-Native IPC
+
+Omanix is ready for `Claude Code`/`OpenCode` to drop a pomodoro that *just appears*, without the agent writing bash to `~/.config` or `/nix/store`.
+
+**Skill — `skills/omanix/SKILL.md` (auto-installed, linters ready):**
+- Installed by `home.file."~/.config/omanix/skills/omanix/SKILL.md"` and symlinked to `~/.claude/skills/omanix/SKILL.md` + `~/.opencode/skills/omanix/SKILL.md` on activation. **Approved:** `bin/omanix install` auto-installs `statix` + `nixfmt` + `nixd` into agent PATH ( `nix develop` also provides them) — agents lint without manual setup.
+- Contains: typed contract `lib/mkWidget { name, sketchybarConfig|hyprlandConfig, launchdOrSystemd, swiftOrGtkSrc, dependencies, theme }` + `lib/mkApp`, theme tokens `config.lib.omanixTheme.colors.*`, `omanix.widgets.*` examples (pomodoro `Sources/ContentView.swift` on mac, `widget.qml` on linux), lint commands (`statix check`, `nix fmt`, `nix-instantiate --parse`), and the two-phase flow.
+- Agents must run `statix` + `nix fmt` + `nix-instantiate --parse overlays/<name>/default.nix` before any `omanix rebuild`.
+
+**Two-phase build — same delight as friend's map, mac-native, now with permanent impure allowed:**
+1. **Draft (no build):** Agent writes `~/.config/omanix/overlays/pomodoro/{default.nix, Sources/ContentView.swift}` (or `widget.qml` on linux) — `overlays/` is `git-ignored` by default, impure, not in `flake.lock`.
+2. **Preview (impure, instant, no generation):** `omanix rebuild --preview` — `configuration.nix` imports `overlays/*/default.nix` via `builtins.readDir ../overlays` (impure, `lib/mkSystem` handles branch), builds `/nix/store/...-pomodoro`, hot-reloads `sketchybar --reload` + `launchctl load` (mac) / `quickshell ipc` + `systemctl --user daemon-reload` (linux) via IPC. Widget appears, theme-injected, no generation bump.
+3. **Commit OR keep impure (user chooses, approved: allow permanent impure):**
+   - **Pure commit (default, tracked, Store-visible):** `omanix add pomodoro --from-overlay overlays/pomodoro` moves overlay to `inputs.pomodoro` + `omanix.widgets.pomodoro.enable` in `configuration.nix`, `nix flake lock --update-input`, `nix flake check`, `omanix rebuild` (pure, new generation). `overlays/` cleared. Green user sees toggle in Store.
+   - **Permanent impure (fast, no lock, instant, no generation):** Keep `overlays/pomodoro/` and `omanix rebuild` (no `--preview` flag needed after approval) — `configuration.nix` keeps importing `overlays/*` impurely every rebuild, no `flake.lock` entry, no generation beyond overlay file existence. Agent documents `overlays/pomodoro/README.md: impure — delete folder to remove`. Allowed for throwaway AI experiments; `omanix uninstall` still deletes `overlays/` so pristine holds, but `rollback` is `rm -rf overlays/pomodoro && omanix rebuild --preview`.
+4. **Undo:** Pure: `omanix rebuild --rollback` or `omanix remove pomodoro`; impure: `rm -rf overlays/pomodoro && omanix rebuild --preview`.
+
+**Why not friend's *only* `--impure` forever:** We keep preview speed but make persistence a choice — pure for teams/Store visibility/rollback, impure for rapid AI iteration where lock churn is unwanted. Linters are ready day one, so agent never writes invalid Nix. Linux path reuses same `SKILL.md` but picks `qmlSrc` + `systemd` branch — `lib/mkWidget` abstracts `sketchybar` vs `quickshell`.
+
+**Contributor rule for agent authors:** Use `pkgs` deps (`pkgs.libnotify`, `pkgs.mpv`), not `which mpv`; use `${config.lib.omanixTheme.colors.accent}`, not hardcoded `#7aa2f7`; never write to `/nix/store` or `~/.config` outside `overlays/`.

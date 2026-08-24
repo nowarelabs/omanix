@@ -137,6 +137,48 @@ Every `add`/`remove`/`update` must be undoable in <30s via `omanix rebuild --rol
 
 ---
 
+## 14. GUI for Humans Who Don't Live in Terminal — Omanix Store Is a Widget, Enabled by Default
+
+Omanix commands are `omanix rebuild`, `omanix add`, `omanix generations` — a green Mac user who has never used Nix should not need them. Hard line: **we ship a GUI that looks like the Mac App Store, for installing packages, toggling widgets, and OS settings, the GUI is itself a plugin, and it is enabled by default.**
+
+- **What it is:** `modules/apps/store/` → `lib/mkApp` SwiftUI app on macOS (GTK on future Linux) that appears as `/Applications/Omanix Store.app`, as `Super → Omanix Store` in the Omarchy menu, and as `omanix store` CLI. It is `omanix.widgets.store.enable = true` by default in `configuration.nix` — a derivation, not a hand-installed `.app`. Power users disable with `omanix.widgets.store.enable = false;` + rebuild.
+- **What it does for green users:** Browse the catalog that `search.nixos.org` + `brew search` already is (cached), one-click `Install` → calls `bin/omanix add` helper (edits `configuration.nix`, runs `nix flake check` dry, `omanix rebuild`), toggle `omanix.widgets.pomodoro` switches, pick `omanix.theme` with live preview, tweak `system.defaults` (dock, trackpad) with sliders — no terminal, no `.nix` syntax to learn day one.
+- **Why it must be a plugin (and by default):** If the Store were imperative or opt-in, a green user would never find it. Because it is a Nix derivation via `lib/mkApp` and on by default, first boot already has `Super → Store`, and `omanix uninstall` removes it like any widget, `omanix rebuild --rollback` undoes a Store `Install` in 30s. The Store eats its own dogfood — it edits `configuration.nix` via structured helpers (`lib/omanix-add.sh`), not `echo`.
+
+---
+
+## 15. AI-Agent-Ready by Contract — Same End Goal, Mac-Native Realization
+
+Your friend's map is right on the end goal — *user says "make pomodoro", Claude writes it, it just appears themed and isolated* — but wrong on the macOS substrate if taken literally. Friend assumes NixOS + `~/.config` impure Home Manager imports + Quickshell QML hot-reload via D-Bus. Omanix is Darwin-native: `AeroSpace`/`SketchyBar`/`launchd`/`Swift` on macOS, `Hyprland`/`Quickshell`/`systemd` on future Linux. Hard line: **Omanix is AI-ready by providing a typed Nix contract, a machine-readable skill, and a two-phase build (preview → commit) that is mac-native and cross-platform, not by letting an agent `echo` into `/nix/store` or `~/.config` imperatively.**
+
+Friend's core insight we keep:
+
+> Nix is immutable; `~/.config` imperative drift breaks reproducibility; bridge with flakes + dynamic imports + declarative UI (QML). Provide `lib.mkPlugin` with `theme` injection, dependencies as `pkgs`, and a `SKILL.md` with linter.
+
+Friend's substrate we adapt:
+
+| Friend (Linux) | Omanix (macOS now, Linux future — same `omanix.widgets`) |
+|---|---|
+| `~/.config/omanix/plugins/pomodoro/{default.nix, widget.qml}` (Home Manager `--impure` scan) | `~/.config/omanix/overlays/pomodoro/{default.nix, Sources/*.swift}` **preview** overlay (impure, git-ignored) **plus** committed `configuration.nix` `omanix.widgets.*` / `inputs.*` (pure). No `--impure` in final build. |
+| `lib.mkPlugin { name, type = "bar-widget", source = ./widget.qml, style = "${theme.colors.base01}", dependencies = [mpv] }` | `lib/mkWidget { name = "pomodoro", sketchybarConfig|hyprlandConfig, launchdOrSystemd, swiftOrGtkSrc, style = "${config.lib.omanixTheme.colors.accent}", dependencies = [pkgs.libnotify pkgs.mpv] }` — `theme` comes from `lib/themed.nix`, not `stylix`, and `pkgs` paths are Nix-resolved. |
+| `SKILL.md` at `~/.claude/skills/omanix.md` + `statix`/`nixpkgs-fmt` in PATH | Same, but Omanix ships it: `skills/omanix/SKILL.md` (machine-readable schema + `mkWidget`/`mkApp` examples for both mac and Linux) installed to `~/.config/omanix/skills/` and symlinked to `~/.claude/skills/omanix/` / `~/.opencode/skills/omanix/` by `home.file`. Agents run `nix fmt` + `statix check` + `nix-instantiate --parse` before `omanix rebuild`. |
+| Quickshell `Qt.createComponent()` + D-Bus IPC to reload | **Mac:** `sketchybar --reload` + `launchctl load ~/Library/LaunchAgents/org.omanix.*.plist` (generated) + `/Applications/*.app` symlink swap. **Future Linux:** `quickshell ipc call` + `systemctl --user daemon-reload`. Same `omanix rebuild` triggers the right IPC branch via `pkgs.stdenv.isDarwin`. |
+| `omanix-rebuild` = `home-manager switch --flake` (`--impure` for drop-ins) | **Omanix two-phase:** `omanix rebuild --preview` — evaluates `overlays/*/default.nix` impurely (no `flake.lock` update, no generation, hot-reload via IPC, instant feedback, not tracked) ; `omanix add` — promotes the overlay to `configuration.nix` `inputs.*` + `omanix.widgets.*.enable`, runs `nix flake lock --update-input`, `nix flake check`, `omanix rebuild` (pure, generation, rollbackable). AI is instructed to always `preview` then ask "keep?" then `add`. |
+
+**Our end-to-end (same user delight, Nix-native, mac-ready — now with permanent impure allowed):**
+
+1. **User:** *"Hey Claude, make me a pomodoro timer plugin."*
+2. **Agent (draft & lint, no build):** Reads `skills/omanix/SKILL.md` (typed `mkWidget` contract, theme tokens `config.omanix.theme.colors.*`, examples), writes `overlays/pomodoro/{default.nix, Sources/ContentView.swift}` (`overlays/` git-ignored by default), runs `nix fmt`, `statix check`, `nix-instantiate --parse` — all linters are auto-installed by `bin/omanix install` (`statix` + `nixfmt` + `nixd` in agent PATH, approved).
+3. **Agent (preview, impure, instant, no generation):** `omanix rebuild --preview` — Nix evaluates `overlays/*` impurely (`builtins.readDir ../overlays`), builds `/nix/store/...-pomodoro` with `${theme.colors.accent}` injected, hot-reloads `sketchybar --reload` + `launchctl load` (mac) / `quickshell ipc` + `systemctl` (linux). Widget appears instantly.
+4. **Agent (commit OR keep impure — user chooses, approved: allow permanent impure):**
+   - **Pure commit (tracked, rollbackable, Store-visible):** `omanix add pomodoro --from-overlay overlays/pomodoro` — moves overlay to `inputs.pomodoro` + `omanix.widgets.pomodoro.enable` in `configuration.nix`, `nix flake lock --update-input`, `nix flake check`, `omanix rebuild` (pure, new generation). `overlays/` cleared. This is the default the skill teaches (green user sees toggle in Store).
+   - **Permanent impure (fast, no lock, instant, no generation beyond overlay delete):** Keep `overlays/pomodoro/` and run `omanix rebuild` (without `--preview`) — `configuration.nix` still imports `overlays/*` impurely every rebuild, no `flake.lock` entry, no generation beyond overlay file existence. The agent keeps `overlays/` and documents it as `overlays/pomodoro/README.md: impure — delete folder to remove`. This is allowed per approval for rapid AI iteration where lock churn is unwanted; `omanix uninstall` still deletes `overlays/` so pristine holds, but `rollback` is `rm -rf overlays/pomodoro && omanix rebuild --preview` not a generation.
+5. **Undo:** Pure path: `omanix rebuild --rollback` or `omanix remove pomodoro`; impure path: `rm -rf overlays/pomodoro && omanix rebuild --preview`.
+
+Why this beats friend's *only* `--impure` forever: we keep preview speed but make persistence a choice — pure for teams/Store visibility/rollback, impure for throwaway AI experiments. Linters are ready day one (`bin/omanix install` puts `statix`/`nixfmt`/`nixd` in PATH), so the agent never writes invalid Nix. On Linux, same `overlays/` becomes `widget.qml` + `systemd` — `lib/mkWidget` branches on `isDarwin`.
+
+---
+
 ## Architecture That These Principles Demand — Simple for Green Users, Ready for Linux
 
 **Beginner edits one file. Complexity scales, not starts complex.**

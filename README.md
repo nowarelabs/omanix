@@ -55,6 +55,8 @@ Omanix is a declarative desktop environment for Apple Silicon and Intel Macs. It
 - **Full declarative config** — Desktop, packages, shell, and widgets defined in one file. No `.toml`/`.tpl`/`.config` hand-edits — use Nix options (`omanix.theme`, `desktop.aerospace.*`).
 - **Curated, not closed** — Pre-curated defaults, but `search.nixos.org` + `brew` are the catalog. `omanix add <name>` routes to `nixpkgs` (`pkgs`) or Homebrew (`casks`/`brews`) declaratively — no custom re-packaging if either already ships.
 - **Nix-native widgets & apps** — Community pomodoro etc. are `launchd`/`Swift` derivations (`omanix.widgets.pomodoro.enable` via `lib/mkWidget`/`lib/mkApp`, SDK + auto-wrap), not bash — they appear as Mac apps and vanish on removal.
+- **Omanix Store GUI** — App Store-like SwiftUI app (GTK on future Linux), itself a `omanix.widgets.store` widget. Browse `search.nixos.org`+`brew`, one-click `Install` via `omanix add`, toggle `omanix.widgets`/`omanix.theme`, tweak OS settings — no terminal for green users (`Super → Omanix Store` or `omanix store`).
+- **AI-agent-ready** — `skills/omanix/SKILL.md` typed contract (`lib/mkWidget`/`lib/mkApp` + `${theme.colors}`) with `statix`/`nix fmt` lint, `overlays/` preview (`omanix rebuild --preview` → `sketchybar --reload`/`launchctl`) then commit (`omanix add` → `flake.lock`, generation). Claude Code writes Nix, it just appears themed and rollbackable.
 - **Pristine uninstall** — `omanix uninstall` removes Nix, `launchd` agents, Swift apps, and the casks it added. Leaves the Mac clean (see `docs/principles.md:12`).
 
 ## System Requirements
@@ -163,7 +165,7 @@ omanix rebuild
 
 ### Example Configuration — One File for Green Users, Scales to Complexity
 
-Your Mac *is* `~/.config/omanix/configuration.nix` — Omanix, not Omarchy spec. You set `omanix.*` (own brand) in one commented file, `lib/themed.nix` renders, and `hosts/` scales later. Pinning is `flake.lock` (`config/flake.nix:5` style). Future Linux reuses the same `omanix.theme`/`omanix.widgets`.
+Your Mac _is_ `~/.config/omanix/configuration.nix` — Omanix, not Omarchy spec. You set `omanix.*` (own brand) in one commented file, `lib/themed.nix` renders, and `hosts/` scales later. Pinning is `flake.lock` (`config/flake.nix:5` style). Future Linux reuses the same `omanix.theme`/`omanix.widgets`.
 
 ```nix
 # ~/.config/omanix/flake.nix — ~30 lines, you rarely edit this (shown for completeness)
@@ -223,7 +225,7 @@ After editing either file: `omanix rebuild` (→ `sudo darwin-rebuild switch --f
 
 ### Add Apps, Widgets & Your Own Swift Apps — Not Bash Plugins
 
-Omarchy lets anyone `omarchy-plugin-add` a bash repo and it appears as a widget. Omanix keeps the *capability* but replaces the *mechanism* with Nix derivations: a SketchyBar widget, a `launchd` agent, or a Swift/SwiftUI `.app` (see `docs/principles.md:10`). Both paths are supported — prescriptive SDK and auto-wrap.
+Omarchy lets anyone `omarchy-plugin-add` a bash repo and it appears as a widget. Omanix keeps the _capability_ but replaces the _mechanism_ with Nix derivations: a SketchyBar widget, a `launchd` agent, or a Swift/SwiftUI `.app` (see `docs/principles.md:10`). Both paths are supported — prescriptive SDK and auto-wrap.
 
 **Fast path — `omanix add` routing (primary UX):**
 
@@ -250,6 +252,25 @@ omanix add github:your-org/pomodoro-swift   # detects Sources/*.swift, builds vi
 ```
 
 Remove is symmetric: `omanix remove ripgrep` / `omanix remove pomodoro` edits `flake.nix` and rebuilds; `omanix rebuild --rollback` restores, and `omanix uninstall` is full pristine (including casks). Never `git clone` into `~/.config/omarchy/plugins` — `home.activation` git clones are linted as failures.
+
+### Omanix Store — GUI for Green Users (Itself a Widget, Enabled by Default)
+
+Don't know `omanix` commands? Open `Super → Omanix Store` (or `open -a "Omanix Store"` / `omanix store`, `docs/principles.md:14`) — enabled by default (`omanix.widgets.store.enable = true` in `configuration.nix`, disable with `false` + rebuild). It's a SwiftUI app on macOS (GTK on future Linux) built via `lib/mkApp` — itself `omanix.widgets.store`:
+
+- Browse Nix (`search.nixos.org` cached) + brew (`brew search`) + `omanix.widgets` gallery + `omanix.theme` picker
+- One-click `Install`/`Remove` → calls `omanix add` helpers, shows `configuration.nix` diff preview, `nix flake check` dry, then `omanix rebuild` with progress + `Rollback` button
+- Toggle `omanix.widgets.pomodoro` etc., tweak `system.defaults` sliders — all without opening a terminal or `.nix` file
+
+Power users can ignore it; green users need never open a terminal.
+
+### AI Agents — Tell Claude to Make It Appear (Same Delight, Mac-Native)
+
+Omarchy pomodoro magic: _"make pomodoro, it just appears themed."_ Omanix keeps the delight via `skills/omanix/SKILL.md` (`docs/principles.md:15`, `docs/conventions.md:15`):
+
+1. **User:** _"Hey Claude, make me a pomodoro timer"_
+2. **Agent drafts + lints:** reads `SKILL.md` (typed `lib/mkWidget { name, sketchybarConfig, launchdConfig, swiftSrc, theme, dependencies }`), writes `~/.config/omanix/overlays/pomodoro/{default.nix, Sources/ContentView.swift}` (`overlays/` git-ignored), runs `nix fmt`, `statix check`, `nix-instantiate --parse` — linters are auto-installed by `bin/omanix install` (`statix`+`nixfmt`+`nixd` in PATH)
+3. **Preview (instant, impure, no generation):** `omanix rebuild --preview` — evaluates `overlays/*` impurely, builds `/nix/store/...-pomodoro` with `${theme.colors.accent}` theme-injected, hot-reloads `sketchybar --reload` + `launchctl load` (mac) / `quickshell ipc` + `systemctl` (future Linux) — widget appears themed
+4. **Commit _or_ keep impure (you choose, approved):** pure `omanix add pomodoro --from-overlay` moves it to `inputs.pomodoro` + `omanix.widgets.pomodoro.enable` in `configuration.nix`, `nix flake lock --update-input`, `nix flake check`, `omanix rebuild` (new generation, Store-visible) and clears `overlays/`; _or_ keep `overlays/pomodoro/` permanent impure (no lock, `rm -rf` to remove, fast for AI experiments). Future Linux picks `widget.qml` + `systemd` branch automatically — same skill, cross-platform.
 
 ---
 
@@ -396,7 +417,7 @@ sudo reboot
 
 ### Use Your Own Flake (Team Fork) — Distro, Not Library
 
-Omanix *is* the flake you edit (`~/.config/omanix/flake.nix`), not a library you import. For teams, fork `nowarelabs/omanix` and make the fork the distro:
+Omanix _is_ the flake you edit (`~/.config/omanix/flake.nix`), not a library you import. For teams, fork `nowarelabs/omanix` and make the fork the distro:
 
 ```bash
 # installer with your fork (one-command, still no prerequisites)
@@ -424,7 +445,7 @@ To stay on a tag, `git checkout v1.0.0` in `~/.config/omanix` and rebuild — th
 
 ### Develop Widgets & Swift Apps — Not Bash Plugins
 
-The flake includes a dev shell with the *mac-native* toolchain (no Quickshell QML at runtime):
+The flake includes a dev shell with the _mac-native_ toolchain (no Quickshell QML at runtime):
 
 ```bash
 cd ~/.config/omanix   # or ~/.local/share/omanix for hack
@@ -464,15 +485,15 @@ Your `~/.config/omanix/flake.nix` is the baseline; upstream sync is a normal `gi
 
 ## What's Included
 
-| Category             | Packages                                                                                                                                                                 |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Core**             | Nix (Determinate Systems) + `nix-darwin`, `home-manager`, Omarchy 4 taste (Hyprland `*.lua` compiles to AeroSpace via `lib/hypr-to-aerospace.nix`, Quickshell tokens to SketchyBar via `lib/themed.nix`) |
+| Category             | Packages                                                                                                                                                                                                                     |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Core**             | Nix (Determinate Systems) + `nix-darwin`, `home-manager`, Omarchy 4 taste (Hyprland `*.lua` compiles to AeroSpace via `lib/hypr-to-aerospace.nix`, Quickshell tokens to SketchyBar via `lib/themed.nix`)                     |
 | **Desktop**          | AeroSpace (tiling, was Hyprland) + SketchyBar (was Quickshell, bar flows around notch) + `loginwindow` + Touch ID (was SDDM/Plymouth), Ghostty/Foot (terminal), Finder integration (was Nautilus), `launchd` (was `systemd`) |
-| **Widgets / Apps**   | Clock, Workspaces, Menu, Audio, Network, Bluetooth, Battery, Weather + custom Nix-native widgets/apps (`launchd` agents + Swift/SwiftUI `.app` via `lib/mkWidget` / `lib/mkApp`, SDK + auto-wrap, not bash) |
-| **Browsers & Media** | Chromium, Firefox, MPV, Imv                                                                                                                                              |
-| **Development**      | Neovim + LSPs, Git + `gh`, Docker & Docker Compose, Node.js / Ruby / Python (base), Build tools                                                                          |
-| **Utilities**        | Fastfetch, FZF, Ripgrep, Bat, EZA, Starship, Tmux, Zoxide                                                                                                                |
-| **Shell**            | Zsh (default) or Bash — themed, keybindings, FZF history                                                                                                                 |
+| **Widgets / Apps**   | Clock, Workspaces, Menu, Audio, Network, Bluetooth, Battery, Weather + custom Nix-native widgets/apps (`launchd` agents + Swift/SwiftUI `.app` via `lib/mkWidget` / `lib/mkApp`, SDK + auto-wrap, not bash)                  |
+| **Browsers & Media** | Chromium, Firefox, MPV, Imv                                                                                                                                                                                                  |
+| **Development**      | Neovim + LSPs, Git + `gh`, Docker & Docker Compose, Node.js / Ruby / Python (base), Build tools                                                                                                                              |
+| **Utilities**        | Fastfetch, FZF, Ripgrep, Bat, EZA, Starship, Tmux, Zoxide                                                                                                                                                                    |
+| **Shell**            | Zsh (default) or Bash — themed, keybindings, FZF history                                                                                                                                                                     |
 
 > See `flake.nix` for the complete list and pinned versions.
 
@@ -496,12 +517,12 @@ Both give you Omarchy — Omanix is the macOS-native version.
 
 ## Known Limitations
 
-| Limitation                | Details                                                                                                                             | Workaround                                                                 |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| **Hyprland → AeroSpace**  | Hyprland/Wayland does not run on macOS. `default/hypr/*.lua` compiles to AeroSpace TOML via `lib/hypr-to-aerospace.nix` at build time — no Wayland layer needed. Some `windowrulev2`/gaps have no AeroSpace equivalent. | Add a `desktop.aerospace.*` Nix option (don't edit raw `aerospace.toml`). See `docs/porting.md`. |
-| **Quickshell → SketchyBar** | Quickshell QML does not run on Darwin. Tokens from `shell/` + `themes/*/colors.toml` render to SketchyBar via `lib/themed.nix`. | Use `omanix.widgets.*.enable` or `lib/mkWidget`; don't write raw SketchyBar config. |
-| **System Fonts**          | Not all Linux fonts render identically on macOS.                                                                                    | Install via `fonts.packages` (`ttf-jetbrains-mono-nerd`) or `environment.systemPackages`. |
-| **Bluetooth Audio**       | Codec support is limited vs. Linux.                                                                                                 | Use USB / wired audio for best compatibility.                              |
+| Limitation                  | Details                                                                                                                                                                                                                 | Workaround                                                                                       |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **Hyprland → AeroSpace**    | Hyprland/Wayland does not run on macOS. `default/hypr/*.lua` compiles to AeroSpace TOML via `lib/hypr-to-aerospace.nix` at build time — no Wayland layer needed. Some `windowrulev2`/gaps have no AeroSpace equivalent. | Add a `desktop.aerospace.*` Nix option (don't edit raw `aerospace.toml`). See `docs/porting.md`. |
+| **Quickshell → SketchyBar** | Quickshell QML does not run on Darwin. Tokens from `shell/` + `themes/*/colors.toml` render to SketchyBar via `lib/themed.nix`.                                                                                         | Use `omanix.widgets.*.enable` or `lib/mkWidget`; don't write raw SketchyBar config.              |
+| **System Fonts**            | Not all Linux fonts render identically on macOS.                                                                                                                                                                        | Install via `fonts.packages` (`ttf-jetbrains-mono-nerd`) or `environment.systemPackages`.        |
+| **Bluetooth Audio**         | Codec support is limited vs. Linux.                                                                                                                                                                                     | Use USB / wired audio for best compatibility.                                                    |
 
 ---
 
