@@ -11,7 +11,7 @@ Omanix is a declarative desktop environment for Apple Silicon and Intel Macs. It
 <p align="center">
   <a href="https://github.com/nowarelabs/omanix"><img alt="macOS 12+" src="https://img.shields.io/badge/macOS-12%2B-black?logo=apple&logoColor=white" /></a>
   <a href="https://nixos.org"><img alt="Built with Nix" src="https://img.shields.io/badge/Built%20with-Nix-5277C3?logo=nixos&logoColor=white" /></a>
-  <a href="https://github.com/omarchy-mac/omanix"><img alt="Apple Silicon" src="https://img.shields.io/badge/Apple%20Silicon-Supported-success" /></a>
+  <a href="https://github.com/nowarelabs/omanix"><img alt="Apple Silicon" src="https://img.shields.io/badge/Apple%20Silicon-Supported-success" /></a>
   <a href="./LICENSE"><img alt="License: ISC" src="https://img.shields.io/badge/License-ISC-blue.svg" /></a>
 </p>
 
@@ -493,14 +493,14 @@ Both give you Omarchy — Omanix is the macOS-native version.
 
 Omanix is open source — contributions welcome!
 
-- **Report bugs:** [GitHub Issues](https://github.com/omarchy-mac/omanix/issues)
-- **Submit fixes:** [GitHub Pull Requests](https://github.com/omarchy-mac/omanix/pulls)
-- **Discuss features:** [GitHub Discussions](https://github.com/omarchy-mac/omanix/discussions)
+- **Report bugs:** [GitHub Issues](https://github.com/nowarelabs/omanix/issues)
+- **Submit fixes:** [GitHub Pull Requests](https://github.com/nowarelabs/omanix/pulls)
+- **Discuss features:** [GitHub Discussions](https://github.com/nowarelabs/omanix/discussions)
 
 To hack on Omanix locally:
 
 ```bash
-git clone https://github.com/omarchy-mac/omanix.git ~/.local/share/omanix-dev
+git clone https://github.com/nowarelabs/omanix.git ~/.local/share/omanix-dev
 cd ~/.local/share/omanix-dev
 nix develop
 
@@ -521,13 +521,13 @@ Omanix is licensed under the **ISC License**. See [LICENSE](./LICENSE) for detai
 ### Community
 
 - **Discord:** Omarchy Community
-- **Discussions:** [GitHub Discussions](https://github.com/omarchy-mac/omanix/discussions)
+- **Discussions:** [GitHub Discussions](https://github.com/nowarelabs/omanix/discussions)
 
 ### Get Help
 
 - Installation issues → [Troubleshooting](#troubleshooting)
 - Configuration help → [Customize Your Config](#customize-your-config)
-- Bug reports → [Open an issue](https://github.com/omarchy-mac/omanix/issues)
+- Bug reports → [Open an issue](https://github.com/nowarelabs/omanix/issues)
 
 ### Sponsor
 
