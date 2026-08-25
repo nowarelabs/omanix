@@ -1,14 +1,16 @@
 // modules/apps/store/Sources/ContentView.swift
-// Omanix Store — SwiftUI app for browsing and installing packages
-// Phase 06 stub — will be fleshed out with real nix search / brew search integration
+// Omanix Store — main navigation
 import SwiftUI
 
 struct ContentView: View {
     @State private var searchText = ""
     @State private var selectedTab: SidebarTab = .packages
+    @State private var selectedPackage: PackageItem?
+    @StateObject private var store = StoreViewModel()
 
     enum SidebarTab: String, CaseIterable {
         case packages = "Packages"
+        case installed = "Installed"
         case widgets = "Widgets"
         case themes = "Themes"
         case settings = "Settings"
@@ -18,62 +20,51 @@ struct ContentView: View {
         NavigationSplitView {
             List(SidebarTab.allCases, id: \.self, selection: $selectedTab) { tab in
                 Label(tab.rawValue, systemImage: iconName(for: tab))
+                    .badge(badgeCount(for: tab))
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 200)
         } detail: {
             switch selectedTab {
             case .packages:
-                PackagesView(searchText: $searchText)
+                PackageListView(store: store, searchText: $searchText, selectedPackage: $selectedPackage)
+            case .installed:
+                InstalledView(store: store)
             case .widgets:
-                WidgetsView()
+                WidgetGalleryView(store: store)
             case .themes:
-                ThemesView()
+                ThemePickerView(store: store)
             case .settings:
-                SettingsView()
+                SettingsView(store: store)
             }
         }
         .searchable(text: $searchText, prompt: "Search packages...")
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button(action: { store.refresh() }) {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .help("Refresh packages")
+            }
+        }
     }
 
     func iconName(for tab: SidebarTab) -> String {
         switch tab {
         case .packages: return "square.grid.3x3"
-        case .widgets: return "widget.rectangle"
+        case .installed: return "checkmark.square"
+        case .widgets: return "rectangle.stack"
         case .themes: return "paintbrush"
         case .settings: return "gear"
         }
     }
-}
 
-struct PackagesView: View {
-    @Binding var searchText: String
-    var body: some View {
-        Text("Packages — search nixpkgs + brew")
-            .foregroundStyle(.secondary)
+    func badgeCount(for tab: SidebarTab) -> Int? {
+        switch tab {
+        case .installed:
+            let count = store.installedPackages.count
+            return count > 0 ? count : nil
+        default:
+            return nil
+        }
     }
-}
-
-struct WidgetsView: View {
-    var body: some View {
-        Text("Widgets — omanix.widgets.* gallery")
-            .foregroundStyle(.secondary)
-    }
-}
-
-struct ThemesView: View {
-    var body: some View {
-        Text("Themes — omanix.theme picker with live preview")
-            .foregroundStyle(.secondary)
-    }
-}
-
-struct SettingsView: View {
-    var body: some View {
-        Text("Settings — system.defaults sliders")
-            .foregroundStyle(.secondary)
-    }
-}
-
-#Preview {
-    ContentView()
 }
