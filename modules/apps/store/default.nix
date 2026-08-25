@@ -31,8 +31,16 @@ let
   <string>13.0</string>
   <key>NSHighResolutionCapable</key>
   <true/>
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
 </dict>
 </plist>'';
+
+  # App icon - copy to nix store
+  appIcon = pkgs.runCommand "omanix-icon" {} ''
+    mkdir -p $out
+    cp ${../../../assets/icon.png} $out/AppIcon.icns
+  '';
 
 in {
   config = lib.mkIf enabled {
@@ -57,6 +65,7 @@ if [ -x "$XCRUN" ] || command -v xcrun >/dev/null 2>&1; then
     "$STORE_DIR/Sources/"*.swift
 
   cp ${infoPlist} "/Applications/Omanix.app/Contents/Info.plist"
+  cp ${appIcon}/AppIcon.icns "/Applications/Omanix.app/Contents/Resources/AppIcon.icns"
 
   echo "Omanix built successfully"
 
@@ -90,6 +99,11 @@ xcrun swiftc \
   -framework Foundation \
   -o "/Applications/Omanix.app/Contents/MacOS/Omanix" \
   "$STORE_DIR/Sources/"*.swift
+
+# Copy icon from config directory if it exists
+if [ -f "$CONFIG_DIR/assets/icon.png" ]; then
+  cp "$CONFIG_DIR/assets/icon.png" "/Applications/Omanix.app/Contents/Resources/AppIcon.icns"
+fi
 
 echo "Omanix rebuilt successfully"
       '';
