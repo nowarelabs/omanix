@@ -193,13 +193,14 @@ class StoreViewModel: ObservableObject {
         let fm = FileManager.default
         try? fm.createDirectory(atPath: brewCacheDir, withIntermediateDirectories: true)
 
+        let cacheDir = brewCacheDir
         await withTaskGroup(of: Void.self) { group in
             // Download casks
             group.addTask { [weak self] in
                 guard let self else { return }
-                let url = URL(string: "https://formulae.brew.sh/api/cask.json")!
+                guard let url = URL(string: "https://formulae.brew.sh/api/cask.json") else { return }
                 guard let (data, _) = try? await URLSession.shared.data(from: url) else { return }
-                try? data.write(to: URL(fileURLWithPath: "\(self.brewCacheDir)/casks.json"))
+                try? data.write(to: URL(fileURLWithPath: "\(cacheDir)/casks.json"))
                 if let entries = try? JSONDecoder().decode([BrewCask].self, from: data) {
                     await MainActor.run {
                         self.brewCaskIndex = entries.map { (token: $0.token, names: $0.name ?? [], desc: $0.desc ?? "") }
@@ -210,9 +211,9 @@ class StoreViewModel: ObservableObject {
             // Download formulas
             group.addTask { [weak self] in
                 guard let self else { return }
-                let url = URL(string: "https://formulae.brew.sh/api/formula.json")!
+                guard let url = URL(string: "https://formulae.brew.sh/api/formula.json") else { return }
                 guard let (data, _) = try? await URLSession.shared.data(from: url) else { return }
-                try? data.write(to: URL(fileURLWithPath: "\(self.brewCacheDir)/formulas.json"))
+                try? data.write(to: URL(fileURLWithPath: "\(cacheDir)/formulas.json"))
                 if let entries = try? JSONDecoder().decode([BrewFormula].self, from: data) {
                     await MainActor.run {
                         self.brewFormulaIndex = entries.map { (name: $0.name, desc: $0.desc ?? "") }
@@ -225,10 +226,9 @@ class StoreViewModel: ObservableObject {
         let ts = "\(Date().timeIntervalSince1970)"
         try? ts.write(toFile: "\(brewCacheDir)/last-updated", atomically: true, encoding: .utf8)
 
-        await MainActor.run {
-            self.isIndexingBrew = false
-            self.brewIndexReady = !self.brewCaskIndex.isEmpty || !self.brewFormulaIndex.isEmpty
-        }
+        // Back on MainActor after await withTaskGroup — no MainActor.run needed
+        self.isIndexingBrew = false
+        self.brewIndexReady = !self.brewCaskIndex.isEmpty || !self.brewFormulaIndex.isEmpty
     }
 
     // MARK: - Search Helpers
@@ -240,10 +240,15 @@ class StoreViewModel: ObservableObject {
         task.arguments = ["which", name]
         task.standardOutput = pipe
         task.standardError = FileHandle.nullDevice
+        let dataTask = Task.detached { await pipe.fileHandleForReading.readDataToEndOfFile() }
         try? task.run()
-        task.waitUntilExit()
+        // Poll instead of waitUntilExit to avoid blocking the main thread
+        while task.isRunning {
+            Thread.sleep(forTimeInterval: 0.05)
+        }
         guard task.terminationStatus == 0 else { return nil }
-        let path = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
+        let data = dataTask.value
+        let path = String(data: data, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return (path?.isEmpty == true) ? nil : path
     }
@@ -259,6 +264,7 @@ class StoreViewModel: ObservableObject {
         process.standardOutput = stdoutPipe
         process.standardError = FileHandle.nullDevice
 
+        let dataTask = Task.detached { await stdoutPipe.fileHandleForReading.readDataToEndOfFile() }
         try process.run()
 
         let deadline = Date().addingTimeInterval(timeout)
@@ -271,7 +277,7 @@ class StoreViewModel: ObservableObject {
             throw StoreError.commandFailed("nix search timed out")
         }
 
-        let data = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+        let data = await dataTask.value
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw StoreError.invalidOutput
         }
@@ -521,16 +527,23 @@ class StoreViewModel: ObservableObject {
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
 
-        try process.run()
-        process.waitUntilExit()
+        // Read pipe data concurrently to prevent deadlocks on large output
+        let stdoutData = Task.detached { await stdoutPipe.fileHandleForReading.readDataToEndOfFile() }
+        let stderrData = Task.detached { await stderrPipe.fileHandleForReading.readDataToEndOfFile() }
 
-        let data = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+        try process.run()
+
+        while process.isRunning {
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
+
+        let data = await stdoutData.value
         guard let output = String(data: data, encoding: .utf8) else {
             throw StoreError.invalidOutput
         }
 
         guard process.terminationStatus == 0 else {
-            let errData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            let errData = await stderrData.value
             let errStr = String(data: errData, encoding: .utf8) ?? ""
             throw StoreError.commandFailed(errStr.isEmpty ? output : errStr)
         }
@@ -550,6 +563,9 @@ class StoreViewModel: ObservableObject {
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
 
+        let stdoutData = Task.detached { await stdoutPipe.fileHandleForReading.readDataToEndOfFile() }
+        let stderrData = Task.detached { await stderrPipe.fileHandleForReading.readDataToEndOfFile() }
+
         try process.run()
 
         let deadline = Date().addingTimeInterval(timeout)
@@ -562,13 +578,13 @@ class StoreViewModel: ObservableObject {
             throw StoreError.commandFailed("Command timed out after \(Int(timeout))s")
         }
 
-        let data = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+        let data = await stdoutData.value
         guard let output = String(data: data, encoding: .utf8) else {
             throw StoreError.invalidOutput
         }
 
         guard process.terminationStatus == 0 else {
-            let errData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            let errData = await stderrData.value
             let errStr = String(data: errData, encoding: .utf8) ?? ""
             throw StoreError.commandFailed(errStr.isEmpty ? output : errStr)
         }
