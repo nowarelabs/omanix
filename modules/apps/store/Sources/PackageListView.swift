@@ -6,7 +6,6 @@ struct PackageListView: View {
     @ObservedObject var store: StoreViewModel
     @Binding var searchText: String
     @Binding var selectedPackage: PackageItem?
-    @State private var searchTask: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -16,12 +15,6 @@ struct PackageListView: View {
                     .foregroundStyle(.secondary)
                 TextField("Search packages...", text: $searchText)
                     .textFieldStyle(.plain)
-                    .onSubmit {
-                        searchTask?.cancel()
-                        searchTask = Task {
-                            await store.searchPackages(query: searchText)
-                        }
-                    }
                 if !searchText.isEmpty {
                     Button(action: {
                         searchText = ""
@@ -37,6 +30,9 @@ struct PackageListView: View {
             .background(.quaternary.opacity(0.3))
             .cornerRadius(8)
             .padding()
+            .onChange(of: searchText) { _, newValue in
+                store.search(query: newValue)
+            }
 
             // Package list
             if store.isLoading {

@@ -15,6 +15,7 @@ class StoreViewModel: ObservableObject {
     @Published var currentTheme: String = "tokyo-night"
 
     private let omanixDir: String
+    private var searchTask: Task<Void, Never>?
 
     init() {
         self.omanixDir = FileManager.default.homeDirectoryForCurrentUser
@@ -27,34 +28,33 @@ class StoreViewModel: ObservableObject {
 
     // MARK: - Package Management
 
-    func refresh() {
-        isLoading = true
-        errorMessage = nil
-        Task {
-            await searchPackages(query: "")
-            isLoading = false
-        }
-    }
-
-    func searchPackages(query: String) async {
+    func search(query: String) {
+        // Cancel previous search
+        searchTask?.cancel()
+        
         guard !query.isEmpty else {
             packages = []
             return
         }
 
+        // Debounce: wait 300ms before searching
+        searchTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
+            await searchPackages(query: query)
+        }
+    }
+
+    func searchPackages(query: String) async {
         isLoading = true
         errorMessage = nil
 
         do {
-            // Search nixpkgs
-            let nixResults = try await runCommand(
-                "nix", ["search", "nixpkgs", query, "--json"]
-            )
+            // Run nix search and brew search in parallel
+            async let nixTask = runCommand("nix", ["search", "nixpkgs", query, "--json"])
+            async let brewTask = runCommand("brew", ["search", query])
 
-            // Search brew
-            let brewResults = try await runCommand(
-                "brew", ["search", query]
-            )
+            let (nixResults, brewResults) = try await (nixTask, brewTask)
 
             // Parse and combine results
             var results: [PackageItem] = []

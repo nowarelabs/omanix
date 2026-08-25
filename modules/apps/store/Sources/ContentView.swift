@@ -40,10 +40,10 @@ struct ContentView: View {
         .searchable(text: $searchText, prompt: "Search packages...")
         .toolbar {
             ToolbarItem(placement: .automatic) {
-                Button(action: { store.refresh() }) {
+                Button(action: { store.loadInstalledPackages() }) {
                     Image(systemName: "arrow.clockwise")
                 }
-                .help("Refresh packages")
+                .help("Refresh installed packages")
             }
         }
     }
