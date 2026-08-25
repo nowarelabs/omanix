@@ -12,118 +12,287 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                VStack(alignment: .leading) {
-                    Text("Settings")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundColor(theme.text)
-                    Text("Configure Omanix system")
-                        .font(.caption)
-                        .foregroundColor(theme.secondaryText)
-                }
-                Spacer()
-            }
-            .padding()
-
-            Form {
-                Section("System") {
-                    HStack {
-                        Text("Hostname")
-                            .foregroundColor(theme.text)
-                        Spacer()
-                        Text(hostName)
-                            .foregroundColor(theme.secondaryText)
-                    }
-
-                    HStack {
-                        Text("Username")
-                            .foregroundColor(theme.text)
-                        Spacer()
-                        Text(userName)
-                            .foregroundColor(theme.secondaryText)
-                    }
-
-                    HStack {
-                        Text("Omanix Version")
-                            .foregroundColor(theme.text)
-                        Spacer()
-                        Text("0.1.0")
-                            .foregroundColor(theme.secondaryText)
-                    }
-
-                    Toggle("Auto-rebuild after changes", isOn: $autoRebuild)
-                        .foregroundColor(theme.text)
-                }
-
-                Section("Actions") {
-                    Button(action: { Task { await store.rebuild() } }) {
-                        Label("Rebuild System", systemImage: "arrow.triangle.2.circlepath")
-                            .foregroundColor(theme.text)
-                    }
-
-                    Button(action: { rollback() }) {
-                        Label("Rollback to Previous Generation", systemImage: "arrow.uturn.backward")
-                            .foregroundColor(theme.text)
-                    }
-
-                    Button(action: { updateFlake() }) {
-                        Label("Update Flake Inputs", systemImage: "arrow.down.circle")
-                            .foregroundColor(theme.text)
-                    }
-                }
-
-                Section {
-                    Button(action: { showAdvanced.toggle() }) {
-                        HStack {
-                            Text("Advanced")
-                                .foregroundColor(theme.text)
-                            Spacer()
-                            Image(systemName: showAdvanced ? "chevron.up" : "chevron.down")
-                                .foregroundColor(theme.secondaryText)
-                        }
-                    }
-                    .buttonStyle(.plain)
-
-                    if showAdvanced {
-                        Button(action: { resetConfig() }) {
-                            Label("Reset Configuration", systemImage: "arrow.counterclockwise")
-                                .foregroundColor(.red)
-                        }
-
-                        Button(action: { uninstallOmanix() }) {
-                            Label("Uninstall Omanix", systemImage: "trash")
-                                .foregroundColor(.red)
-                        }
-                    }
-                }
-            }
-            .formStyle(.grouped)
-            .background(theme.background)
-
-            HStack {
-                if let error = store.errorMessage {
-                    Label(error, systemImage: "exclamationmark.triangle.fill")
-                        .foregroundColor(.red)
-                        .font(.caption)
-                } else if let success = store.successMessage {
-                    Label(success, systemImage: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                        .font(.caption)
-                }
-                Spacer()
-            }
-            .padding()
-            .background(theme.surface)
+            header
+            content
+            statusBar
         }
-        .onAppear {
-            loadSettings()
+        .onAppear { loadSettings() }
+    }
+
+    // MARK: - Header
+
+    private var header: some View {
+        HStack(alignment: .lastTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Settings")
+                    .font(.system(.title2, design: .rounded, weight: .bold))
+                    .foregroundColor(theme.text)
+                Text("Configure your Omanix system")
+                    .font(.caption)
+                    .foregroundColor(theme.tertiaryText)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+        .padding(.bottom, 12)
+    }
+
+    // MARK: - Content
+
+    private var content: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                systemSection
+                actionsSection
+                advancedSection
+            }
+            .padding(20)
+        }
+        .background(theme.background)
+    }
+
+    // MARK: - System Section
+
+    private var systemSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sectionHeader("System", icon: "desktopcomputer")
+
+            VStack(spacing: 0) {
+                settingRow(
+                    label: "Hostname",
+                    value: hostName,
+                    icon: "server.rack"
+                )
+                Divider().background(theme.border).padding(.leading, 36)
+                settingRow(
+                    label: "Username",
+                    value: userName,
+                    icon: "person"
+                )
+                Divider().background(theme.border).padding(.leading, 36)
+                settingRow(
+                    label: "Version",
+                    value: "0.1.0",
+                    icon: "tag"
+                )
+                Divider().background(theme.border).padding(.leading, 36)
+                HStack {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 12))
+                        .foregroundColor(theme.tertiaryText)
+                        .frame(width: 24)
+                    Text("Auto-rebuild after changes")
+                        .font(.system(.body))
+                        .foregroundColor(theme.text)
+                    Spacer()
+                    Toggle("", isOn: $autoRebuild)
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .tint(theme.accent)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+            }
+            .background(theme.surface)
+            .cornerRadius(10)
         }
     }
 
+    // MARK: - Actions Section
+
+    private var actionsSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sectionHeader("Actions", icon: "bolt")
+
+            VStack(spacing: 0) {
+                actionRow(
+                    title: "Rebuild System",
+                    subtitle: "Apply all configuration changes",
+                    icon: "arrow.triangle.2.circlepath",
+                    color: theme.accent
+                ) {
+                    Task { await store.rebuild() }
+                }
+                Divider().background(theme.border).padding(.leading, 36)
+                actionRow(
+                    title: "Rollback",
+                    subtitle: "Revert to the previous generation",
+                    icon: "arrow.uturn.backward",
+                    color: theme.warning
+                ) {
+                    rollback()
+                }
+                Divider().background(theme.border).padding(.leading, 36)
+                actionRow(
+                    title: "Update Flake Inputs",
+                    subtitle: "Pull latest nixpkgs and rebuild",
+                    icon: "arrow.down.circle",
+                    color: theme.accent
+                ) {
+                    updateFlake()
+                }
+            }
+            .background(theme.surface)
+            .cornerRadius(10)
+        }
+    }
+
+    // MARK: - Advanced Section
+
+    private var advancedSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sectionHeader("Advanced", icon: "wrench.and.screwdriver")
+
+            VStack(spacing: 0) {
+                Button(action: { withAnimation(.easeInOut(duration: 0.2)) { showAdvanced.toggle() } }) {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 12))
+                            .foregroundColor(theme.warning)
+                            .frame(width: 24)
+                        Text("Danger Zone")
+                            .font(.system(.body, weight: .medium))
+                            .foregroundColor(theme.warning)
+                        Spacer()
+                        Image(systemName: showAdvanced ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(theme.tertiaryText)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                }
+                .buttonStyle(.plain)
+
+                if showAdvanced {
+                    Divider().background(theme.border).padding(.leading, 36)
+
+                    actionRow(
+                        title: "Reset Configuration",
+                        subtitle: "Restore configuration.nix to defaults",
+                        icon: "arrow.counterclockwise",
+                        color: theme.error
+                    ) {
+                        resetConfig()
+                    }
+
+                    Divider().background(theme.border).padding(.leading, 36)
+
+                    actionRow(
+                        title: "Uninstall Omanix",
+                        subtitle: "Remove Omanix app and login item",
+                        icon: "trash",
+                        color: theme.error
+                    ) {
+                        uninstallOmanix()
+                    }
+                }
+            }
+            .background(theme.surface)
+            .cornerRadius(10)
+        }
+    }
+
+    // MARK: - Reusable Components
+
+    private func sectionHeader(_ title: String, icon: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(theme.accent)
+            Text(title)
+                .font(.system(.caption, weight: .semibold))
+                .foregroundColor(theme.secondaryText)
+                .textCase(.uppercase)
+        }
+        .padding(.horizontal, 4)
+        .padding(.bottom, 8)
+    }
+
+    private func settingRow(label: String, value: String, icon: String) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .font(.system(size: 12))
+                .foregroundColor(theme.tertiaryText)
+                .frame(width: 24)
+            Text(label)
+                .font(.system(.body))
+                .foregroundColor(theme.text)
+            Spacer()
+            Text(value)
+                .font(.system(.body, design: .monospaced))
+                .foregroundColor(theme.secondaryText)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+    }
+
+    private func actionRow(
+        title: String,
+        subtitle: String,
+        icon: String,
+        color: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(color)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(.system(.body, weight: .medium))
+                        .foregroundColor(theme.text)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundColor(theme.tertiaryText)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(theme.tertiaryText)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Status Bar
+
+    private var statusBar: some View {
+        HStack(spacing: 8) {
+            if let error = store.errorMessage {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(theme.error)
+                Text(error)
+                    .font(.caption)
+                    .foregroundColor(theme.error)
+                    .lineLimit(1)
+            } else if let success = store.successMessage {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(theme.success)
+                Text(success)
+                    .font(.caption)
+                    .foregroundColor(theme.success)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(theme.surface)
+        .overlay(alignment: .top) {
+            Divider().background(theme.border)
+        }
+    }
+
+    // MARK: - Helpers
+
     private func loadSettings() {
         userName = NSUserName()
-
         let configPath = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".config/omanix/configuration.nix").path
         if let config = try? String(contentsOfFile: configPath, encoding: .utf8) {
@@ -172,7 +341,6 @@ struct SettingsView: View {
     private func resetConfig() {
         let configPath = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".config/omanix/configuration.nix").path
-
         let backupPath = configPath + ".backup"
         try? FileManager.default.copyItem(atPath: configPath, toPath: backupPath)
 
@@ -198,12 +366,10 @@ struct SettingsView: View {
         _ = try? Process.run(URL(fileURLWithPath: "/usr/bin/osascript"), arguments: [
             "-e", "tell application \"System Events\" to delete login item \"Omanix\""
         ])
-
         try? FileManager.default.removeItem(atPath: "/Applications/Omanix.app")
         try? FileManager.default.removeItem(
             atPath: NSHomeDirectory() + "/.omanix-store"
         )
-
         store.successMessage = "Omanix removed. Config preserved at ~/.config/omanix"
     }
 }

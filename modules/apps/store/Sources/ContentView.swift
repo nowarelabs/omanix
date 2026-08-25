@@ -10,7 +10,7 @@ struct ContentView: View {
     @Environment(\.omanixTheme) var theme
 
     enum SidebarTab: String, CaseIterable {
-        case packages = "Packages"
+        case packages = "Browse"
         case installed = "Installed"
         case widgets = "Widgets"
         case themes = "Themes"
@@ -19,46 +19,127 @@ struct ContentView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(SidebarTab.allCases, id: \.self, selection: $selectedTab) { tab in
-                Label(tab.rawValue, systemImage: iconName(for: tab))
-                    .badge(badgeText(for: tab))
-            }
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-            .background(theme.surface)
+            sidebar
         } detail: {
-            switch selectedTab {
-            case .packages:
-                PackageListView(store: store, searchText: $searchText, selectedPackage: $selectedPackage)
-            case .installed:
-                InstalledView(store: store)
-            case .widgets:
-                WidgetGalleryView(store: store)
-            case .themes:
-                ThemePickerView(store: store)
-            case .settings:
-                SettingsView(store: store)
-            }
+            detail
         }
         .searchable(text: $searchText, prompt: "Search packages...")
         .background(theme.background)
-        .toolbar {
-            ToolbarItem(placement: .automatic) {
-                Button(action: { store.loadInstalledPackages() }) {
-                    Image(systemName: "arrow.clockwise")
-                        .foregroundColor(theme.accent)
-                }
-                .help("Refresh installed packages")
+    }
+
+    // MARK: - Sidebar
+
+    private var sidebar: some View {
+        VStack(spacing: 0) {
+            // Logo header
+            HStack(spacing: 8) {
+                Image(systemName: "cube.transparent.fill")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [theme.accent, theme.accent.opacity(0.6)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                Text("Omanix")
+                    .font(.system(.title3, design: .rounded, weight: .bold))
+                    .foregroundColor(theme.text)
+                Spacer()
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+
+            Divider()
+                .background(theme.border)
+
+            // Tab list
+            List(SidebarTab.allCases, id: \.self, selection: $selectedTab) { tab in
+                sidebarRow(tab)
+            }
+            .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+
+            Spacer(minLength: 0)
+
+            // Bottom info
+            Divider()
+                .background(theme.border)
+            HStack {
+                Circle()
+                    .fill(theme.success)
+                    .frame(width: 6, height: 6)
+                Text("System OK")
+                    .font(.caption2)
+                    .foregroundColor(theme.tertiaryText)
+                Spacer()
+                Text("v\(versionString)")
+                    .font(.caption2)
+                    .foregroundColor(theme.tertiaryText)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
         }
+        .navigationSplitViewColumnWidth(min: 190, ideal: 210, max: 240)
+        .background(theme.surface)
+    }
+
+    private func sidebarRow(_ tab: SidebarTab) -> some View {
+        Label {
+            HStack {
+                Text(tab.rawValue)
+                    .font(.system(.body, weight: selectedTab == tab ? .semibold : .regular))
+                Spacer()
+                if let badge = badgeText(for: tab) {
+                    Text(badge)
+                        .font(.system(.caption2, weight: .medium))
+                        .foregroundColor(theme.accent)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(theme.accent.opacity(0.12))
+                        .cornerRadius(6)
+                }
+            }
+        } icon: {
+            Image(systemName: iconName(for: tab))
+                .font(.system(size: 14, weight: selectedTab == tab ? .semibold : .regular))
+        }
+        .foregroundColor(selectedTab == tab ? theme.accent : theme.secondaryText)
+    }
+
+    // MARK: - Detail
+
+    @ViewBuilder
+    private var detail: some View {
+        switch selectedTab {
+        case .packages:
+            PackageListView(store: store, searchText: $searchText, selectedPackage: $selectedPackage)
+        case .installed:
+            InstalledView(store: store)
+        case .widgets:
+            WidgetGalleryView(store: store)
+        case .themes:
+            ThemePickerView(store: store)
+        case .settings:
+            SettingsView(store: store)
+        }
+    }
+
+    // MARK: - Helpers
+
+    private var versionString: String {
+        (try? String(contentsOfFile: FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".config/omanix/version").path, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "0.1.0"
     }
 
     func iconName(for tab: SidebarTab) -> String {
         switch tab {
-        case .packages: return "square.grid.3x3"
-        case .installed: return "checkmark.square"
+        case .packages: return "square.grid.2x2"
+        case .installed: return "checkmark.circle"
         case .widgets: return "rectangle.stack"
         case .themes: return "paintbrush"
-        case .settings: return "gear"
+        case .settings: return "gearshape"
         }
     }
 

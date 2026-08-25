@@ -16,17 +16,35 @@ struct PackageItem: Identifiable, Hashable {
         case homebrewCask = "Cask"
         case custom = "Custom"
 
-        var displayName: String {
-            return rawValue
+        var displayName: String { rawValue }
+
+        var icon: String {
+            switch self {
+            case .nixpkgs: return "flake"
+            case .nix: return "cube.transparent"
+            case .homebrewBrew: return "mug"
+            case .homebrewCask: return "archivebox"
+            case .custom: return "wrench.and.screwdriver"
+            }
         }
 
         var badgeColor: Color {
             switch self {
-            case .nixpkgs: return .blue
-            case .nix: return .cyan
-            case .homebrewBrew: return .orange
-            case .homebrewCask: return .orange
-            case .custom: return .purple
+            case .nixpkgs: return Color(red: 0.345, green: 0.596, blue: 0.878)
+            case .nix: return Color(red: 0.220, green: 0.737, blue: 0.800)
+            case .homebrewBrew: return Color(red: 0.933, green: 0.655, blue: 0.271)
+            case .homebrewCask: return Color(red: 0.851, green: 0.545, blue: 0.235)
+            case .custom: return Color(red: 0.678, green: 0.502, blue: 0.890)
+            }
+        }
+
+        var sectionName: String {
+            switch self {
+            case .nixpkgs: return "Nixpkgs"
+            case .nix: return "Nix (System)"
+            case .homebrewBrew: return "Homebrew"
+            case .homebrewCask: return "Homebrew Casks"
+            case .custom: return "Custom Apps"
             }
         }
     }

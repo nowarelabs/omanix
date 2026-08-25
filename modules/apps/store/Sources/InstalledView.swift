@@ -10,91 +10,166 @@ struct InstalledView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                VStack(alignment: .leading) {
-                    Text("Installed Packages")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundColor(theme.text)
-                    Text("\(store.declaredPackages.count) packages across \(sourceCount) sources")
-                        .font(.caption)
-                        .foregroundColor(theme.secondaryText)
-                }
-                Spacer()
-                Button(action: { store.loadDeclaredPackages() }) {
-                    Label("Refresh", systemImage: "arrow.clockwise")
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .tint(theme.accent)
-            }
-            .padding()
-
+            header
             if store.declaredPackages.isEmpty {
-                VStack(spacing: 16) {
-                    Image(systemName: "checkmark.square")
-                        .font(.system(size: 48))
-                        .foregroundColor(theme.secondaryText)
-                    Text("No packages declared")
-                        .font(.title2)
-                        .foregroundColor(theme.secondaryText)
-                    Text("Add packages with 'omanix add' or edit configuration.nix")
-                        .font(.caption)
-                        .foregroundColor(theme.secondaryText)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(theme.background)
+                emptyState
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(groupedPackages, id: \.source) { group in
-                            SourceSection(
-                                source: group.source,
-                                packages: group.packages,
-                                isExpanded: expandedSources.contains(group.source.rawValue),
-                                onToggle: { toggleSource(group.source) },
-                                store: store,
-                                selectedPackage: $selectedPackage
-                            )
-                        }
-                    }
-                }
-                .background(theme.background)
+                content
             }
-
-            HStack {
-                if let error = store.errorMessage {
-                    Label(error, systemImage: "exclamationmark.triangle.fill")
-                        .foregroundColor(.red)
-                        .font(.caption)
-                } else if let success = store.successMessage {
-                    Label(success, systemImage: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                        .font(.caption)
-                }
-                Spacer()
-                Button("Rebuild System") {
-                    Task { await store.rebuild() }
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .tint(theme.accent)
-            }
-            .padding()
-            .background(theme.surface)
+            statusBar
         }
         .onAppear {
-            // Expand all sources by default
-            expandedSources = Set(store.declaredPackages.map { $0.source.rawValue })
+            if expandedSources.isEmpty {
+                expandedSources = Set(store.declaredPackages.map { $0.source.rawValue })
+            }
         }
     }
+
+    // MARK: - Header
+
+    private var header: some View {
+        HStack(alignment: .lastTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Installed Packages")
+                    .font(.system(.title2, design: .rounded, weight: .bold))
+                    .foregroundColor(theme.text)
+                HStack(spacing: 4) {
+                    Text("\(store.declaredPackages.count) packages")
+                        .font(.caption)
+                        .foregroundColor(theme.tertiaryText)
+                    Text("in")
+                        .font(.caption)
+                        .foregroundColor(theme.tertiaryText)
+                    Text("\(sourceCount) sources")
+                        .font(.caption)
+                        .foregroundColor(theme.tertiaryText)
+                }
+            }
+            Spacer()
+            Button(action: { store.loadDeclaredPackages() }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 11))
+                    Text("Refresh")
+                }
+                .font(.system(.caption, weight: .medium))
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .tint(theme.accent)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+        .padding(.bottom, 12)
+    }
+
+    // MARK: - Content
+
+    private var content: some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                ForEach(groupedPackages, id: \.source) { group in
+                    SourceSection(
+                        source: group.source,
+                        packages: group.packages,
+                        isExpanded: expandedSources.contains(group.source.rawValue),
+                        onToggle: { toggleSource(group.source) },
+                        store: store,
+                        selectedPackage: $selectedPackage
+                    )
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+        }
+        .background(theme.background)
+    }
+
+    // MARK: - Empty State
+
+    private var emptyState: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            ZStack {
+                Circle()
+                    .fill(theme.accent.opacity(0.08))
+                    .frame(width: 100, height: 100)
+                Image(systemName: "tray")
+                    .font(.system(size: 36, weight: .light))
+                    .foregroundColor(theme.accent.opacity(0.5))
+            }
+            VStack(spacing: 6) {
+                Text("No packages declared")
+                    .font(.system(.title3, design: .rounded, weight: .semibold))
+                    .foregroundColor(theme.text)
+                Text("Add packages with omanix add or edit configuration.nix")
+                    .font(.subheadline)
+                    .foregroundColor(theme.tertiaryText)
+                    .multilineTextAlignment(.center)
+            }
+            Spacer()
+        }
+    }
+
+    // MARK: - Status Bar
+
+    private var statusBar: some View {
+        HStack(spacing: 8) {
+            if let error = store.errorMessage {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(theme.error)
+                Text(error)
+                    .font(.caption)
+                    .foregroundColor(theme.error)
+                    .lineLimit(1)
+            } else if let success = store.successMessage {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(theme.success)
+                Text(success)
+                    .font(.caption)
+                    .foregroundColor(theme.success)
+            } else {
+                Circle()
+                    .fill(theme.success)
+                    .frame(width: 4, height: 4)
+                Text("All packages from configuration.nix")
+                    .font(.caption)
+                    .foregroundColor(theme.tertiaryText)
+            }
+
+            Spacer()
+
+            Button(action: { Task { await store.rebuild() } }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 11))
+                    Text("Rebuild")
+                }
+                .font(.system(.caption, weight: .medium))
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .tint(theme.accent)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(theme.surface)
+        .overlay(alignment: .top) {
+            Divider().background(theme.border)
+        }
+    }
+
+    // MARK: - Helpers
 
     private var groupedPackages: [(source: PackageItem.PackageSource, packages: [PackageItem])] {
         var groups: [PackageItem.PackageSource: [PackageItem]] = [:]
         for pkg in store.declaredPackages {
             groups[pkg.source, default: []].append(pkg)
         }
-        return groups.map { (source: $0.key, packages: $0.value.sorted { $0.name < $1.name }) }
+        return groups
+            .map { (source: $0.key, packages: $0.value.sorted { $0.name < $1.name }) }
             .sorted { $0.source.rawValue < $1.source.rawValue }
     }
 
@@ -103,13 +178,17 @@ struct InstalledView: View {
     }
 
     private func toggleSource(_ source: PackageItem.PackageSource) {
-        if expandedSources.contains(source.rawValue) {
-            expandedSources.remove(source.rawValue)
-        } else {
-            expandedSources.insert(source.rawValue)
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if expandedSources.contains(source.rawValue) {
+                expandedSources.remove(source.rawValue)
+            } else {
+                expandedSources.insert(source.rawValue)
+            }
         }
     }
 }
+
+// MARK: - Source Section
 
 struct SourceSection: View {
     let source: PackageItem.PackageSource
@@ -122,105 +201,122 @@ struct SourceSection: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Source header
+            // Header
             Button(action: onToggle) {
-                HStack {
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(theme.secondaryText)
-                        .frame(width: 12)
+                HStack(spacing: 10) {
+                    Image(systemName: source.icon)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(source.badgeColor)
+                        .frame(width: 26, height: 26)
+                        .background(source.badgeColor.opacity(0.1))
+                        .cornerRadius(6)
 
-                    SourceBadge(source: source)
-
-                    Text(sourceName)
-                        .font(.headline)
+                    Text(source.sectionName)
+                        .font(.system(.body, weight: .semibold))
                         .foregroundColor(theme.text)
 
                     Spacer()
 
                     Text("\(packages.count)")
-                        .font(.caption)
-                        .foregroundColor(theme.secondaryText)
+                        .font(.system(.caption, weight: .bold))
+                        .foregroundColor(source.badgeColor)
                         .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(theme.background)
-                        .cornerRadius(4)
+                        .padding(.vertical, 3)
+                        .background(source.badgeColor.opacity(0.1))
+                        .cornerRadius(6)
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(theme.tertiaryText)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
-                .padding(.horizontal)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
             }
             .buttonStyle(.plain)
 
             if isExpanded {
-                Divider()
-                    .background(theme.background)
-
-                ForEach(packages) { package in
-                    InstalledPackageRow(package: package, store: store)
-                        .listRowSeparator(.hidden)
+                VStack(spacing: 1) {
+                    ForEach(packages) { package in
+                        InstalledPackageRow(package: package, store: store)
+                    }
                 }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
             Divider()
-                .background(theme.background)
-        }
-    }
-
-    private var sourceName: String {
-        switch source {
-        case .nixpkgs: return "Nixpkgs"
-        case .nix: return "Nix (system)"
-        case .homebrewBrew: return "Homebrew"
-        case .homebrewCask: return "Homebrew Casks"
-        case .custom: return "Custom Apps"
+                .background(theme.border)
+                .padding(.leading, 48)
         }
     }
 }
+
+// MARK: - Installed Package Row
 
 struct InstalledPackageRow: View {
     let package: PackageItem
     @ObservedObject var store: StoreViewModel
     @Environment(\.omanixTheme) var theme
+    @State private var isHovered = false
     @State private var isConfirming = false
+    @State private var isRemoving = false
 
     var body: some View {
-        HStack {
+        HStack(spacing: 10) {
             Image(systemName: "checkmark.circle.fill")
-                .foregroundColor(.green)
-                .frame(width: 20)
+                .font(.system(size: 13))
+                .foregroundColor(theme.success)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(package.name)
-                    .font(.system(.body, design: .monospaced))
+                    .font(.system(.body, design: .monospaced, weight: .medium))
                     .foregroundColor(theme.text)
                 if !package.description.isEmpty {
                     Text(package.description)
                         .font(.caption)
-                        .foregroundColor(theme.secondaryText)
+                        .foregroundColor(theme.tertiaryText)
                         .lineLimit(1)
                 }
             }
 
             Spacer()
 
-            Button(action: { isConfirming = true }) {
-                Label("Remove", systemImage: "minus.circle")
-                    .foregroundColor(.red)
-                    .font(.caption)
-            }
-            .buttonStyle(.borderless)
-            .help("Remove from configuration.nix")
-            .alert("Remove Package", isPresented: $isConfirming) {
-                Button("Cancel", role: .cancel) { }
-                Button("Remove", role: .destructive) {
-                    Task { await store.uninstallPackage(package) }
+            if isRemoving {
+                ProgressView()
+                    .controlSize(.mini)
+            } else {
+                Button(action: { isConfirming = true }) {
+                    Image(systemName: "minus.circle")
+                        .font(.system(size: 13))
+                        .foregroundColor(theme.error.opacity(isHovered ? 1.0 : 0.5))
                 }
-            } message: {
-                Text("Remove \(package.name) from configuration.nix? Run 'omanix rebuild' to apply.")
+                .buttonStyle(.plain)
+                .help("Remove from configuration.nix")
+                .opacity(isHovered ? 1.0 : 0.0)
+                .animation(.easeInOut(duration: 0.1), value: isHovered)
             }
         }
-        .padding(.horizontal)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .padding(.leading, 36)
+        .background(isHovered ? theme.tertiarySurface.opacity(0.5) : .clear)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isHovered = hovering
+            }
+        }
+        .alert("Remove \(package.name)?", isPresented: $isConfirming) {
+            Button("Cancel", role: .cancel) { }
+            Button("Remove", role: .destructive) {
+                isRemoving = true
+                Task {
+                    await store.uninstallPackage(package)
+                    isRemoving = false
+                }
+            }
+        } message: {
+            Text("This will remove \(package.name) from configuration.nix.\nRun \"omanix rebuild\" to apply.")
+        }
     }
 }
 

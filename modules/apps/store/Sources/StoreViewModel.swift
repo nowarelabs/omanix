@@ -18,6 +18,7 @@ class StoreViewModel: ObservableObject {
     private let omanixDir: String
     private var searchTask: Task<Void, Never>?
     private var lastQuery: String = ""
+    private var messageTimer: Task<Void, Never>?
 
     init() {
         self.omanixDir = FileManager.default.homeDirectoryForCurrentUser
@@ -55,7 +56,7 @@ class StoreViewModel: ObservableObject {
         var results: [PackageItem] = []
         let queryLower = query.lowercased()
 
-        // 1. Filter declared packages that match the query (instant, local)
+        // 1. Filter declared packages (instant, local)
         for pkg in declaredPackages {
             if pkg.name.lowercased().contains(queryLower) ||
                pkg.description.lowercased().contains(queryLower) {
@@ -68,7 +69,7 @@ class StoreViewModel: ObservableObject {
             }
         }
 
-        // 2. Search nixpkgs (live search for packages not already declared)
+        // 2. Search nixpkgs
         do {
             let nixResults = try await runCommandWithTimeout(
                 "nix", ["search", "nixpkgs", query, "--json"], timeout: 15.0
@@ -76,9 +77,7 @@ class StoreViewModel: ObservableObject {
             if let data = nixResults.data(using: .utf8),
                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 for (name, info) in json {
-                    // Skip if already in results from declared packages
                     if results.contains(where: { $0.name == name }) { continue }
-
                     if let details = info as? [String: Any],
                        let description = details["description"] as? String {
                         results.append(PackageItem(
@@ -90,11 +89,9 @@ class StoreViewModel: ObservableObject {
                     }
                 }
             }
-        } catch {
-            // Continue if nix search fails
-        }
+        } catch { }
 
-        // 3. Search Homebrew (brew formulas)
+        // 3. Search Homebrew formulas
         do {
             let brewResults = try await runCommandWithTimeout(
                 "brew", ["search", query], timeout: 10.0
@@ -104,9 +101,7 @@ class StoreViewModel: ObservableObject {
             for name in brewPackages {
                 let trimmed = name.trimmingCharacters(in: .whitespaces)
                 if trimmed.isEmpty { continue }
-                // Skip if already in results
                 if results.contains(where: { $0.name == trimmed }) { continue }
-
                 results.append(PackageItem(
                     name: trimmed,
                     description: "Homebrew formula",
@@ -114,9 +109,7 @@ class StoreViewModel: ObservableObject {
                     isInstalled: installedPackages.contains(trimmed)
                 ))
             }
-        } catch {
-            // Continue if brew search fails
-        }
+        } catch { }
 
         // 4. Search Homebrew casks
         do {
@@ -129,7 +122,6 @@ class StoreViewModel: ObservableObject {
                 let trimmed = name.trimmingCharacters(in: .whitespaces)
                 if trimmed.isEmpty { continue }
                 if results.contains(where: { $0.name == trimmed }) { continue }
-
                 results.append(PackageItem(
                     name: trimmed,
                     description: "Homebrew cask",
@@ -137,9 +129,7 @@ class StoreViewModel: ObservableObject {
                     isInstalled: installedPackages.contains(trimmed)
                 ))
             }
-        } catch {
-            // Continue if brew cask search fails
-        }
+        } catch { }
 
         packages = results
         isLoading = false
@@ -147,8 +137,7 @@ class StoreViewModel: ObservableObject {
 
     func installPackage(_ package: PackageItem) async {
         isLoading = true
-        errorMessage = nil
-        successMessage = nil
+        clearMessages()
 
         do {
             let command: [String]
@@ -162,15 +151,14 @@ class StoreViewModel: ObservableObject {
             }
 
             _ = try await runCommand(command[0], Array(command.dropFirst()))
-            successMessage = "Installed \(package.name)"
+            showMessage("Installed \(package.name)", type: .success)
 
             installedPackages.insert(package.name)
-
             if let index = packages.firstIndex(where: { $0.id == package.id }) {
                 packages[index].isInstalled = true
             }
         } catch {
-            errorMessage = "Failed to install \(package.name): \(error.localizedDescription)"
+            showMessage("Failed to install \(package.name): \(error.localizedDescription)", type: .error)
         }
 
         isLoading = false
@@ -178,8 +166,7 @@ class StoreViewModel: ObservableObject {
 
     func uninstallPackage(_ package: PackageItem) async {
         isLoading = true
-        errorMessage = nil
-        successMessage = nil
+        clearMessages()
 
         do {
             let command: [String]
@@ -193,15 +180,16 @@ class StoreViewModel: ObservableObject {
             }
 
             _ = try await runCommand(command[0], Array(command.dropFirst()))
-            successMessage = "Uninstalled \(package.name)"
+            showMessage("Removed \(package.name)", type: .success)
 
             installedPackages.remove(package.name)
-
             if let index = packages.firstIndex(where: { $0.id == package.id }) {
                 packages[index].isInstalled = false
             }
+            // Remove from declared packages too
+            declaredPackages.removeAll { $0.name == package.name }
         } catch {
-            errorMessage = "Failed to uninstall \(package.name): \(error.localizedDescription)"
+            showMessage("Failed to remove \(package.name): \(error.localizedDescription)", type: .error)
         }
 
         isLoading = false
@@ -209,17 +197,38 @@ class StoreViewModel: ObservableObject {
 
     func rebuild() async {
         isLoading = true
-        errorMessage = nil
-        successMessage = nil
+        clearMessages()
 
         do {
             _ = try await runCommand("omanix", ["rebuild"])
-            successMessage = "System rebuilt successfully"
+            showMessage("System rebuilt successfully", type: .success)
         } catch {
-            errorMessage = "Rebuild failed: \(error.localizedDescription)"
+            showMessage("Rebuild failed: \(error.localizedDescription)", type: .error)
         }
 
         isLoading = false
+    }
+
+    // MARK: - Messages
+
+    private enum MessageType { case success, error }
+
+    private func showMessage(_ text: String, type: MessageType) {
+        messageTimer?.cancel()
+        switch type {
+        case .success: successMessage = text; errorMessage = nil
+        case .error: errorMessage = text; successMessage = nil
+        }
+        messageTimer = Task {
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            guard !Task.isCancelled else { return }
+            clearMessages()
+        }
+    }
+
+    private func clearMessages() {
+        errorMessage = nil
+        successMessage = nil
     }
 
     // MARK: - Widget Management
@@ -239,7 +248,7 @@ class StoreViewModel: ObservableObject {
 
         let configPath = "\(omanixDir)/configuration.nix"
         guard var config = try? String(contentsOfFile: configPath, encoding: .utf8) else {
-            errorMessage = "Could not read configuration.nix"
+            showMessage("Could not read configuration.nix", type: .error)
             return
         }
 
@@ -283,7 +292,7 @@ class StoreViewModel: ObservableObject {
 
         let configPath = "\(omanixDir)/configuration.nix"
         guard var config = try? String(contentsOfFile: configPath, encoding: .utf8) else {
-            errorMessage = "Could not read configuration.nix"
+            showMessage("Could not read configuration.nix", type: .error)
             return
         }
 
@@ -298,6 +307,7 @@ class StoreViewModel: ObservableObject {
         }
 
         try? config.write(toFile: configPath, atomically: true, encoding: .utf8)
+        showMessage("Theme set to \(theme.name)", type: .success)
     }
 
     // MARK: - Installed Packages (from configuration.nix)
@@ -339,7 +349,6 @@ class StoreViewModel: ObservableObject {
                     names.insert(name)
                 }
 
-                // Sort: by source, then by name
                 items.sort { a, b in
                     if a.source.rawValue != b.source.rawValue {
                         return a.source.rawValue < b.source.rawValue
@@ -349,13 +358,10 @@ class StoreViewModel: ObservableObject {
 
                 declaredPackages = items
                 installedPackages = names
-            } catch {
-                // Ignore errors on init
-            }
+            } catch { }
         }
     }
 
-    // Keep backward compat alias
     func loadInstalledPackages() {
         loadDeclaredPackages()
     }
