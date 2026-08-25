@@ -184,8 +184,8 @@ case "${1:-help}" in
       sudo darwin-rebuild switch --flake "$TARGET#$HOSTNAME" --show-trace
       echo ""
       echo "Omanix installed! Reboot recommended."
-      echo "  Super -> Omanix Store to browse packages"
-      echo "  omanix rebuild to apply future changes"
+      echo "  omanix open — open Omanix app"
+      echo "  omanix rebuild — apply future changes"
     fi
     ;;
 

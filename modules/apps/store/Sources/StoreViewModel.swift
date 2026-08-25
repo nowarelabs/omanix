@@ -110,7 +110,7 @@ class StoreViewModel: ObservableObject {
                 command = ["omanix", "install-app", package.name]
             }
 
-            let output = try await runCommand(command[0], Array(command.dropFirst()))
+            _ = try await runCommand(command[0], Array(command.dropFirst()))
             successMessage = "Installed \(package.name)"
 
             // Update installed list
@@ -143,7 +143,7 @@ class StoreViewModel: ObservableObject {
                 command = ["omanix", "uninstall-app", package.name]
             }
 
-            let output = try await runCommand(command[0], Array(command.dropFirst()))
+            _ = try await runCommand(command[0], Array(command.dropFirst()))
             successMessage = "Uninstalled \(package.name)"
 
             // Update installed list
@@ -166,7 +166,7 @@ class StoreViewModel: ObservableObject {
         successMessage = nil
 
         do {
-            let output = try await runCommand("omanix", ["rebuild"])
+            _ = try await runCommand("omanix", ["rebuild"])
             successMessage = "System rebuilt successfully"
         } catch {
             errorMessage = "Rebuild failed: \(error.localizedDescription)"
@@ -224,7 +224,7 @@ class StoreViewModel: ObservableObject {
         // Read from configuration.nix or run `omanix list-apps`
         Task {
             do {
-                let output = try await runCommand("omanix", ["list-apps"])
+                _ = try await runCommand("omanix", ["list-apps"])
                 // Parse output and populate installedPackages
                 let lines = output.components(separatedBy: "\n")
                 for line in lines {

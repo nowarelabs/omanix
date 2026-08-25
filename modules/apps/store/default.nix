@@ -72,7 +72,7 @@ if [ -x "$XCRUN" ] || command -v xcrun >/dev/null 2>&1; then
   # Add to Login Items for auto-launch (if not already added)
   if ! osascript -e 'tell application "System Events" to get the name of every login item' 2>/dev/null | grep -q "^Omanix$"; then
     echo "Adding Omanix to Login Items..."
-    osascript -e 'tell application "System Events" to make login item at end with properties {path:"/Applications/Omanix.app", hidden:false}'
+    osascript -e 'tell application "System Events" to make login item at end with properties {path:"/Applications/Omanix.app", hidden:false}' 2>/dev/null || true
   fi
 else
   echo "WARNING: Xcode Command Line Tools not found, skipping Omanix build"
