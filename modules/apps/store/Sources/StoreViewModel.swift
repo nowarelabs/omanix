@@ -193,35 +193,33 @@ class StoreViewModel: ObservableObject {
         let fm = FileManager.default
         try? fm.createDirectory(atPath: brewCacheDir, withIntermediateDirectories: true)
 
-        let group = TaskGroup<Void>()
+        await withTaskGroup(of: Void.self) { group in
+            // Download casks
+            group.addTask { [weak self] in
+                guard let self else { return }
+                let url = URL(string: "https://formulae.brew.sh/api/cask.json")!
+                guard let (data, _) = try? await URLSession.shared.data(from: url) else { return }
+                try? data.write(to: URL(fileURLWithPath: "\(self.brewCacheDir)/casks.json"))
+                if let entries = try? JSONDecoder().decode([BrewCask].self, from: data) {
+                    await MainActor.run {
+                        self.brewCaskIndex = entries.map { (token: $0.token, names: $0.name ?? [], desc: $0.desc ?? "") }
+                    }
+                }
+            }
 
-        // Download casks
-        group.addTask { [weak self] in
-            guard let self else { return }
-            let url = URL(string: "https://formulae.brew.sh/api/cask.json")!
-            guard let (data, _) = try? await URLSession.shared.data(from: url) else { return }
-            try? data.write(to: URL(fileURLWithPath: "\(self.brewCacheDir)/casks.json"))
-            if let entries = try? JSONDecoder().decode([BrewCask].self, from: data) {
-                await MainActor.run {
-                    self.brewCaskIndex = entries.map { (token: $0.token, names: $0.name ?? [], desc: $0.desc ?? "") }
+            // Download formulas
+            group.addTask { [weak self] in
+                guard let self else { return }
+                let url = URL(string: "https://formulae.brew.sh/api/formula.json")!
+                guard let (data, _) = try? await URLSession.shared.data(from: url) else { return }
+                try? data.write(to: URL(fileURLWithPath: "\(self.brewCacheDir)/formulas.json"))
+                if let entries = try? JSONDecoder().decode([BrewFormula].self, from: data) {
+                    await MainActor.run {
+                        self.brewFormulaIndex = entries.map { (name: $0.name, desc: $0.desc ?? "") }
+                    }
                 }
             }
         }
-
-        // Download formulas
-        group.addTask { [weak self] in
-            guard let self else { return }
-            let url = URL(string: "https://formulae.brew.sh/api/formula.json")!
-            guard let (data, _) = try? await URLSession.shared.data(from: url) else { return }
-            try? data.write(to: URL(fileURLWithPath: "\(self.brewCacheDir)/formulas.json"))
-            if let entries = try? JSONDecoder().decode([BrewFormula].self, from: data) {
-                await MainActor.run {
-                    self.brewFormulaIndex = entries.map { (name: $0.name, desc: $0.desc ?? "") }
-                }
-            }
-        }
-
-        await group.waitForAll()
 
         // Write timestamp
         let ts = "\(Date().timeIntervalSince1970)"
