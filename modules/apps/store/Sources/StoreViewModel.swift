@@ -238,6 +238,9 @@ class StoreViewModel: ObservableObject {
         let pipe = Pipe()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         task.arguments = ["which", name]
+        task.environment = ProcessInfo.processInfo.environment.merging(
+            ["PATH": processPATH]
+        ) { _, new in new }
         task.standardOutput = pipe
         task.standardError = FileHandle.nullDevice
         let dataTask = Task.detached { pipe.fileHandleForReading.readDataToEndOfFile() }
@@ -260,6 +263,9 @@ class StoreViewModel: ObservableObject {
 
         process.executableURL = URL(fileURLWithPath: path)
         process.arguments = arguments
+        process.environment = ProcessInfo.processInfo.environment.merging(
+            ["PATH": processPATH]
+        ) { _, new in new }
         process.standardOutput = stdoutPipe
         process.standardError = FileHandle.nullDevice
 
@@ -516,6 +522,20 @@ class StoreViewModel: ObservableObject {
 
     // MARK: - Process Helpers
 
+    /// Minimal PATH that includes nix, homebrew, and system tool locations.
+    /// GUI apps don't inherit the terminal's PATH, so we set it explicitly.
+    private var processPATH: String {
+        let nixProfile = "/nix/var/nix/profiles/default/bin"
+        let homebrew = "/opt/homebrew/bin"
+        let systemSw = "/run/current-system/sw/bin"
+        let nixHome = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".nix-profile/bin").path
+        let userLocal = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".local/bin").path
+        let systemPaths = "/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin"
+        return "\(userLocal):\(nixProfile):\(nixHome):\(homebrew):\(systemSw):\(systemPaths)"
+    }
+
     private func runCommand(_ command: String, _ arguments: [String]) async throws -> String {
         let process = Process()
         let stdoutPipe = Pipe()
@@ -523,6 +543,9 @@ class StoreViewModel: ObservableObject {
 
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = [command] + arguments
+        process.environment = ProcessInfo.processInfo.environment.merging(
+            ["PATH": processPATH]
+        ) { _, new in new }
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
 
@@ -559,6 +582,9 @@ class StoreViewModel: ObservableObject {
 
         process.executableURL = URL(fileURLWithPath: path)
         process.arguments = arguments
+        process.environment = ProcessInfo.processInfo.environment.merging(
+            ["PATH": processPATH]
+        ) { _, new in new }
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
 
