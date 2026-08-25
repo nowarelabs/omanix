@@ -1,32 +1,28 @@
 # modules/apps/store/default.nix — Omanix Store GUI (SwiftUI)
-# Enabled by default (omanix.widgets.store.enable = true)
-# Builds a real SwiftUI app and installs to /Applications
+# Builds a real SwiftUI app using system Swift compiler
 { config, lib, pkgs, ... }:
 
 let
   enabled = config.omanix.widgets.store.enable;
   user = config.omanix.user;
 
-  # Build the SwiftUI app
+  # Build the SwiftUI app using system Swift (not nix swift)
   omanix-store = pkgs.stdenv.mkDerivation {
     pname = "omanix-store";
     version = "0.1.0";
 
     src = ./.;
 
-    nativeBuildInputs = with pkgs; [
-      swift
-      swiftui
-    ];
+    # Don't use nix swift - use system Swift via xcrun
+    dontBuild = true;
+    dontFixup = true;
 
-    buildPhase = ''
-      # Create app bundle structure
+    installPhase = ''
       mkdir -p $out/Applications/Omanix\ Store.app/Contents/MacOS
       mkdir -p $out/Applications/Omanix\ Store.app/Contents/Resources
 
-      # Compile Swift sources
-      swiftc \
-        -sdk ${pkgs.darwin.apple_sdk.frameworks.SwiftUI}/Library/Frameworks \
+      # Compile with system Swift (requires Xcode Command Line Tools)
+      xcrun swiftc \
         -framework SwiftUI \
         -framework Foundation \
         -o $out/Applications/Omanix\ Store.app/Contents/MacOS/Omanix\ Store \
@@ -61,13 +57,10 @@ let
       PLIST
     '';
 
-    installPhase = "true"; # Already built to $out
-
     meta = with lib; {
       description = "Omanix Store — browse and install packages";
       homepage = "https://github.com/nowarelabs/omanix";
       license = licenses.mit;
-      maintainers = [ ];
     };
   };
 
@@ -81,12 +74,7 @@ in {
       '';
     };
 
-    # Create a symlink for easy access
+    # Add to system packages
     environment.systemPackages = [ omanix-store ];
-
-    # Add to PATH for CLI access
-    home-manager.users.${user}.home.sessionPath = [
-      "${omanix-store}/Applications/Omanix Store.app/Contents/MacOS"
-    ];
   };
 }
