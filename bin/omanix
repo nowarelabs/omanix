@@ -23,7 +23,7 @@ Commands:
   install-app <name>   Install a custom app (downloads .dmg, installs to /Applications)
   uninstall-app <name> Uninstall a custom app
   list-apps            List installed custom apps
-  store                Open Omanix Store GUI
+  open                 Open Omanix app (packages, themes, widgets, settings)
   ask <prompt>         Ask AI (frontier Claude)
   ask --local <prompt> Ask AI (local Qwen, offline)
   version              Print version
@@ -302,8 +302,8 @@ case "${1:-help}" in
     done
     ;;
 
-  store)
-    open -a "Omanix Store" 2>/dev/null || echo "Store not enabled — set omanix.widgets.store.enable = true and rebuild"
+  open)
+    open -a "Omanix" 2>/dev/null || echo "Omanix app not built — run 'omanix rebuild' first"
     ;;
 
   ask)
