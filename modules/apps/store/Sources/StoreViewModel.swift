@@ -14,11 +14,22 @@ class StoreViewModel: ObservableObject {
     @Published var widgets: [WidgetItem] = []
     @Published var themes: [ThemeItem] = []
     @Published var currentTheme: String = "tokyo-night"
+    @Published var isIndexingBrew = false
+    @Published var brewIndexReady = false
 
     private let omanixDir: String
     private var searchTask: Task<Void, Never>?
     private var lastQuery: String = ""
     private var messageTimer: Task<Void, Never>?
+
+    // In-memory brew index: (token/name, name array, description)
+    private var brewCaskIndex: [(token: String, names: [String], desc: String)] = []
+    private var brewFormulaIndex: [(name: String, desc: String)] = []
+    private var brewIndexLoaded = false
+
+    private var brewCacheDir: String {
+        NSHomeDirectory() + "/.omanix-store/brew-index"
+    }
 
     init() {
         self.omanixDir = FileManager.default.homeDirectoryForCurrentUser
@@ -69,9 +80,7 @@ class StoreViewModel: ObservableObject {
             }
         }
 
-        // 2. Search nixpkgs — separate stdout (JSON) from stderr (progress)
-        //    nix search outputs "evaluating..." to stderr and JSON to stdout.
-        //    We redirect stderr to /dev/null so only clean JSON comes through.
+        // 2. Search nixpkgs
         if let nixPath = findExecutable("nix") {
             do {
                 let json = try await runJSONCommand(
@@ -79,8 +88,6 @@ class StoreViewModel: ObservableObject {
                     timeout: 20.0
                 )
                 for (fullName, info) in json {
-                    // nix returns keys like "legacyPackages.aarch64-darwin.ripgrep"
-                    // Strip the prefix to get the actual package name
                     let name = extractNixPackageName(fullName)
                     if name.isEmpty { continue }
                     if results.contains(where: { $0.name == name }) { continue }
@@ -94,56 +101,140 @@ class StoreViewModel: ObservableObject {
                         ))
                     }
                 }
-            } catch {
-                // nix search failed — continue with other sources
-            }
+            } catch { }
         }
 
-        // 3. Search Homebrew formulas + casks (parallel)
-        if let brewPath = findExecutable("brew") {
-            // Formulas
-            if let formulaResults = try? await searchBrew(brewPath, query: query, cask: false) {
-                for name in formulaResults {
-                    if results.contains(where: { $0.name == name }) { continue }
-                    results.append(PackageItem(
-                        name: name,
-                        description: "Homebrew formula",
-                        source: .homebrewBrew,
-                        isInstalled: installedPackages.contains(name)
-                    ))
-                }
-            }
+        // 3. Search Homebrew index (cached, instant)
+        ensureBrewIndex()
+        let brewCaskResults = brewCaskIndex.filter {
+            $0.token.contains(queryLower) ||
+            $0.names.contains(where: { $0.lowercased().contains(queryLower) }) ||
+            $0.desc.lowercased().contains(queryLower)
+        }
+        for entry in brewCaskResults {
+            if results.contains(where: { $0.name == entry.token }) { continue }
+            results.append(PackageItem(
+                name: entry.token,
+                description: entry.desc.isEmpty ? "Homebrew cask" : entry.desc,
+                source: .homebrewCask,
+                isInstalled: installedPackages.contains(entry.token)
+            ))
+        }
 
-            // Casks
-            if let caskResults = try? await searchBrew(brewPath, query: query, cask: true) {
-                for name in caskResults {
-                    if results.contains(where: { $0.name == name }) { continue }
-                    results.append(PackageItem(
-                        name: name,
-                        description: "Homebrew cask",
-                        source: .homebrewCask,
-                        isInstalled: installedPackages.contains(name)
-                    ))
-                }
-            }
+        let brewFormulaResults = brewFormulaIndex.filter {
+            $0.name.contains(queryLower) || $0.desc.lowercased().contains(queryLower)
+        }
+        for entry in brewFormulaResults {
+            if results.contains(where: { $0.name == entry.name }) { continue }
+            results.append(PackageItem(
+                name: entry.name,
+                description: entry.desc.isEmpty ? "Homebrew formula" : entry.desc,
+                source: .homebrewBrew,
+                isInstalled: installedPackages.contains(entry.name)
+            ))
         }
 
         packages = results
         isLoading = false
     }
 
-    // MARK: - Search Helpers
+    // MARK: - Brew Index (cached to disk)
 
-    private func searchBrew(_ brewPath: String, query: String, cask: Bool) async throws -> [String] {
-        var args = ["search", query]
-        if cask { args = ["search", "--cask", query] }
-        let output = try await runCommandWithTimeout(brewPath, args, timeout: 10.0)
-        return output.components(separatedBy: "\n")
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty && !$0.hasPrefix("==>") && !$0.hasPrefix("==") }
+    func ensureBrewIndex() {
+        guard !brewIndexLoaded else { return }
+        brewIndexLoaded = true
+        loadBrewIndexFromDisk()
+        // Refresh if older than 7 days or doesn't exist
+        if brewCaskIndex.isEmpty && brewFormulaIndex.isEmpty {
+            Task { await downloadBrewIndex() }
+        } else if isBrewIndexStale() {
+            Task { await downloadBrewIndex() }
+        }
     }
 
-    /// Find an executable on PATH (returns nil if not found, never throws)
+    func refreshBrewIndex() async {
+        await downloadBrewIndex()
+    }
+
+    private func loadBrewIndexFromDisk() {
+        let fm = FileManager.default
+
+        // Load casks
+        let caskPath = "\(brewCacheDir)/casks.json"
+        if let data = fm.contents(atPath: caskPath),
+           let entries = try? JSONDecoder().decode([BrewCask].self, from: data) {
+            brewCaskIndex = entries.map { (token: $0.token, names: $0.name ?? [], desc: $0.desc ?? "") }
+        }
+
+        // Load formulas
+        let formulaPath = "\(brewCacheDir)/formulas.json"
+        if let data = fm.contents(atPath: formulaPath),
+           let entries = try? JSONDecoder().decode([BrewFormula].self, from: data) {
+            brewFormulaIndex = entries.map { (name: $0.name, desc: $0.desc ?? "") }
+        }
+
+        brewIndexReady = !brewCaskIndex.isEmpty || !brewFormulaIndex.isEmpty
+    }
+
+    private func isBrewIndexStale() -> Bool {
+        let fm = FileManager.default
+        let metaPath = "\(brewCacheDir)/last-updated"
+        guard let data = fm.contents(atPath: metaPath),
+              let str = String(data: data, encoding: .utf8),
+              let timestamp = Double(str.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+            return true
+        }
+        let lastUpdate = Date(timeIntervalSince1970: timestamp)
+        return Date().timeIntervalSince(lastUpdate) > 7 * 24 * 3600
+    }
+
+    private func downloadBrewIndex() async {
+        isIndexingBrew = true
+        let fm = FileManager.default
+        try? fm.createDirectory(atPath: brewCacheDir, withIntermediateDirectories: true)
+
+        let group = TaskGroup<Void>()
+
+        // Download casks
+        group.addTask { [weak self] in
+            guard let self else { return }
+            let url = URL(string: "https://formulae.brew.sh/api/cask.json")!
+            guard let (data, _) = try? await URLSession.shared.data(from: url) else { return }
+            try? data.write(to: URL(fileURLWithPath: "\(self.brewCacheDir)/casks.json"))
+            if let entries = try? JSONDecoder().decode([BrewCask].self, from: data) {
+                await MainActor.run {
+                    self.brewCaskIndex = entries.map { (token: $0.token, names: $0.name ?? [], desc: $0.desc ?? "") }
+                }
+            }
+        }
+
+        // Download formulas
+        group.addTask { [weak self] in
+            guard let self else { return }
+            let url = URL(string: "https://formulae.brew.sh/api/formula.json")!
+            guard let (data, _) = try? await URLSession.shared.data(from: url) else { return }
+            try? data.write(to: URL(fileURLWithPath: "\(self.brewCacheDir)/formulas.json"))
+            if let entries = try? JSONDecoder().decode([BrewFormula].self, from: data) {
+                await MainActor.run {
+                    self.brewFormulaIndex = entries.map { (name: $0.name, desc: $0.desc ?? "") }
+                }
+            }
+        }
+
+        await group.waitForAll()
+
+        // Write timestamp
+        let ts = "\(Date().timeIntervalSince1970)"
+        try? ts.write(toFile: "\(brewCacheDir)/last-updated", atomically: true, encoding: .utf8)
+
+        await MainActor.run {
+            self.isIndexingBrew = false
+            self.brewIndexReady = !self.brewCaskIndex.isEmpty || !self.brewFormulaIndex.isEmpty
+        }
+    }
+
+    // MARK: - Search Helpers
+
     private func findExecutable(_ name: String) -> String? {
         let task = Process()
         let pipe = Pipe()
@@ -159,8 +250,6 @@ class StoreViewModel: ObservableObject {
         return (path?.isEmpty == true) ? nil : path
     }
 
-    /// Run a command and parse its stdout as JSON, discarding stderr entirely.
-    /// This is critical for `nix search --json` which sends progress noise to stderr.
     private func runJSONCommand(
         _ path: String, _ arguments: [String], timeout: TimeInterval
     ) async throws -> [String: Any] {
@@ -170,7 +259,7 @@ class StoreViewModel: ObservableObject {
         process.executableURL = URL(fileURLWithPath: path)
         process.arguments = arguments
         process.standardOutput = stdoutPipe
-        process.standardError = FileHandle.nullDevice  // discard stderr
+        process.standardError = FileHandle.nullDevice
 
         try process.run()
 
@@ -191,12 +280,8 @@ class StoreViewModel: ObservableObject {
         return json
     }
 
-    /// Extract the real package name from a nix search attribute path.
-    /// Input:  "legacyPackages.aarch64-darwin.ripgrep" or "packages.aarch64-darwin.ripgrep"
-    /// Output: "ripgrep"
     private func extractNixPackageName(_ nixKey: String) -> String {
         let parts = nixKey.split(separator: ".")
-        // The package name is always the last component
         return parts.last.map(String.init) ?? nixKey
     }
 
@@ -207,12 +292,10 @@ class StoreViewModel: ObservableObject {
         do {
             let command: [String]
             switch package.source {
-            case .nixpkgs, .nix:
-                command = ["omanix", "add", package.name]
-            case .homebrewBrew, .homebrewCask:
-                command = ["omanix", "add", package.name]
             case .custom:
                 command = ["omanix", "install-app", package.name]
+            default:
+                command = ["omanix", "add", package.name]
             }
 
             _ = try await runCommand(command[0], Array(command.dropFirst()))
@@ -236,12 +319,10 @@ class StoreViewModel: ObservableObject {
         do {
             let command: [String]
             switch package.source {
-            case .nixpkgs, .nix:
-                command = ["omanix", "remove", package.name]
-            case .homebrewBrew, .homebrewCask:
-                command = ["omanix", "remove", package.name]
             case .custom:
                 command = ["omanix", "uninstall-app", package.name]
+            default:
+                command = ["omanix", "remove", package.name]
             }
 
             _ = try await runCommand(command[0], Array(command.dropFirst()))
@@ -251,7 +332,6 @@ class StoreViewModel: ObservableObject {
             if let index = packages.firstIndex(where: { $0.id == package.id }) {
                 packages[index].isInstalled = false
             }
-            // Remove from declared packages too
             declaredPackages.removeAll { $0.name == package.name }
         } catch {
             showMessage("Failed to remove \(package.name): \(error.localizedDescription)", type: .error)
@@ -375,7 +455,7 @@ class StoreViewModel: ObservableObject {
         showMessage("Theme set to \(theme.name)", type: .success)
     }
 
-    // MARK: - Installed Packages (from configuration.nix)
+    // MARK: - Installed Packages
 
     func loadDeclaredPackages() {
         Task {
@@ -498,6 +578,21 @@ class StoreViewModel: ObservableObject {
         return output
     }
 }
+
+// MARK: - Brew Index Codable Types
+
+private struct BrewCask: Codable {
+    let token: String
+    let name: [String]?
+    let desc: String?
+}
+
+private struct BrewFormula: Codable {
+    let name: String
+    let desc: String?
+}
+
+// MARK: - Errors
 
 enum StoreError: LocalizedError {
     case invalidOutput

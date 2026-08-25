@@ -228,7 +228,13 @@ struct PackageListView: View {
 
     private var statusBar: some View {
         HStack(spacing: 8) {
-            if let error = store.errorMessage {
+            if store.isIndexingBrew {
+                ProgressView()
+                    .controlSize(.mini)
+                Text("Indexing Homebrew...")
+                    .font(.caption)
+                    .foregroundColor(theme.tertiaryText)
+            } else if let error = store.errorMessage {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 11))
                     .foregroundColor(theme.error)
@@ -253,6 +259,20 @@ struct PackageListView: View {
             }
 
             Spacer()
+
+            if store.brewIndexReady {
+                Button(action: { Task { await store.refreshBrewIndex() } }) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 9))
+                        Text("Update index")
+                    }
+                    .font(.system(.caption2, weight: .medium))
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(theme.tertiaryText)
+                .help("Re-download Homebrew package index")
+            }
 
             Button(action: { Task { await store.rebuild() } }) {
                 HStack(spacing: 4) {
