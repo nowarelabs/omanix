@@ -6,12 +6,12 @@ Philosophies are opinions with a point of view. Principles are the hard walls; p
 
 ## 1. Omarchy Taste, Nix Engineering — Without the Bash Glue
 
-Omarchy is taste — `tokyo-night` at 3am, `foot` + `nvim` + `tmux`, a bar that flows around the notch, `Super` then type. Nix is engineering — reproducibility, atomicity, rollback.
+Great desktop taste — `tokyo-night` at 3am, `foot` + `nvim` + `tmux`, a bar that flows around the notch, `Super` then type. Nix is engineering — reproducibility, atomicity, rollback.
 
-Omarchy delivers taste via bash: `omarchy-plugin-add` clones a repo with `manifest.json`, sources `*.sh`, writes `~/.config`. That glue is imperative — it cannot be hashed, rolled back, or reasoned about. Omanix loves Omarchy's taste but rejects its glue:
+Legacy plugin systems delivered via bash clones a repo with `manifest.json`, sources `*.sh`, writes `~/.config`. That glue is imperative — it cannot be hashed, rolled back, or reasoned about. Omanix loves Omarchy's taste but rejects its glue:
 
-- Every Omarchy default that defines *feel* — `default/hypr/*.lua`, `config/omarchy/shell.json`, `themes/*/colors.toml`, `default/themed/*.tpl`, `shell/` QML — is vendored read-only and compiled by Nix. Taste is not reimplemented.
-- Every mechanism that defines *state* — `pacman -S`, `yay`, `omarchy-pkg-add`, `mise`, `omarchy-theme-set` at runtime, `home.activation` git clones — is replaced by Nix derivations and launchd.
+- Every Omarchy default that defines _feel_ — `default/hypr/*.lua`, `config/omarchy/shell.json`, `themes/*/colors.toml`, `default/themed/*.tpl`, `shell/` QML — is vendored read-only and compiled by Nix. Taste is not reimplemented.
+- Every mechanism that defines _state_ — `pacman -S`, `yay`, `omarchy-pkg-add`, `mise`, `omarchy-theme-set` at runtime, `home.activation` git clones — is replaced by Nix derivations and launchd.
 
 Philosophy: **If it was bash that wrote a file to `~/.config` at runtime, it should have been Nix that rendered that file at build time.**
 
@@ -19,7 +19,7 @@ Philosophy: **If it was bash that wrote a file to `~/.config` at runtime, it sho
 
 ## 2. The Mac Is Not a ThinkPad With a Different Logo
 
-Omarchy-mac treats the Mac as generic Linux hardware: Asahi Alarm repartitions, BTRFS, `m1n1 → u-boot → GRUB`. Omanix treats the Mac as a Mac:
+A generic Linux approach treats the Mac as generic hardware hardware: Asahi Alarm repartitions, BTRFS, `m1n1 → u-boot → GRUB`. Omanix treats the Mac as a Mac:
 
 - **Quartz is the compositor.** AeroSpace tiles within Quartz; SketchyBar draws on Quartz. The notch is not an obstacle — the bar is split around it (`hero.jpg` is a promise).
 - **APFS + FileVault is the filesystem.** No BTRFS migration.
@@ -31,7 +31,7 @@ Philosophy: **If Linux has a macOS counterpart the user expects, use the counter
 
 ## 3. One Machine, One File, One Lock — And No One Edits a .toml to Make It Work
 
-`config/flake.nix` pins `nixpkgs 917fec99094...`, `nix-darwin 52d0615...`, `home-manager 27b93804...` and defines `darwinConfigurations."Vances-MacBook-Pro"` in 259 lines. That file *is* the machine.
+`config/flake.nix` pins `nixpkgs 917fec99094...`, `nix-darwin 52d0615...`, `home-manager 27b93804...` and defines `darwinConfigurations."Vances-MacBook-Pro"` in 259 lines. That file _is_ the machine.
 
 Omanix extends that to mean: **you do not go into `.toml`, `.tpl`, or `~/.config` to make stuff work.** If you need to, the option is missing — we add a Nix option, not a wiki page.
 
@@ -58,7 +58,7 @@ This also means `brew` is never imperative. It is a Nix-controlled activation wi
 
 ---
 
-## 5. Build-Time Is Honesty, Runtime Is a Pomodoro That Isn't There After Reboot
+## 5. Build-Time Is Honesty, Runtime Is a Pomodoro Widget That Isn't There After Reboot
 
 Why **Build-time (Nix-pure)** for themes and widgets?
 
@@ -80,7 +80,7 @@ Philosophy: **A widget is an app with a Nix hash. If it cannot be `nix why-depen
 
 ## 6. Familiarity Is a Feature, But Shims Are Not Bash
 
-Omarchy's CLI is delightful: `omarchy menu`, `omarchy launch`, `omarchy capture`. Omanix keeps the vocabulary — but as typed shims, not bash plugins:
+A good CLI is delightful: `omarchy menu`, `omarchy launch`, `omarchy capture`. Omanix keeps the vocabulary — but as typed shims, not bash plugins:
 
 - If the concept maps (e.g., `omarchy-hyprland-focus-app` → `aerospace focus`), the shim translates.
 - If it does not (e.g., `omarchy-system-btrfs-migrate`, `omarchy-refresh-pacman-mirrorlist`), the shim is deleted and prints `not available on Darwin — see docs/porting.md`.
@@ -92,7 +92,7 @@ Philosophy: **Keep the words, replace the mechanism with something Nix can see.*
 
 ## 7. Small Core, Typed Edges, Instant Gratification
 
-Omarchy-mac is large: 444 bin commands, 23 themes, 36 `default/*` trees. Omanix ships a small core that boots, then typed edges:
+A large legacy system is 444 bin commands, 23 themes, 36 `default/*` trees. Omanix ships a small core that boots, then typed edges:
 
 - **Core (v1):** AeroSpace + SketchyBar + `tokyo-night`/`catppuccin`/`matte-black`, `foot`/`ghostty`, `starship`, `tmux`, `nvim`, and the daily-driver services (postgres/redis). Enough to pass `darwin-rebuild switch`.
 - **Edges (typed):** `capture` → `screencapture` shim, `install dev env` → `extraPackages`, `hw` → Mac detection. Each edge is a Nix option + test.
@@ -113,7 +113,7 @@ Philosophy: **Help the user get applications quickly and reliably, and remove th
 
 If `hero.jpg` shows workspaces flowing around the notch, the bar better flow around it. Theme tokens (`accent #7aa2f7`, `background #1a1b26` in `tokyo-night/colors.toml`) are the design system; the bar is the proof.
 
-Widgets extend that contract: a pomodoro widget is not a floating bash window — it is a SketchyBar item with `colors.toml` tokens, a `launchd` timer that fires `osascript` or Swift code, and optionally a Swift menubar app that shares the same Nix-built assets. It looks like a Mac app because it *is* a Mac app — but one whose source is in the flake and whose binary is in `/nix/store`.
+Widgets extend that contract: a pomodoro widget is not a floating bash window — it is a SketchyBar item with `colors.toml` tokens, a `launchd` timer that fires `osascript` or Swift code, and optionally a Swift menubar app that shares the same Nix-built assets. It looks like a Mac app because it _is_ a Mac app — but one whose source is in the flake and whose binary is in `/nix/store`.
 
 Philosophy: **If it looks like a Mac app, it should be built like a Nix derivation and behave like a SketchyBar token.**
 
@@ -131,7 +131,7 @@ Philosophy: **You should be able to try Omanix for a week and leave your Mac cle
 
 ## 10. Less Magic, More Derivation — No One Opens a .config to Understand
 
-Where Omarchy-mac uses magic — `omarchy-refresh-config hypr/hyprland.lua` copying with `[[ -e ]]` (AGENTS.md:111-121), `$OMARCHY_PATH` env, `uwsm` session — Omanix uses derivations.
+Where legacy magic — `omarchy-refresh-config hypr/hyprland.lua` copying with `[[ -e ]]` (AGENTS.md:111-121), `$OMARCHY_PATH` env, `uwsm` session — Omanix uses derivations.
 
 Why: magic hides provenance. macOS already has too much magic (SIP, TCC, quarantine). A derivation has a hash; a copied file has a timestamp. And a derivation does not require you to open `.config` to understand what happened — you read `flake.nix`.
 
@@ -149,6 +149,14 @@ Philosophy: **The Store is the terminal rendered as a GUI, and it is itself a Ni
 
 ## 12. AI Should Write Nix, Not Bash — Ready by Skill, Fast by Preview, Safe by Rebuild
 
-Friend's pomodoro magic — *tell Claude, it just appears* — is the right delight, but friend's substrate is NixOS + Quickshell QML + `--impure` Home Manager forever. Omanix is darwin-native (SketchyBar + `launchd` + Swift, systemd + Quickshell on future Linux) and must keep build-time purity for rollback.
+Friend's pomodoro magic — _tell Claude, it just appears_ — is the right delight, but friend's substrate is NixOS + Quickshell QML + `--impure` Home Manager forever. Omanix is darwin-native (SketchyBar + `launchd` + Swift, systemd + Quickshell on future Linux) and must keep build-time purity for rollback.
 
-Philosophy: **Give the agent a typed Nix contract (`lib/mkWidget`/`lib/mkApp` with `${theme.colors.*}` injection), a machine-readable skill (`skills/omanix/SKILL.md` → `~/.claude/skills/omanix/SKILL.md` with `statix`/`nix fmt`/`nix-instantiate --parse` in PATH), and a two-phase build: *preview* (impure overlay, instant, no generation) then *commit* (pure `configuration.nix` + `flake.lock`, generation).** The agent drafts to `overlays/pomodoro/{default.nix, Sources/*.swift}`, lints, runs `omanix rebuild --preview` (evaluates `overlays/*` via impure overlay, hot-reloads `sketchybar --reload` + `launchctl load` on mac / `quickshell ipc` on linux), asks "keep?" then `omanix add` promotes to `omanix.widgets.pomodoro.enable`. Same delight as friend's `dbus-send` to Quickshell, but mac-native and commit is pure, rollbackable, and visible in the Store toggle the green user already understands. If the agent wrote bash to `~/.config`, it failed the skill.
+Philosophy: **Give the agent a typed Nix contract (`lib/mkWidget`/`lib/mkApp` with `${theme.colors.*}` injection), a machine-readable skill (`skills/omanix/SKILL.md` → `~/.claude/skills/omanix/SKILL.md` with `statix`/`nix fmt`/`nix-instantiate --parse` in PATH), and a two-phase build: _preview_ (impure overlay, instant, no generation) then _commit_ (pure `configuration.nix` + `flake.lock`, generation).** The agent drafts to `overlays/pomodoro/{default.nix, Sources/*.swift}`, lints, runs `omanix rebuild --preview` (evaluates `overlays/*` via impure overlay, hot-reloads `sketchybar --reload` + `launchctl load` on mac / `quickshell ipc` on linux), asks "keep?" then `omanix add` promotes to `omanix.widgets.pomodoro.enable`. Same delight as friend's `dbus-send` to Quickshell, but mac-native and commit is pure, rollbackable, and visible in the Store toggle the green user already understands. If the agent wrote bash to `~/.config`, it failed the skill.
+
+---
+
+## 13. Qwen Is Enough for the Small Stuff — Frontier Is for the Hard Stuff
+
+Not every prompt is _"build a Swift pomodoro app from scratch."_ Most are _"make it darker"_, _"add ripgrep"_, _"enable calendar widget"_ — a 7B Qwen running offline via `Ollama` (`qwen2.5:7b`/`qwen3:8b` from `config/ollama.plist`) can do those in <2s, private, no API key, no cost. Frontier Claude can still do the hard stuff — multi-file SwiftUI app, theme authoring, debugging a broken `mkWidget`.
+
+Philosophy: **Same `omanix.widgets` contract, tiny skill for tiny model.** `skills/omanix/mini-SKILL.md` is ~2KB JSON schema + 2 few-shot `mkWidget` fills (no Swift/QML generation), and the tool list is constrained to `omanix add`, `omanix remove`, `omanix.widgets.*` toggles, `omanix.theme` picks — safe actions Qwen won't hallucinate. The local agent is `omanix ask --local "make it darker"` or Store's `Ask (offline)` bar or `Super → Ask`; the Store routes `--local` to `ollama run qwen2.5:7b` and `--cloud` to `claude`. The green user with no API key still gets _"make pomodoro"_ as a simple `mkWidget` template fill; the power user with API key gets the full Swift app. Both write the same `overlays/` preview → commit shape, so `Store` shows the result either way.

@@ -43,8 +43,8 @@ omanix/                              # flake root — cloned to ~/.config/omanix
 │   ├── mkWidget.nix                 # { name, sketchybarConfig|hyprlandConfig, launchdOrSystemd, swiftOrGtkSrc } → module + derivation
 │   ├── mkApp.nix                    # { name, bundleId/desktopFile, src } → /Applications/*.app or /usr/share/applications
 │   └── themed.nix                   # colors.toml + *.tpl → store (user never touches tpl)
-├── themes/                          # vendored omarchy-mac/themes/*/colors.toml — build-time only
-├── config/ + default/ + shell/      # vendored omarchy-mac taste — read-only, compiled by lib
+├── themes/                          # Omanix themes (colors.toml) — build-time only
+├── config/ + default/ + shell/      # Omanix theme sources — read-only, compiled by lib
 ├── overlays/                        # git-ignored, AI/agent preview drop-ins: overlays/pomodoro/{default.nix, Sources/*.swift} → `omanix rebuild --preview` (impure, no generation)
 ├── skills/
 │   └── omanix/
@@ -64,7 +64,7 @@ omanix/                              # flake root — cloned to ~/.config/omanix
 3. `hosts/` is optional: one-machine users never create it. Two-machine users `cp -r hosts/my-mac hosts/work-mac` and change `host`.
 4. Linux future: same `omanix.theme`, `omanix.widgets.pomodoro.enable` works on both because `modules/desktop` and `modules/widgets` branch on `pkgs.stdenv.isDarwin`. No mac-specific file leaks to Linux eval.
 
-**Vendored read-only:** `themes/`, `config/`, `default/`, `shell/` from `../omarchy-mac` at pinned rev. Changes from upstream sync PRs only.
+**Vendored read-only:** `themes/`, `config/`, `default/`, `shell/` at pinned rev. Changes from upstream sync PRs only.
 
 **Daily-driver diff target:** Your daily `config/flake.nix` + `config/home.nix` should diff cleanly to `configuration.nix` + `home.nix` one-to-one.
 
@@ -131,7 +131,7 @@ If no AeroSpace equivalent, delete shim and document in `docs/porting.md`.
 
 ```nix
 omanix.theme = "tokyo-night";
-omanix.bar = { position = "top"; transparent = false; layout.left = ["omarchy.menu" "omarchy.workspaces"]; };
+omanix.bar = { position = "top"; transparent = false; layout.left = ["omanix.menu" "omanix.workspaces"]; };
 ```
 
 Not via `default/themed/*.tpl`. `shell/` QML is never executed; its tokens are the reference for SketchyBar plugin reimplementation in `modules/desktop/sketchybar/plugins/*.nix`.
@@ -140,7 +140,7 @@ Not via `default/themed/*.tpl`. `shell/` QML is never executed; its tokens are t
 
 ## 5. Widgets and Apps Are Nix Derivations — Not Bash Plugins
 
-This is the **pomodoro contract**. Omarchy lets someone AI-generate a pomodoro bash plugin and it appears as a widget. Omanix lets someone AI-generate a pomodoro *Nix widget* and it appears as if you installed a Mac app — because you did (a Nix-built one).
+This is the **pomodoro contract**. Community lets someone AI-generate a pomodoro bash plugin and it appears as a widget. Omanix lets someone AI-generate a pomodoro *Nix widget* and it appears as if you installed a Mac app — because you did (a Nix-built one).
 
 **Approved: Both — prescriptive SDK + auto-wrap.** Authors can publish a proper flake with `omanixWidgets.<name>` using the SDK, *or* a user can `omanix add github:you/pomodoro-swift` with a single `Sources/*.swift` file and Omanix auto-wraps it (detects Swift, builds via `swift build`/`xcodebuild`, generates `launchd` plist + SketchyBar item).
 
@@ -278,7 +278,7 @@ New widget/app needs a test that it appears after rebuild and vanishes after `en
 
 ## 12. Vendoring & Sync
 
-`themes/`, `config/`, `default/`, `shell/` vendored from `../omarchy-mac` at pinned rev (`inputs.omarchy-mac.url`). Sync PRs: `nix flake lock --update-input omarchy-mac` + `rsync -a --delete` + `nix flake check` (fails if new `{{ var }}` has no `themed.nix` mapping). No hand edits to vendored trees.
+`themes/`, `config/`, `default/`, `shell/` curated Omanix themes at pinned rev (`inputs.omarchy-mac.url`). Sync PRs: `nix flake lock --update-input omarchy-mac` + `rsync -a --delete` + `nix flake check` (fails if new `{{ var }}` has no `themed.nix` mapping). No hand edits to vendored trees.
 
 ---
 
@@ -286,7 +286,7 @@ New widget/app needs a test that it appears after rebuild and vanishes after `en
 
 Hard deletes on Darwin (shim → `not available on Darwin`):
 
-`omarchy-mac-setup`, `omarchy-system-btrfs-migrate`, `omarchy-snapshot`, `omarchy-refresh-pacman*`, `omarchy-refresh-plymouth/limine`, `omarchy-theme-set` (runtime), `omarchy-plugin-add` (runtime git), `omarchy-pkg-*` (→ `nix`), `omarchy-mise-*`, `omarchy-hw-nvidia*`, etc. Append-only; removing requires `tests/cli` update.
+legacy Linux-only `omarchy-*` commands (setup, snapshot, pacman, plymouth, etc.) — removed on Darwin; see `bin/shims/` — append-only
 
 ---
 
@@ -325,3 +325,27 @@ Omanix is ready for `Claude Code`/`OpenCode` to drop a pomodoro that *just appea
 **Why not friend's *only* `--impure` forever:** We keep preview speed but make persistence a choice — pure for teams/Store visibility/rollback, impure for rapid AI iteration where lock churn is unwanted. Linters are ready day one, so agent never writes invalid Nix. Linux path reuses same `SKILL.md` but picks `qmlSrc` + `systemd` branch — `lib/mkWidget` abstracts `sketchybar` vs `quickshell`.
 
 **Contributor rule for agent authors:** Use `pkgs` deps (`pkgs.libnotify`, `pkgs.mpv`), not `which mpv`; use `${config.lib.omanixTheme.colors.accent}`, not hardcoded `#7aa2f7`; never write to `/nix/store` or `~/.config` outside `overlays/`.
+
+---
+
+## 16. Local AI (Qwen) for Light Tasks — Tiny Skill, Constrained Tools, Offline
+
+Frontier handles heavy (full Swift `mkApp`); local `qwen2.5:7b`/`qwen3:8b` via `Ollama` handles not-heavy (theme, `omanix add`, simple `mkWidget` template fill) offline, private, <2s.
+
+**Model:** `ollama` daemon from `config/ollama.plist` + `config/nix/ollama.plist` (already in daily driver). **Approved: opt-in only** — `omanix setup local-ai` does `ollama pull qwen2.5:7b` (default) or `qwen3:8b` if RAM ≥16GB only when user runs it; installer does not prompt or pull by default. Model lives in `~/.ollama` (outside `/nix`, pruned by `omanix uninstall --with-ollama` only if user opts). `ollama` is `launchd.user.agents.ollama` on mac, `systemd --user` on linux — same `modules/services/ollama.nix`.
+
+**Mini skill — `skills/omanix/mini-SKILL.md`:** Installed alongside full `SKILL.md` to `~/.config/omanix/skills/omanix/mini-SKILL.md` and `~/.claude/skills/omanix/` for visibility, but frontier agents ignore it. It is ~2KB JSON schema:
+
+```json
+{ "type": "object", "properties": { "action": {"enum": ["setTheme","toggleWidget","addPackage","mkWidget"]}, "theme": {"enum": ["tokyo-night","catppuccin"]}, "widget": {"type": "string"}, "package": {"type": "string"} } }
+```
+
++ 2 few-shots: `{"action":"setTheme","theme":"matte-black"}` → `omanix.theme = "matte-black"`; `{"action":"mkWidget","widget":"pomodoro"}` → `lib/mkWidget { name="pomodoro"; sketchybarConfig={icon="󰔟";}; launchdConfig={StartInterval=60;}; }` (template fill, approved). No full Swift/QML `lib/mkApp` generation — local fills a fixed `mkWidget` template only, frontier does full Swift.
+
+**Tools (constrained):** Local agent PATH has only `omanix add|remove|search`, `omanix widgets toggle`, `omanix theme set`, `nix fmt`, `statix check`. No `swift build`, no `xcodebuild`, no raw `echo` to `configuration.nix` — it calls `omanix add` helpers that edit `configuration.nix` structured, same as Store. If `statix` fails, local falls back to `omanix ask --local --dry-run` showing the `configuration.nix` diff, never writes.
+
+**Entry points:** `omanix ask --local "make it darker"` (CLI), Store's `Ask (offline)` bar (GUI), `Super → Ask → Offline`. All route to `ollama run qwen2.5:7b --skill mini-SKILL.md`. Frontier is `omanix ask "make pomodoro app"` → `claude` with full `SKILL.md`.
+
+**Why tiny:** Qwen 7B hallucinates on long Nix + Swift. Mini skill keeps context <1k tokens, JSON-enforced, and the preview → commit still applies — local writes `overlays/pomodoro-mini/{default.nix}` (simple `mkWidget` fill), `omanix rebuild --preview` hot-reloads, same Store toggle appears. Frontier skill stays full for heavy tasks.
+
+**Contributor rule for local:** If you add a new `omanix.widgets.*` option, add its JSON enum to `mini-SKILL.md` and a third few-shot, or local won't see it.
