@@ -29,15 +29,13 @@ class StoreViewModel: ObservableObject {
     // MARK: - Package Management
 
     func search(query: String) {
-        // Cancel previous search
         searchTask?.cancel()
-        
+
         guard !query.isEmpty else {
             packages = []
             return
         }
 
-        // Debounce: wait 300ms before searching
         searchTask = Task {
             try? await Task.sleep(nanoseconds: 300_000_000)
             guard !Task.isCancelled else { return }
@@ -50,16 +48,19 @@ class StoreViewModel: ObservableObject {
         errorMessage = nil
 
         do {
-            // Run nix search and brew search in parallel
-            async let nixTask = runCommand("nix", ["search", "nixpkgs", query, "--json"])
-            async let brewTask = runCommand("brew", ["search", query])
+            // Run searches in parallel with timeout
+            async let nixResult = runCommandWithTimeout(
+                "nix", ["search", "nixpkgs", query, "--json"], timeout: 15.0
+            )
+            async let brewResult = runCommandWithTimeout(
+                "brew", ["search", query], timeout: 10.0
+            )
 
-            let (nixResults, brewResults) = try await (nixTask, brewTask)
+            let (nixResults, brewResults) = try await (nixResult, brewResult)
 
-            // Parse and combine results
             var results: [PackageItem] = []
 
-            // Parse nix search JSON output
+            // Parse nix search JSON
             if let data = nixResults.data(using: .utf8),
                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 for (name, info) in json {
@@ -75,8 +76,9 @@ class StoreViewModel: ObservableObject {
                 }
             }
 
-            // Parse brew search output
-            let brewPackages = brewResults.components(separatedBy: "\n").filter { !$0.isEmpty }
+            // Parse brew search
+            let brewPackages = brewResults.components(separatedBy: "\n")
+                .filter { !$0.isEmpty }
             for name in brewPackages {
                 results.append(PackageItem(
                     name: name,
@@ -113,10 +115,8 @@ class StoreViewModel: ObservableObject {
             _ = try await runCommand(command[0], Array(command.dropFirst()))
             successMessage = "Installed \(package.name)"
 
-            // Update installed list
             installedPackages.insert(package.name)
 
-            // Update package in list
             if let index = packages.firstIndex(where: { $0.id == package.id }) {
                 packages[index].isInstalled = true
             }
@@ -146,10 +146,8 @@ class StoreViewModel: ObservableObject {
             _ = try await runCommand(command[0], Array(command.dropFirst()))
             successMessage = "Uninstalled \(package.name)"
 
-            // Update installed list
             installedPackages.remove(package.name)
 
-            // Update package in list
             if let index = packages.firstIndex(where: { $0.id == package.id }) {
                 packages[index].isInstalled = false
             }
@@ -179,7 +177,7 @@ class StoreViewModel: ObservableObject {
 
     func loadWidgets() {
         widgets = [
-            WidgetItem(id: "store", name: "Omanix Store", icon: "bag", isEnabled: true),
+            WidgetItem(id: "store", name: "Omanix", icon: "bag", isEnabled: true),
             WidgetItem(id: "pomodoro", name: "Pomodoro Timer", icon: "timer", isEnabled: false),
             WidgetItem(id: "clock", name: "Clock", icon: "clock", isEnabled: false),
         ]
@@ -190,8 +188,27 @@ class StoreViewModel: ObservableObject {
 
         widgets[index].isEnabled.toggle()
 
-        // TODO: Update configuration.nix and rebuild
-        // This would modify the nix config file
+        // Update configuration.nix
+        let configPath = "\(omanixDir)/configuration.nix"
+        guard var config = try? String(contentsOfFile: configPath, encoding: .utf8) else {
+            errorMessage = "Could not read configuration.nix"
+            return
+        }
+
+        let option = "omanix.widgets.\(widget.id).enable"
+        let newValue = widgets[index].isEnabled ? "true" : "false"
+
+        if config.contains(option) {
+            config = config.replacingOccurrences(
+                of: "\(option) = .*;",
+                with: "\(option) = \(newValue);",
+                options: .regularExpression
+            )
+        } else {
+            config += "\n  \(option) = \(newValue);"
+        }
+
+        try? config.write(toFile: configPath, atomically: true, encoding: .utf8)
     }
 
     // MARK: - Theme Management
@@ -215,17 +232,32 @@ class StoreViewModel: ObservableObject {
 
     func selectTheme(_ theme: ThemeItem) {
         currentTheme = theme.id
-        // TODO: Update configuration.nix and rebuild
+
+        let configPath = "\(omanixDir)/configuration.nix"
+        guard var config = try? String(contentsOfFile: configPath, encoding: .utf8) else {
+            errorMessage = "Could not read configuration.nix"
+            return
+        }
+
+        if config.contains("omanix.theme") {
+            config = config.replacingOccurrences(
+                of: "omanix\\.theme = \".*\";",
+                with: "omanix.theme = \"\(theme.id)\";",
+                options: .regularExpression
+            )
+        } else {
+            config += "\n  omanix.theme = \"\(theme.id)\";"
+        }
+
+        try? config.write(toFile: configPath, atomically: true, encoding: .utf8)
     }
 
     // MARK: - Installed Packages
 
     func loadInstalledPackages() {
-        // Read from configuration.nix or run `omanix list-apps`
         Task {
             do {
                 let output = try await runCommand("omanix", ["list-apps"])
-                // Parse output and populate installedPackages
                 let lines = output.components(separatedBy: "\n")
                 for line in lines {
                     let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -253,6 +285,42 @@ class StoreViewModel: ObservableObject {
 
         try process.run()
         process.waitUntilExit()
+
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        guard let output = String(data: data, encoding: .utf8) else {
+            throw StoreError.invalidOutput
+        }
+
+        guard process.terminationStatus == 0 else {
+            throw StoreError.commandFailed(output)
+        }
+
+        return output
+    }
+
+    private func runCommandWithTimeout(
+        _ command: String, _ arguments: [String], timeout: TimeInterval
+    ) async throws -> String {
+        let process = Process()
+        let pipe = Pipe()
+
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = [command] + arguments
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        try process.run()
+
+        // Wait with timeout
+        let deadline = Date().addingTimeInterval(timeout)
+        while process.isRunning && Date() < deadline {
+            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+        }
+
+        if process.isRunning {
+            process.terminate()
+            throw StoreError.commandFailed("Command timed out after \(Int(timeout))s")
+        }
 
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         guard let output = String(data: data, encoding: .utf8) else {

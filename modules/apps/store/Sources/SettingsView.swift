@@ -151,13 +151,47 @@ struct SettingsView: View {
     }
 
     private func resetConfig() {
-        // TODO: Reset configuration.nix to defaults
-        store.errorMessage = "Reset not implemented yet"
+        let configPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".config/omanix/configuration.nix").path
+
+        // Create backup
+        let backupPath = configPath + ".backup"
+        try? FileManager.default.copyItem(atPath: configPath, toPath: backupPath)
+
+        // Reset to default configuration
+        let defaultConfig = """
+        { config, pkgs, ... }: {
+          omanix.host = "my-mac";
+          omanix.user = "\(NSUserName())";
+          omanix.theme = "tokyo-night";
+          omanix.bar.top = true;
+          omanix.widgets.store.enable = true;
+        }
+        """
+
+        do {
+            try defaultConfig.write(toFile: configPath, atomically: true, encoding: .utf8)
+            store.successMessage = "Configuration reset. Backup saved to configuration.nix.backup"
+        } catch {
+            store.errorMessage = "Failed to reset configuration: \(error.localizedDescription)"
+        }
     }
 
     private func uninstallOmanix() {
-        // TODO: Uninstall Omanix
-        store.errorMessage = "Uninstall not implemented yet"
+        // Remove login item
+        _ = try? Process.run(URL(fileURLWithPath: "/usr/bin/osascript"), arguments: [
+            "-e", "tell application \"System Events\" to delete login item \"Omanix\""
+        ])
+
+        // Remove app
+        try? FileManager.default.removeItem(atPath: "/Applications/Omanix.app")
+
+        // Remove store build directory
+        try? FileManager.default.removeItem(
+            atPath: NSHomeDirectory() + "/.omanix-store"
+        )
+
+        store.successMessage = "Omanix removed. Config preserved at ~/.config/omanix"
     }
 }
 
