@@ -52,57 +52,52 @@ class StoreViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
 
-        do {
-            // Run searches sequentially to avoid cancellation issues
-            var results: [PackageItem] = []
+        // Run searches sequentially to avoid cancellation issues
+        var results: [PackageItem] = []
 
-            // Search nixpkgs
-            do {
-                let nixResults = try await runCommandWithTimeout(
-                    "nix", ["search", "nixpkgs", query, "--json"], timeout: 15.0
-                )
-                if let data = nixResults.data(using: .utf8),
-                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    for (name, info) in json {
-                        if let details = info as? [String: Any],
-                           let description = details["description"] as? String {
-                            results.append(PackageItem(
-                                name: name,
-                                description: description,
-                                source: .nixpkgs,
-                                isInstalled: installedPackages.contains(name)
-                            ))
-                        }
+        // Search nixpkgs
+        do {
+            let nixResults = try await runCommandWithTimeout(
+                "nix", ["search", "nixpkgs", query, "--json"], timeout: 15.0
+            )
+            if let data = nixResults.data(using: .utf8),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                for (name, info) in json {
+                    if let details = info as? [String: Any],
+                       let description = details["description"] as? String {
+                        results.append(PackageItem(
+                            name: name,
+                            description: description,
+                            source: .nixpkgs,
+                            isInstalled: installedPackages.contains(name)
+                        ))
                     }
                 }
-            } catch {
-                // Continue if nix search fails
             }
-
-            // Search brew
-            do {
-                let brewResults = try await runCommandWithTimeout(
-                    "brew", ["search", query], timeout: 10.0
-                )
-                let brewPackages = brewResults.components(separatedBy: "\n")
-                    .filter { !$0.isEmpty }
-                for name in brewPackages {
-                    results.append(PackageItem(
-                        name: name,
-                        description: "Homebrew package",
-                        source: .homebrew,
-                        isInstalled: installedPackages.contains(name)
-                    ))
-                }
-            } catch {
-                // Continue if brew search fails
-            }
-
-            packages = results
         } catch {
-            errorMessage = "Search failed: \(error.localizedDescription)"
+            // Continue if nix search fails
         }
 
+        // Search brew
+        do {
+            let brewResults = try await runCommandWithTimeout(
+                "brew", ["search", query], timeout: 10.0
+            )
+            let brewPackages = brewResults.components(separatedBy: "\n")
+                .filter { !$0.isEmpty }
+            for name in brewPackages {
+                results.append(PackageItem(
+                    name: name,
+                    description: "Homebrew package",
+                    source: .homebrew,
+                    isInstalled: installedPackages.contains(name)
+                ))
+            }
+        } catch {
+            // Continue if brew search fails
+        }
+
+        packages = results
         isLoading = false
     }
 
