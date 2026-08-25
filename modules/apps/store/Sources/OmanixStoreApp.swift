@@ -7,18 +7,23 @@ struct OmanixStoreApp: App {
     @StateObject private var store = StoreViewModel()
 
     init() {
-        // Set app icon programmatically
-        if let iconPath = Bundle.main.path(forResource: "AppIcon", ofType: "icns"),
-           let icon = NSImage(contentsOfFile: iconPath) {
-            NSApp.applicationIconImage = icon
-        } else if let iconPath = Bundle.main.path(forResource: "icon", ofType: "png"),
-                  let icon = NSImage(contentsOfFile: iconPath) {
-            NSApp.applicationIconImage = icon
-        }
-
         // Load theme colors
         let theme = OmanixTheme.load()
         OmanixTheme.apply(theme)
+
+        // Set app icon from known path
+        let possiblePaths = [
+            NSHomeDirectory() + "/.omanix-store/icon.png",
+            Bundle.main.bundlePath + "/Contents/Resources/AppIcon.icns",
+            "/Applications/Omanix.app/Contents/Resources/AppIcon.icns"
+        ]
+
+        for path in possiblePaths {
+            if let icon = NSImage(contentsOfFile: path) {
+                NSApp.applicationIconImage = icon
+                break
+            }
+        }
     }
 
     var body: some Scene {

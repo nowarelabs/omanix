@@ -65,7 +65,8 @@ if [ -x "$XCRUN" ] || command -v xcrun >/dev/null 2>&1; then
     "$STORE_DIR/Sources/"*.swift
 
   cp ${infoPlist} "/Applications/Omanix.app/Contents/Info.plist"
-  cp ${appIcon}/AppIcon.icns "/Applications/Omanix.app/Contents/Resources/AppIcon.icns"
+  cp ${../../../assets/icon.png} "$HOME/.omanix-store/icon.png"
+  cp ${../../../assets/icon.png} "/Applications/Omanix.app/Contents/Resources/AppIcon.icns"
 
   echo "Omanix built successfully"
 
