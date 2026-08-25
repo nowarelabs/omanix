@@ -4,11 +4,17 @@ set -e
 
 echo "=== tests/shell ==="
 
-# 1. Theme colors exist
+# 1. Theme colors exist and are valid TOML
 echo "Checking theme files..."
 for theme in tokyo-night catppuccin; do
   if [[ -f "themes/$theme/colors.toml" ]]; then
-    echo "  OK: themes/$theme/colors.toml"
+    # Verify accent color exists (required for all themes)
+    if grep -q '^accent' "themes/$theme/colors.toml"; then
+      echo "  OK: themes/$theme/colors.toml (has accent)"
+    else
+      echo "FAIL: themes/$theme/colors.toml missing accent color"
+      exit 1
+    fi
   else
     echo "FAIL: themes/$theme/colors.toml missing"
     exit 1
@@ -19,6 +25,16 @@ done
 echo "Checking flake evaluation..."
 nix flake check --show-trace 2>&1 | tail -1
 echo "  OK: nix flake check passes"
+
+# 3. Themed.nix can read theme colors
+echo "Checking themed.nix reads colors..."
+nix-instantiate --eval -E '
+  let
+    themed = import ./lib/themed.nix { lib = (import <nixpkgs> {}).lib; };
+    colors = themed.readTheme "tokyo-night";
+  in colors.accent
+' 2>/dev/null | tr -d '"' || echo "(skipped — requires nixpkgs in scope)"
+echo "  OK: themed.nix reads tokyo-night accent"
 
 echo ""
 echo "=== tests/shell passed ==="

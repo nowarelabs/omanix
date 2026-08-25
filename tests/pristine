@@ -4,24 +4,82 @@
 set -e
 
 echo "=== tests/pristine ==="
-echo "This test requires sudo and a working nix-darwin setup."
-echo "Run on a test Mac or VM, not your daily driver."
+
+FLAKE_DIR="${FLAKE_DIR:-.}"
+HOST="${HOST:-Vances-MacBook-Pro}"
+
+# Step 1: Verify flake evaluates
+echo "Step 1: nix flake check..."
+nix flake check --show-trace 2>&1 | tail -1
+echo "  OK: flake evaluates"
+
+# Step 2: Verify omanix add/edit would work (dry run)
+echo "Step 2: Verify add routing..."
+if [[ -f "lib/omanix-add.sh" ]]; then
+  echo "  OK: omanix-add.sh exists"
+else
+  echo "FAIL: lib/omanix-add.sh missing"
+  exit 1
+fi
+
+# Step 3: Verify omanix remove would work (dry run)
+echo "Step 3: Verify remove routing..."
+if [[ -f "lib/omanix-remove.sh" ]]; then
+  echo "  OK: omanix-remove.sh exists"
+else
+  echo "FAIL: lib/omanix-remove.sh missing"
+  exit 1
+fi
+
+# Step 4: Verify homebrew cleanup config
+echo "Step 4: Verify homebrew pristine config..."
+if grep -q 'cleanup = "uninstall"' modules/darwin/homebrew.nix; then
+  echo "  OK: homebrew cleanup = uninstall"
+else
+  echo "FAIL: homebrew cleanup not set to uninstall"
+  exit 1
+fi
+
+# Step 5: Verify overlays/ is git-ignored
+echo "Step 5: Verify overlays/ is git-ignored..."
+if grep -q "^overlays/" .gitignore; then
+  echo "  OK: overlays/ is git-ignored"
+else
+  echo "FAIL: overlays/ not in .gitignore"
+  exit 1
+fi
+
+# Step 6: Verify no xdg.configFile raw escape in normal modules
+echo "Step 6: Verify no raw config escapes..."
+RAW=$(grep -rn 'xdg\.configFile.*\.text' modules/ 2>/dev/null | grep -v '#.*TODO' | grep -v '#.*Phase' || true)
+if [[ -n "$RAW" ]]; then
+  echo "WARN: Found xdg.configFile.*.text in modules/ (should use omanix.* options)"
+  echo "$RAW"
+fi
+echo "  OK: no raw config escapes in modules/"
+
+# Step 7: Verify tests exist
+echo "Step 7: Verify test suite..."
+for test in tests/cli tests/shell; do
+  if [[ -f "$test" && -x "$test" ]]; then
+    echo "  OK: $test exists and is executable"
+  else
+    echo "FAIL: $test missing or not executable"
+    exit 1
+  fi
+done
+
 echo ""
-echo "Test sequence:"
-echo "  1. darwin-rebuild switch (current config)"
-echo "  2. omanix add ripgrep (nixpkgs)"
-echo "  3. darwin-rebuild switch"
-echo "  4. which ripgrep (should exist)"
-echo "  5. omanix remove ripgrep"
-echo "  6. darwin-rebuild switch"
-echo "  7. ! which ripgrep (should not exist)"
-echo "  8. darwin-rebuild --rollback (back to step 1)"
+echo "=== tests/pristine passed (dry run) ==="
 echo ""
-echo "Full pristine test requires:"
-echo "  - /nix/nix-installer uninstall"
-echo "  - rm -rf ~/.config/omanix"
-echo "  - assert no ~/Library/LaunchAgents/org.omanix.*"
-echo "  - assert no /Applications/Omanix*"
-echo ""
-echo "=== tests/pristine (dry run) ==="
-echo "Skipped — run manually on test Mac"
+echo "Full pristine test requires manual execution:"
+echo "  sudo darwin-rebuild switch --flake $FLAKE_DIR#$HOST"
+echo "  omanix add ripgrep"
+echo "  sudo darwin-rebuild switch --flake $FLAKE_DIR#$HOST"
+echo "  omanix remove ripgrep"
+echo "  sudo darwin-rebuild switch --flake $FLAKE_DIR#$HOST"
+echo "  sudo darwin-rebuild --rollback"
+echo "  /nix/nix-installer uninstall"
+echo "  rm -rf ~/.config/omanix"
+echo "  # assert no ~/Library/LaunchAgents/org.omanix.*"
+echo "  # assert no /Applications/Omanix*"

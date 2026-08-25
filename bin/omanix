@@ -30,8 +30,44 @@ EOF
 
 case "${1:-help}" in
   install)
-    echo "Omanix installer"
-    echo "TODO: Phase 08 — curl determinate Nix, git clone, prompt host/user, rebuild"
+    echo "Omanix Installer"
+    echo "================"
+    echo ""
+    # Step 1: Check for Nix
+    if ! command -v nix &>/dev/null; then
+      echo "Nix not found. Installing via Determinate Systems installer..."
+      curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --determinate
+      . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+    else
+      echo "Nix found: $(nix --version)"
+    fi
+    # Step 2: Clone flake to ~/.config/omanix
+    TARGET="$HOME/.config/omanix"
+    if [[ -d "$TARGET" ]]; then
+      echo "Omanix already installed at $TARGET"
+      echo "Run 'omanix rebuild' to apply changes"
+    else
+      echo "Cloning Omanix to $TARGET..."
+      git clone https://github.com/nowarelabs/omanix.git "$TARGET"
+      # Step 3: Prompt for host and user
+      DEFAULT_HOST=$(scutil --get LocalHostName 2>/dev/null || echo "my-mac")
+      DEFAULT_USER=$(whoami)
+      read -p "Hostname [$DEFAULT_HOST]: " HOSTNAME
+      HOSTNAME="${HOSTNAME:-$DEFAULT_HOST}"
+      read -p "Username [$DEFAULT_USER]: " USERNAME
+      USERNAME="${USERNAME:-$DEFAULT_USER}"
+      # Step 4: Update flake with host/user
+      sed -i '' "s/omanix.host = \".*\"/omanix.host = \"$HOSTNAME\"/" "$TARGET/configuration.nix"
+      sed -i '' "s/omanix.user = \".*\"/omanix.user = \"$USERNAME\"/" "$TARGET/configuration.nix"
+      echo "Configuration updated: host=$HOSTNAME user=$USERNAME"
+      # Step 5: Build
+      echo "Building Omanix..."
+      sudo darwin-rebuild switch --flake "$TARGET#$HOSTNAME" --show-trace
+      echo ""
+      echo "Omanix installed! Reboot recommended."
+      echo "  Super -> Omanix Store to browse packages"
+      echo "  omanix rebuild to apply future changes"
+    fi
     ;;
 
   rebuild)

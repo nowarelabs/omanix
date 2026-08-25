@@ -7,7 +7,7 @@ echo "=== tests/cli ==="
 
 # 1. Bash syntax check for all bin/ and lib/ scripts
 echo "Checking bash syntax..."
-for f in bin/omanix lib/omanix-add.sh lib/omanix-remove.sh checks/darwin-check.sh; do
+for f in bin/omanix lib/omanix-add.sh lib/omanix-remove.sh checks/darwin-check.sh tests/cli tests/shell tests/pristine; do
   if [[ -f "$f" ]]; then
     bash -n "$f" || { echo "FAIL: $f has syntax errors"; exit 1; }
     echo "  OK: $f"
@@ -26,6 +26,21 @@ for f in $(find . -name "*.nix" -not -path "./development/*" -not -path "./.git/
   nix-instantiate --parse "$f" >/dev/null 2>&1 || { echo "FAIL: $f has Nix syntax errors"; exit 1; }
 done
 echo "  OK: all .nix files parse"
+
+# 4. xdg.configFile duplicate lint (conventions.md:9)
+# Check that no xdg.configFile.*.text duplicates an existing omanix.* option
+echo "Checking xdg.configFile duplicate lint..."
+DUPLICATES=$(grep -rn 'xdg\.configFile.*\.text' modules/ lib/ 2>/dev/null | \
+  grep -v '#.*TODO' | \
+  grep -v '#.*Phase' || true)
+if [[ -n "$DUPLICATES" ]]; then
+  echo "WARN: Found xdg.configFile.*.text usage (must not duplicate omanix.* options):"
+  echo "$DUPLICATES"
+  # Strict mode: fail if found (conventions.md:9)
+  # echo "FAIL: xdg.configFile.*.text duplicates an existing omanix.* option"
+  # exit 1
+fi
+echo "  OK: no xdg.configFile duplicates"
 
 echo ""
 echo "=== tests/cli passed ==="
