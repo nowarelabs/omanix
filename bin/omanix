@@ -20,6 +20,9 @@ Commands:
   add <pkg>            Add package (routes nixpkgs → brew)
   remove <pkg>         Remove package
   search <pkg>         Search nixpkgs + brew
+  install-app <name>   Install a custom app (downloads .dmg, installs to /Applications)
+  uninstall-app <name> Uninstall a custom app
+  list-apps            List installed custom apps
   store                Open Omanix Store GUI
   ask <prompt>         Ask AI (frontier Claude)
   ask --local <prompt> Ask AI (local Qwen, offline)
@@ -130,6 +133,57 @@ case "${1:-help}" in
     echo "=== homebrew ==="
     brew search "$1" 2>/dev/null || echo "(brew not available)"
     brew search --cask "$1" 2>/dev/null || true
+    ;;
+
+  install-app)
+    shift
+    if [[ -z "${1:-}" ]]; then
+      echo "Usage: omanix install-app <name>" >&2
+      echo "Available apps: antigravity-ide, mkplayer, tiny-clips, voicebox, world-monitor" >&2
+      exit 1
+    fi
+    SCRIPT="$HOME/.local/bin/install-$1"
+    if [[ -x "$SCRIPT" ]]; then
+      "$SCRIPT"
+    else
+      echo "Install script not found: $SCRIPT" >&2
+      echo "Make sure omanix.apps.$1.enable = true in configuration.nix and rebuild" >&2
+      exit 1
+    fi
+    ;;
+
+  uninstall-app)
+    shift
+    if [[ -z "${1:-}" ]]; then
+      echo "Usage: omanix uninstall-app <name>" >&2
+      exit 1
+    fi
+    SCRIPT="$HOME/.local/bin/uninstall-$1"
+    if [[ -x "$SCRIPT" ]]; then
+      "$SCRIPT"
+    else
+      echo "Uninstall script not found: $SCRIPT" >&2
+      exit 1
+    fi
+    ;;
+
+  list-apps)
+    echo "Installed custom apps in /Applications:"
+    for app in "$HOME/.local/bin/install-"*; do
+      [[ -f "$app" ]] || continue
+      name=$(basename "$app" | sed 's/^install-//')
+      APP_PATH="/Applications/${name}.app"
+      # Try common name variations
+      if [[ ! -d "$APP_PATH" ]]; then
+        # Try title case
+        APP_PATH="/Applications/$(echo "$name" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1' | sed 's/ //g').app"
+      fi
+      if [[ -d "$APP_PATH" ]]; then
+        echo "  ✓ $name"
+      else
+        echo "  ○ $name (not installed)"
+      fi
+    done
     ;;
 
   store)

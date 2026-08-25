@@ -1,54 +1,47 @@
-# modules/apps/custom.nix — install apps not in Homebrew
-# Handles Antigravity, MKPlayer, Tiny Clips, Voicebox, World Monitor
-# These apps aren't brew casks — we download .dmg and install to /Applications
+# modules/apps/custom.nix — apps not in Homebrew
+# Clean DX: just set enable + url, omanix handles install/uninstall
 { config, lib, pkgs, ... }:
 
 let
   cfg = config.omanix.apps;
   user = config.omanix.user;
+  mkCustomApp = import ../../lib/mkCustomApp.nix { inherit lib pkgs; };
 
-  # App definitions
+  # Define all available custom apps
   apps = {
     "antigravity-ide" = {
       description = "Antigravity IDE (Google Agentic IDE)";
-      defaultUrl = "";
+      url = "";
     };
     "mkplayer" = {
       description = "MKPlayer (media player like VLC)";
-      defaultUrl = "";
+      url = "";
     };
     "tiny-clips" = {
       description = "Tiny Clips (video clips)";
-      defaultUrl = "";
+      url = "";
     };
     "voicebox" = {
       description = "Voicebox (voice/audio)";
-      defaultUrl = "";
+      url = "";
     };
     "world-monitor" = {
       description = "World Monitor (system monitoring)";
-      defaultUrl = "";
+      url = "";
     };
   };
 
-  # Create install script for an app
-  mkInstallScript = appName: appDesc: url: ''
-    #!/bin/bash
-    # Install ${appDesc}
-    if [ -z "${url}" ]; then
-      echo "ERROR: No download URL configured for ${appName}"
-      echo "Set omanix.apps.${appName}.url in configuration.nix"
-      exit 1
-    fi
-    echo "Installing ${appDesc}..."
-    curl -L -o /tmp/${appName}.dmg "${url}"
-    hdiutil attach /tmp/${appName}.dmg -mountpoint /tmp/${appName}-mnt -nobrowse -quiet
-    cp -R /tmp/${appName}-mnt/*.app /Applications/ 2>/dev/null || \
-      cp -R /tmp/${appName}-mnt/*/*.app /Applications/ 2>/dev/null
-    hdiutil detach /tmp/${appName}-mnt -quiet
-    rm /tmp/${appName}.dmg
-    echo "${appDesc} installed to /Applications/"
-  '';
+  # Filter to only enabled apps
+  enabledApps = lib.filterAttrs (name: _: cfg.${name}.enable) apps;
+
+  # Generate install/uninstall files for each enabled app
+  appFiles = lib.concatMapAttrs (name: app:
+    let result = mkCustomApp {
+      inherit name;
+      inherit (app) description url;
+    };
+    in result.installFile
+  ) enabledApps;
 
 in {
   options.omanix.apps = lib.mapAttrs' (name: app:
@@ -56,19 +49,13 @@ in {
       enable = lib.mkEnableOption app.description;
       url = lib.mkOption {
         type = lib.types.str;
-        default = app.defaultUrl;
-        description = "Download URL for ${app.description} .dmg";
+        default = app.url;
+        description = "Download URL for ${app.description}";
       };
     }
   ) apps;
 
   config = {
-    # Create install scripts for each enabled app
-    home-manager.users.${user}.home.file = lib.mapAttrs' (name: app:
-      lib.nameValuePair ".local/bin/install-${name}" {
-        text = mkInstallScript name app.description cfg.${name}.url;
-        executable = true;
-      }
-    ) (lib.filterAttrs (name: _: cfg.${name}.enable) apps);
+    home-manager.users.${user}.home.file = appFiles;
   };
 }
