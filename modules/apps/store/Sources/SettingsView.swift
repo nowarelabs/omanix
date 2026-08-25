@@ -126,7 +126,7 @@ struct SettingsView: View {
                 let process = Process()
                 process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
                 process.arguments = ["omanix", "rebuild", "--rollback"]
-                process.run()
+                try process.run()
                 process.waitUntilExit()
                 store.successMessage = "Rolled back successfully"
             } catch {
@@ -141,7 +141,7 @@ struct SettingsView: View {
                 let process = Process()
                 process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
                 process.arguments = ["omanix", "update"]
-                process.run()
+                try process.run()
                 process.waitUntilExit()
                 store.successMessage = "Flake updated successfully"
             } catch {

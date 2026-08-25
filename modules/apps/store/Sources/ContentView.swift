@@ -20,7 +20,7 @@ struct ContentView: View {
         NavigationSplitView {
             List(SidebarTab.allCases, id: \.self, selection: $selectedTab) { tab in
                 Label(tab.rawValue, systemImage: iconName(for: tab))
-                    .badge(badgeCount(for: tab))
+                    .badge(badgeText(for: tab))
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 200)
         } detail: {
@@ -58,11 +58,11 @@ struct ContentView: View {
         }
     }
 
-    func badgeCount(for tab: SidebarTab) -> Int? {
+    func badgeText(for tab: SidebarTab) -> String? {
         switch tab {
         case .installed:
             let count = store.installedPackages.count
-            return count > 0 ? count : nil
+            return count > 0 ? "\(count)" : nil
         default:
             return nil
         }

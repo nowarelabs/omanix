@@ -251,7 +251,7 @@ class StoreViewModel: ObservableObject {
         process.standardOutput = pipe
         process.standardError = pipe
 
-        process.run()
+        try process.run()
         process.waitUntilExit()
 
         let data = pipe.fileHandleForReading.readDataToEndOfFile()

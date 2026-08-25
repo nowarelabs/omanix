@@ -18,8 +18,9 @@ in {
         STORE_DIR="$HOME/.omanix-store"
         mkdir -p "$STORE_DIR"
 
-        # Copy source files
+        # Copy source files and Info.plist
         cp -R ${store-src}/Sources "$STORE_DIR/"
+        cp ${store-src}/Info.plist "$STORE_DIR/" 2>/dev/null || true
 
         # Build with system Swift (use full path for sudo environment)
         XCRUN="/usr/bin/xcrun"
@@ -33,33 +34,38 @@ in {
             -o "/Applications/Omanix Store.app/Contents/MacOS/Omanix Store" \
             "$STORE_DIR/Sources/"*.swift
 
-          # Create Info.plist
-          cat > "/Applications/Omanix Store.app/Contents/Info.plist" << 'PLIST'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>CFBundleExecutable</key>
-            <string>Omanix Store</string>
-            <key>CFBundleIdentifier</key>
-            <string>dev.omanix.store</string>
-            <key>CFBundleName</key>
-            <string>Omanix Store</string>
-            <key>CFBundleDisplayName</key>
-            <string>Omanix Store</string>
-            <key>CFBundleVersion</key>
-            <string>0.1.0</string>
-            <key>CFBundleShortVersionString</key>
-            <string>0.1.0</string>
-            <key>CFBundlePackageType</key>
-            <string>APPL</string>
-            <key>LSMinimumSystemVersion</key>
-            <string>13.0</string>
-            <key>NSHighResolutionCapable</key>
-            <true/>
-          </dict>
-          </plist>
-          PLIST
+          # Copy Info.plist
+          if [[ -f "$STORE_DIR/Info.plist" ]]; then
+            cp "$STORE_DIR/Info.plist" "/Applications/Omanix Store.app/Contents/Info.plist"
+          else
+            # Create Info.plist if not present
+            cat > "/Applications/Omanix Store.app/Contents/Info.plist" << 'PLIST'
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            <dict>
+              <key>CFBundleExecutable</key>
+              <string>Omanix Store</string>
+              <key>CFBundleIdentifier</key>
+              <string>dev.omanix.store</string>
+              <key>CFBundleName</key>
+              <string>Omanix Store</string>
+              <key>CFBundleDisplayName</key>
+              <string>Omanix Store</string>
+              <key>CFBundleVersion</key>
+              <string>0.1.0</string>
+              <key>CFBundleShortVersionString</key>
+              <string>0.1.0</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>LSMinimumSystemVersion</key>
+              <string>13.0</string>
+              <key>NSHighResolutionCapable</key>
+              <true/>
+            </dict>
+            </plist>
+            PLIST
+          fi
 
           echo "Omanix Store built successfully"
         else

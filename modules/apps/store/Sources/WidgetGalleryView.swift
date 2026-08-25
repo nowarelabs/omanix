@@ -70,7 +70,7 @@ struct WidgetCard: View {
             HStack {
                 Image(systemName: widget.icon)
                     .font(.title2)
-                    .foregroundStyle(widget.isEnabled ? .accentColor : .secondary)
+                    .foregroundStyle(widget.isEnabled ? Color.accentColor : .secondary)
                 Spacer()
                 Toggle("", isOn: Binding(
                     get: { widget.isEnabled },
