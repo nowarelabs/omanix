@@ -56,7 +56,7 @@ class StoreViewModel: ObservableObject {
         var results: [PackageItem] = []
         let queryLower = query.lowercased()
 
-        // 1. Filter declared packages (instant, local)
+        // 1. Filter declared packages (instant, local match)
         for pkg in declaredPackages {
             if pkg.name.lowercased().contains(queryLower) ||
                pkg.description.lowercased().contains(queryLower) {
@@ -69,14 +69,20 @@ class StoreViewModel: ObservableObject {
             }
         }
 
-        // 2. Search nixpkgs
-        do {
-            let nixResults = try await runCommandWithTimeout(
-                "nix", ["search", "nixpkgs", query, "--json"], timeout: 15.0
-            )
-            if let data = nixResults.data(using: .utf8),
-               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                for (name, info) in json {
+        // 2. Search nixpkgs — separate stdout (JSON) from stderr (progress)
+        //    nix search outputs "evaluating..." to stderr and JSON to stdout.
+        //    We redirect stderr to /dev/null so only clean JSON comes through.
+        if let nixPath = findExecutable("nix") {
+            do {
+                let json = try await runJSONCommand(
+                    nixPath, ["search", "nixpkgs", query, "--json"],
+                    timeout: 20.0
+                )
+                for (fullName, info) in json {
+                    // nix returns keys like "legacyPackages.aarch64-darwin.ripgrep"
+                    // Strip the prefix to get the actual package name
+                    let name = extractNixPackageName(fullName)
+                    if name.isEmpty { continue }
                     if results.contains(where: { $0.name == name }) { continue }
                     if let details = info as? [String: Any],
                        let description = details["description"] as? String {
@@ -88,51 +94,110 @@ class StoreViewModel: ObservableObject {
                         ))
                     }
                 }
+            } catch {
+                // nix search failed — continue with other sources
             }
-        } catch { }
+        }
 
-        // 3. Search Homebrew formulas
-        do {
-            let brewResults = try await runCommandWithTimeout(
-                "brew", ["search", query], timeout: 10.0
-            )
-            let brewPackages = brewResults.components(separatedBy: "\n")
-                .filter { !$0.isEmpty && !$0.hasPrefix("==>") && !$0.hasPrefix("==" ) }
-            for name in brewPackages {
-                let trimmed = name.trimmingCharacters(in: .whitespaces)
-                if trimmed.isEmpty { continue }
-                if results.contains(where: { $0.name == trimmed }) { continue }
-                results.append(PackageItem(
-                    name: trimmed,
-                    description: "Homebrew formula",
-                    source: .homebrewBrew,
-                    isInstalled: installedPackages.contains(trimmed)
-                ))
+        // 3. Search Homebrew formulas + casks (parallel)
+        if let brewPath = findExecutable("brew") {
+            // Formulas
+            if let formulaResults = try? await searchBrew(brewPath, query: query, cask: false) {
+                for name in formulaResults {
+                    if results.contains(where: { $0.name == name }) { continue }
+                    results.append(PackageItem(
+                        name: name,
+                        description: "Homebrew formula",
+                        source: .homebrewBrew,
+                        isInstalled: installedPackages.contains(name)
+                    ))
+                }
             }
-        } catch { }
 
-        // 4. Search Homebrew casks
-        do {
-            let caskResults = try await runCommandWithTimeout(
-                "brew", ["search", "--cask", query], timeout: 10.0
-            )
-            let caskPackages = caskResults.components(separatedBy: "\n")
-                .filter { !$0.isEmpty && !$0.hasPrefix("==>") && !$0.hasPrefix("==" ) }
-            for name in caskPackages {
-                let trimmed = name.trimmingCharacters(in: .whitespaces)
-                if trimmed.isEmpty { continue }
-                if results.contains(where: { $0.name == trimmed }) { continue }
-                results.append(PackageItem(
-                    name: trimmed,
-                    description: "Homebrew cask",
-                    source: .homebrewCask,
-                    isInstalled: installedPackages.contains(trimmed)
-                ))
+            // Casks
+            if let caskResults = try? await searchBrew(brewPath, query: query, cask: true) {
+                for name in caskResults {
+                    if results.contains(where: { $0.name == name }) { continue }
+                    results.append(PackageItem(
+                        name: name,
+                        description: "Homebrew cask",
+                        source: .homebrewCask,
+                        isInstalled: installedPackages.contains(name)
+                    ))
+                }
             }
-        } catch { }
+        }
 
         packages = results
         isLoading = false
+    }
+
+    // MARK: - Search Helpers
+
+    private func searchBrew(_ brewPath: String, query: String, cask: Bool) async throws -> [String] {
+        var args = ["search", query]
+        if cask { args = ["search", "--cask", query] }
+        let output = try await runCommandWithTimeout(brewPath, args, timeout: 10.0)
+        return output.components(separatedBy: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && !$0.hasPrefix("==>") && !$0.hasPrefix("==") }
+    }
+
+    /// Find an executable on PATH (returns nil if not found, never throws)
+    private func findExecutable(_ name: String) -> String? {
+        let task = Process()
+        let pipe = Pipe()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        task.arguments = ["which", name]
+        task.standardOutput = pipe
+        task.standardError = FileHandle.nullDevice
+        try? task.run()
+        task.waitUntilExit()
+        guard task.terminationStatus == 0 else { return nil }
+        let path = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return (path?.isEmpty == true) ? nil : path
+    }
+
+    /// Run a command and parse its stdout as JSON, discarding stderr entirely.
+    /// This is critical for `nix search --json` which sends progress noise to stderr.
+    private func runJSONCommand(
+        _ path: String, _ arguments: [String], timeout: TimeInterval
+    ) async throws -> [String: Any] {
+        let process = Process()
+        let stdoutPipe = Pipe()
+
+        process.executableURL = URL(fileURLWithPath: path)
+        process.arguments = arguments
+        process.standardOutput = stdoutPipe
+        process.standardError = FileHandle.nullDevice  // discard stderr
+
+        try process.run()
+
+        let deadline = Date().addingTimeInterval(timeout)
+        while process.isRunning && Date() < deadline {
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+
+        if process.isRunning {
+            process.terminate()
+            throw StoreError.commandFailed("nix search timed out")
+        }
+
+        let data = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw StoreError.invalidOutput
+        }
+        return json
+    }
+
+    /// Extract the real package name from a nix search attribute path.
+    /// Input:  "legacyPackages.aarch64-darwin.ripgrep" or "packages.aarch64-darwin.ripgrep"
+    /// Output: "ripgrep"
+    private func extractNixPackageName(_ nixKey: String) -> String {
+        let parts = nixKey.split(separator: ".")
+        // The package name is always the last component
+        return parts.last.map(String.init) ?? nixKey
     }
 
     func installPackage(_ package: PackageItem) async {
@@ -366,42 +431,46 @@ class StoreViewModel: ObservableObject {
         loadDeclaredPackages()
     }
 
-    // MARK: - Helpers
+    // MARK: - Process Helpers
 
     private func runCommand(_ command: String, _ arguments: [String]) async throws -> String {
         let process = Process()
-        let pipe = Pipe()
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
 
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = [command] + arguments
-        process.standardOutput = pipe
-        process.standardError = pipe
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
 
         try process.run()
         process.waitUntilExit()
 
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        let data = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
         guard let output = String(data: data, encoding: .utf8) else {
             throw StoreError.invalidOutput
         }
 
         guard process.terminationStatus == 0 else {
-            throw StoreError.commandFailed(output)
+            let errData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            let errStr = String(data: errData, encoding: .utf8) ?? ""
+            throw StoreError.commandFailed(errStr.isEmpty ? output : errStr)
         }
 
         return output
     }
 
     private func runCommandWithTimeout(
-        _ command: String, _ arguments: [String], timeout: TimeInterval
+        _ path: String, _ arguments: [String], timeout: TimeInterval
     ) async throws -> String {
         let process = Process()
-        let pipe = Pipe()
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
 
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = [command] + arguments
-        process.standardOutput = pipe
-        process.standardError = pipe
+        process.executableURL = URL(fileURLWithPath: path)
+        process.arguments = arguments
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
 
         try process.run()
 
@@ -415,13 +484,15 @@ class StoreViewModel: ObservableObject {
             throw StoreError.commandFailed("Command timed out after \(Int(timeout))s")
         }
 
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        let data = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
         guard let output = String(data: data, encoding: .utf8) else {
             throw StoreError.invalidOutput
         }
 
         guard process.terminationStatus == 0 else {
-            throw StoreError.commandFailed(output)
+            let errData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            let errStr = String(data: errData, encoding: .utf8) ?? ""
+            throw StoreError.commandFailed(errStr.isEmpty ? output : errStr)
         }
 
         return output
