@@ -6,7 +6,7 @@ let
   enabled = config.omanix.widgets.store.enable;
   user = config.omanix.user;
 
-  # Build the SwiftUI app using system Swift (not nix swift)
+  # Build the SwiftUI app using system Swift (requires Xcode CLI tools)
   omanix-store = pkgs.stdenv.mkDerivation {
     pname = "omanix-store";
     version = "0.1.0";
@@ -16,6 +16,16 @@ let
     # Don't use nix swift - use system Swift via xcrun
     dontBuild = true;
     dontFixup = true;
+
+    postPatch = ''
+      # Check for Xcode Command Line Tools
+      if ! command -v xcrun &>/dev/null; then
+        echo "ERROR: Xcode Command Line Tools not found."
+        echo "Install with: xcode-select --install"
+        echo "Then run: omanix rebuild"
+        exit 1
+      fi
+    '';
 
     installPhase = ''
       mkdir -p $out/Applications/Omanix\ Store.app/Contents/MacOS

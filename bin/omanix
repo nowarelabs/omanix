@@ -36,7 +36,35 @@ case "${1:-help}" in
     echo "Omanix Installer"
     echo "================"
     echo ""
-    # Step 1: Check for Nix
+    # Step 1: Check for Xcode Command Line Tools
+    if ! xcode-select -p &>/dev/null; then
+      echo "Xcode Command Line Tools not found."
+      echo "Required for building packages and the Omanix Store."
+      echo ""
+      read -p "Install Xcode Command Line Tools? (y/n) " -n 1 -r
+      echo
+      if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo "Installing Xcode Command Line Tools..."
+        echo "A dialog will appear — click Install and wait for it to finish."
+        xcode-select --install
+        echo ""
+        echo "Press any key after installation completes..."
+        read -n 1 -s
+        # Verify installation
+        if ! xcode-select -p &>/dev/null; then
+          echo "ERROR: Xcode Command Line Tools still not installed."
+          echo "Please install manually: xcode-select --install"
+          exit 1
+        fi
+      else
+        echo "WARNING: Some features may not work without Xcode Command Line Tools."
+        echo "Install later with: xcode-select --install"
+      fi
+    else
+      echo "Xcode Command Line Tools found: $(xcode-select -p)"
+    fi
+    echo ""
+    # Step 2: Check for Nix
     if ! command -v nix &>/dev/null; then
       echo "Nix not found. Installing via Determinate Systems installer..."
       curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --determinate
@@ -44,7 +72,7 @@ case "${1:-help}" in
     else
       echo "Nix found: $(nix --version)"
     fi
-    # Step 2: Clone flake to ~/.config/omanix
+    # Step 3: Clone flake to ~/.config/omanix
     TARGET="$HOME/.config/omanix"
     if [[ -d "$TARGET" ]]; then
       echo "Omanix already installed at $TARGET"
