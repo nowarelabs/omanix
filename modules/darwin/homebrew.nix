@@ -8,7 +8,32 @@
       cleanup = "uninstall"; # pristine: remove casks we added
     };
     taps = [ "anomalyco/tap" ];
-    brews = []; # not in nixpkgs: <reason>
-    casks = []; # not in nixpkgs: <reason>
+    brews = [
+      "ta-lib"
+      "ffmpeg"
+      "portaudio"
+      "ripgrep"
+      "opencode"
+    ];
+    casks = [
+      "google-chrome"
+      "visual-studio-code"
+      "slack"
+      "caffeine"
+      "postico"
+      "github"
+      "postman"
+      "microsoft-teams"
+      "zoom"
+      "orbstack"
+      "wkhtmltopdf"
+      "chromium"
+      "sublime-text"
+      "mongodb-compass"
+      "intellij-idea"
+    ];
+    masApps = {
+      # amphetamine = 937984704;
+    };
   };
 }

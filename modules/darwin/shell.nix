@@ -1,0 +1,95 @@
+# modules/darwin/shell.nix — zsh config (from config/home.nix:32-126)
+{ config, pkgs, ... }: {
+  home-manager.users.${config.omanix.user} = {
+    programs.zsh = {
+      enable = true;
+      initContent = ''
+        plugins=(git direnv)
+
+        export PATH=/run/current-system/sw/bin:$HOME/.nix-profile/bin:$HOME/.local/bin:$PATH
+        if [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then
+          . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'
+        fi
+
+        # Omanix aliases
+        alias osrebuild='sudo darwin-rebuild switch --flake ~/.config/omanix'
+        alias osconfig='code ~/.config/omanix'
+        alias osclear='nix-collect-garbage -d'
+        alias osupgrade='sudo -i nix upgrade-nix'
+
+        # direnv
+        alias allow='direnv allow'
+
+        # Ollama
+        alias ollama:start='sudo launchctl load /Library/LaunchDaemons/ollama.plist'
+        alias ollama:stop='sudo launchctl unload /Library/LaunchDaemons/ollama.plist'
+        alias ollama:open='open -a "Google Chrome" http://localhost:11434'
+
+        # Mailhog
+        alias mailhog:start='sudo launchctl load /Library/LaunchDaemons/mailhog.plist'
+        alias mailhog:stop='sudo launchctl unload /Library/LaunchDaemons/mailhog.plist'
+        alias mailhog:open='open -a "Google Chrome" http://localhost:8025'
+
+        # WiFi
+        alias wifi:password='security find-generic-password -wa "MotherLAN"'
+
+        # Git
+        alias git:lithium='function _gitl() { git clone git@github.com-lithium:lithiumtech/$1.git; }; _gitl'
+
+        # Mac sleep fix
+        alias fixsleep='sudo pmset -a hibernatemode 0 && sudo pmset -a standby 0 && sudo pmset -a autopoweroff 0 && echo "Sleep fix applied"'
+        alias unfixsleep='sudo pmset -a hibernatemode 3 && sudo pmset -a standby 1 && sudo pmset -a autopoweroff 1 && echo "Sleep settings restored"'
+        alias checksleep='pmset -g'
+
+        # Java
+        export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+
+        # AWS
+        export AWS_DEFAULT_REGION=eu-west-1
+
+        # NPM
+        export PATH="$PATH:$HOME/.npm-packages/bin"
+
+        # Flutter
+        export PATH=$HOME/Code/flutter/bin:$PATH
+
+        # Node modules
+        export PATH="$HOME/Code/node_modules/.bin:$PATH"
+
+        # Local bin
+        export PATH="$HOME/.local/bin:$PATH"
+
+        # Vite+
+        . "$HOME/.vite-plus/env" 2>/dev/null || true
+
+        # Jump host function
+        function jumphost() {
+            if [[ -z "$1" ]]; then
+              echo "Usage: jumphost <configName>. Example: jumphost lithosphere.prod"
+              return
+            fi
+            hostname=$(curl -s "https://repo.sj.lithium.com/config/value?key=rc.jumphost&name=$1" | jq -r '.value')
+            if [[ "$hostname" == "null" ]]; then
+              echo "No compatible jump host found for specified configName."
+              return
+            fi
+            ssh $hostname
+        }
+
+        # Prompts
+        eval "$(starship init zsh)"
+        eval "$(direnv hook zsh)"
+      '';
+    };
+
+    programs.direnv = {
+      enable = true;
+      silent = false;
+      package = pkgs.direnv;
+      nix-direnv = {
+        enable = true;
+        package = pkgs.nix-direnv;
+      };
+    };
+  };
+}

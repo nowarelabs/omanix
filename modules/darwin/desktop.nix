@@ -1,6 +1,5 @@
 # modules/darwin/desktop.nix — AeroSpace tiling + SketchyBar (mac-only)
-# Phase 03 stub — will be fleshed out with real AeroSpace/SketchyBar config
-# See conventions.md:3 for Hyprland → AeroSpace mapping
+# AeroSpace requires Accessibility permission — activation script guides user
 { config, lib, pkgs, ... }:
 let
   themed = import ../../lib/themed.nix { inherit lib; };
@@ -9,18 +8,30 @@ in {
   # AeroSpace tiling window manager
   services.aerospace = {
     enable = true;
-    # TODO: Phase 03 — AeroSpace config from hypr-to-aerospace.nix mapping
-    # settings = { ... };
   };
 
   # SketchyBar status bar
   services.sketchybar = {
     enable = true;
-    # TODO: Phase 03 — SketchyBar config from themed.nix rendering
-    # config = { ... };
   };
 
-  # Theme-colored config files (rendered at build time)
-  # xdg.configFile."aerospace/aerospace.toml".source = themed.renderTemplateFile colors "aerospace.toml" ../../default/themed/aerospace.toml.tpl;
-  # xdg.configFile."sketchybar/sketchybarrc".source = ...;
+  # Activation script: check Accessibility permission and guide user
+  system.activationScripts.postActivation.text = ''
+    # Check if AeroSpace has Accessibility permission
+    if ! /opt/homebrew/bin/aerospace --version >/dev/null 2>&1; then
+      echo "AeroSpace installed but may need Accessibility permission."
+    fi
+
+    # Auto-open System Settings > Privacy > Accessibility on first switch
+    if [ ! -f /tmp/.omanix-aerospace-permissions-checked ]; then
+      echo ""
+      echo "┌─────────────────────────────────────────────────────────┐"
+      echo "│  AeroSpace needs Accessibility permission.             │"
+      echo "│  Opening System Settings for you...                    │"
+      echo "│  Click + and add AeroSpace, then close this window.    │"
+      echo "└─────────────────────────────────────────────────────────┘"
+      open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+      touch /tmp/.omanix-aerospace-permissions-checked
+    fi
+  '';
 }

@@ -35,6 +35,10 @@
           ./modules/darwin/home-manager.nix # home-manager integration
           ./modules/darwin/homebrew.nix  # Homebrew (pristine, declarative)
           ./modules/darwin/desktop.nix   # AeroSpace + SketchyBar (mac-only)
+          ./modules/darwin/packages.nix  # system packages
+          ./modules/darwin/services.nix  # redis, postgresql
+          ./modules/darwin/env.nix       # environment variables
+          ./modules/darwin/shell.nix     # zsh config, aliases, direnv
           # Widgets
           ./modules/widgets/options.nix  # omanix.widgets.*.enable
           ./modules/widgets/pomodoro.nix # pomodoro timer widget
