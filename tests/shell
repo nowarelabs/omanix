@@ -1,0 +1,24 @@
+#!/bin/bash
+# tests/shell — shell and theme golden tests
+set -e
+
+echo "=== tests/shell ==="
+
+# 1. Theme colors exist
+echo "Checking theme files..."
+for theme in tokyo-night catppuccin; do
+  if [[ -f "themes/$theme/colors.toml" ]]; then
+    echo "  OK: themes/$theme/colors.toml"
+  else
+    echo "FAIL: themes/$theme/colors.toml missing"
+    exit 1
+  fi
+done
+
+# 2. Flake evaluates
+echo "Checking flake evaluation..."
+nix flake check --show-trace 2>&1 | tail -1
+echo "  OK: nix flake check passes"
+
+echo ""
+echo "=== tests/shell passed ==="

@@ -1,0 +1,131 @@
+#!/bin/bash
+# bin/omanix — the one command for Omanix
+# install | rebuild | rebuild --preview | generations | add | remove | search | store | ask
+set -e
+
+FLAKE_DIR="${FLAKE_DIR:-$HOME/.config/omanix}"
+HOST="${HOST:-$(scutil --get LocalHostName 2>/dev/null || echo "Vances-MacBook-Pro")}"
+
+usage() {
+  cat <<EOF
+Usage: omanix <command> [options]
+
+Commands:
+  install              Install Omanix on this Mac (clones flake, prompts host/user)
+  rebuild              Rebuild system (darwin-rebuild switch)
+  rebuild --rollback   Undo last build
+  rebuild --preview    Build impure overlay preview (no generation)
+  generations          List previous system generations
+  update               nix flake update + rebuild
+  add <pkg>            Add package (routes nixpkgs → brew)
+  remove <pkg>         Remove package
+  search <pkg>         Search nixpkgs + brew
+  store                Open Omanix Store GUI
+  ask <prompt>         Ask AI (frontier Claude)
+  ask --local <prompt> Ask AI (local Qwen, offline)
+  version              Print version
+  help                 Show this help
+EOF
+}
+
+case "${1:-help}" in
+  install)
+    echo "Omanix installer"
+    echo "TODO: Phase 08 — curl determinate Nix, git clone, prompt host/user, rebuild"
+    ;;
+
+  rebuild)
+    shift
+    if [[ "${1:-}" == "--rollback" ]]; then
+      echo "Rolling back to previous generation..."
+      sudo darwin-rebuild --rollback
+    elif [[ "${1:-}" == "--preview" ]]; then
+      echo "Building impure overlay preview..."
+      sudo darwin-rebuild switch --flake "$FLAKE_DIR#$HOST" --impure --show-trace
+      # Hot-reload IPC
+      sketchybar --reload 2>/dev/null || true
+      aerospace reload-config 2>/dev/null || true
+    else
+      echo "Rebuilding system..."
+      sudo darwin-rebuild switch --flake "$FLAKE_DIR#$HOST" --show-trace
+      # Hot-reload IPC
+      sketchybar --reload 2>/dev/null || true
+      aerospace reload-config 2>/dev/null || true
+    fi
+    ;;
+
+  generations)
+    darwin-rebuild --list-generations
+    ;;
+
+  update)
+    echo "Updating flake inputs..."
+    nix flake update "$FLAKE_DIR"
+    omanix rebuild
+    ;;
+
+  add)
+    shift
+    if [[ -z "${1:-}" ]]; then
+      echo "Usage: omanix add <package>" >&2
+      exit 1
+    fi
+    "$(dirname "$0")/../lib/omanix-add.sh" "$@"
+    ;;
+
+  remove)
+    shift
+    if [[ -z "${1:-}" ]]; then
+      echo "Usage: omanix remove <package>" >&2
+      exit 1
+    fi
+    "$(dirname "$0")/../lib/omanix-remove.sh" "$@"
+    ;;
+
+  search)
+    shift
+    if [[ -z "${1:-}" ]]; then
+      echo "Usage: omanix search <package>" >&2
+      exit 1
+    fi
+    echo "=== nixpkgs ==="
+    nix search nixpkgs "$1" 2>/dev/null || echo "(no results)"
+    echo ""
+    echo "=== homebrew ==="
+    brew search "$1" 2>/dev/null || echo "(brew not available)"
+    brew search --cask "$1" 2>/dev/null || true
+    ;;
+
+  store)
+    open -a "Omanix Store" 2>/dev/null || echo "Store not enabled — set omanix.widgets.store.enable = true and rebuild"
+    ;;
+
+  ask)
+    shift
+    if [[ "${1:-}" == "--local" ]]; then
+      shift
+      echo "Asking local Qwen..."
+      # TODO: Phase 07 — ollama run qwen2.5:7b --skill skills/omanix/mini-SKILL.md -- "$@"
+      echo "Local AI not yet configured. Run 'omanix setup local-ai' first."
+    else
+      echo "Asking frontier Claude..."
+      # TODO: Phase 07 — claude --skill skills/omanix/SKILL.md -- "$@"
+      echo "Frontier AI not yet configured."
+    fi
+    ;;
+
+  version)
+    echo "Omanix $(cat "$(dirname "$0")/../version" 2>/dev/null || echo "dev")"
+    echo "nixpkgs: 917fec990948658ef1ccd07cef2a1ef060786846"
+    ;;
+
+  help|--help|-h|"")
+    usage
+    ;;
+
+  *)
+    echo "Unknown command: $1" >&2
+    usage >&2
+    exit 1
+    ;;
+esac

@@ -1,0 +1,29 @@
+name: Omanix CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    strategy:
+      matrix:
+        os: [macos-14, macos-13]  # aarch64, x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@v14
+
+      - uses: DeterminateSystems/magic-nix-cache-action@v8
+
+      - name: Flake check
+        run: nix flake check --show-trace
+
+      - name: CLI tests
+        run: ./tests/cli
+
+      - name: Shell tests
+        run: ./tests/shell

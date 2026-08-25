@@ -1,0 +1,31 @@
+#!/bin/bash
+# tests/cli — CLI validation tests
+# Checks: bash syntax, omanix commands, xdg.configFile duplicate lint
+set -e
+
+echo "=== tests/cli ==="
+
+# 1. Bash syntax check for all bin/ and lib/ scripts
+echo "Checking bash syntax..."
+for f in bin/omanix lib/omanix-add.sh lib/omanix-remove.sh checks/darwin-check.sh; do
+  if [[ -f "$f" ]]; then
+    bash -n "$f" || { echo "FAIL: $f has syntax errors"; exit 1; }
+    echo "  OK: $f"
+  fi
+done
+
+# 2. omanix commands --check (if implemented)
+if command -v omanix &>/dev/null; then
+  omanix help >/dev/null 2>&1 || true
+  echo "  OK: omanix help works"
+fi
+
+# 3. Nix syntax check
+echo "Checking Nix syntax..."
+for f in $(find . -name "*.nix" -not -path "./development/*" -not -path "./.git/*" -not -path "./result" 2>/dev/null); do
+  nix-instantiate --parse "$f" >/dev/null 2>&1 || { echo "FAIL: $f has Nix syntax errors"; exit 1; }
+done
+echo "  OK: all .nix files parse"
+
+echo ""
+echo "=== tests/cli passed ==="

@@ -1,0 +1,66 @@
+{
+  description = "Omanix — declarative desktop for Mac (and future Linux)";
+
+  inputs = {
+    # The package catalog. Pin a rev, not `nixos-unstable`. Comment where the rev came from.
+    nixpkgs.url = "github:NixOS/nixpkgs/917fec990948658ef1ccd07cef2a1ef060786846"; # from config/flake.nix:5, 2026-08
+
+    # The macOS module system. Must follow nixpkgs or overlay skew breaks.
+    nix-darwin.url = "github:LnL7/nix-darwin/52d061516108769656a8bd9c6e811c677ec5b462";
+    nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+
+    # The home module system. Same follows.
+    home-manager.url = "github:nix-community/home-manager/27b93804fbef1544cb07718d3f0a451f4c4cd6c0";
+    home-manager.inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs = inputs@{ self, nixpkgs, nix-darwin, home-manager }:
+    let
+      lib = import ./lib/mkSystem.nix { inherit inputs; };
+    in {
+      # The host the green user edits in `configuration.nix`:
+      darwinConfigurations."Vances-MacBook-Pro" = lib.mkSystem {
+        system = "aarch64-darwin"; # from inventory.json, Apple M1 Pro
+        modules = [
+          # Core (shared mac+linux)
+          ./modules/core/options.nix  # typed omanix.* options (host, user, theme)
+          ./modules/core/nix.nix      # nix daemon, experimental features, revision
+          ./modules/core/fonts.nix    # shared fonts
+          # Theme
+          ./modules/theme/options.nix # omanix.theme enum, omanix.bar.*
+          # Darwin-only
+          ./modules/darwin/system.nix # system.defaults (dock, finder, loginwindow)
+          ./modules/darwin/pam.nix    # Touch ID, primary user, users.users
+          ./modules/darwin/activation.nix # preActivation scripts (postgresql dir)
+          ./modules/darwin/home-manager.nix # home-manager integration
+          ./modules/darwin/homebrew.nix  # Homebrew (pristine, declarative)
+          ./modules/darwin/desktop.nix   # AeroSpace + SketchyBar (mac-only)
+          # Widgets
+          ./modules/widgets/options.nix  # omanix.widgets.*.enable
+          ./modules/widgets/pomodoro.nix # pomodoro timer widget
+          ./modules/widgets/clock.nix    # clock widget
+          # Apps
+          ./modules/apps/store/default.nix # Omanix Store GUI (enabled by default)
+          # Services
+          ./modules/services/ollama.nix  # Ollama daemon for local AI (opt-in)
+          # The file you edit
+          ./configuration.nix
+          # Host-specific overrides
+          ./hosts/my-mac/default.nix
+        ];
+      };
+
+      # Future: second Mac — same file, different host overlay
+      # darwinConfigurations."work-mac" = lib.mkSystem {
+      #   system = "x86_64-darwin";
+      #   modules = [ ./configuration.nix ./hosts/work-mac/default.nix ];
+      # };
+
+      # Future: nixosConfigurations."my-linux" = lib.mkSystem { system = "x86_64-linux"; ... };
+
+      # For `nix develop` and CI
+      devShells.aarch64-darwin.default = import ./shell.nix { inherit inputs; };
+
+      checks.aarch64-darwin.default = import ./checks/darwin-check.nix { inherit inputs; };
+    };
+}
