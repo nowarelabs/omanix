@@ -4,13 +4,27 @@ import SwiftUI
 
 @main
 struct OmanixStoreApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var store = StoreViewModel()
 
-    init() {
-        // Load theme colors
-        let theme = OmanixTheme.load()
-        OmanixTheme.apply(theme)
+    var body: some Scene {
+        WindowGroup {
+            ContentView(store: store)
+                .environmentObject(store)
+                .environment(\.omanixTheme, OmanixTheme.load())
+                .preferredColorScheme(.dark)
+        }
+        .windowStyle(.titleBar)
+        .windowToolbarStyle(.unified)
+        .defaultSize(width: 1000, height: 700)
+        .commands {
+            CommandGroup(replacing: .newItem) { }
+        }
+    }
+}
 
+class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
         // Set app icon from known path
         let possiblePaths = [
             NSHomeDirectory() + "/.omanix-store/icon.png",
@@ -23,20 +37,6 @@ struct OmanixStoreApp: App {
                 NSApp.applicationIconImage = icon
                 break
             }
-        }
-    }
-
-    var body: some Scene {
-        WindowGroup {
-            ContentView(store: store)
-                .environmentObject(store)
-                .environment(\.omanixTheme, OmanixTheme.load())
-        }
-        .windowStyle(.titleBar)
-        .windowToolbarStyle(.unified)
-        .defaultSize(width: 1000, height: 700)
-        .commands {
-            CommandGroup(replacing: .newItem) { }
         }
     }
 }
@@ -80,8 +80,7 @@ struct OmanixTheme {
     }
 
     static func apply(_ theme: OmanixTheme) {
-        // Force dark appearance for the app
-        NSApp.appearance = NSAppearance(named: .darkAqua)
+        // Handled by .preferredColorScheme(.dark) in the View
     }
 }
 
