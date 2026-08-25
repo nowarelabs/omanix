@@ -224,7 +224,7 @@ class StoreViewModel: ObservableObject {
         // Read from configuration.nix or run `omanix list-apps`
         Task {
             do {
-                _ = try await runCommand("omanix", ["list-apps"])
+                let output = try await runCommand("omanix", ["list-apps"])
                 // Parse output and populate installedPackages
                 let lines = output.components(separatedBy: "\n")
                 for line in lines {
