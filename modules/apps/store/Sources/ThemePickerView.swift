@@ -1,54 +1,54 @@
 // modules/apps/store/Sources/ThemePickerView.swift
-// Omanix Store — theme picker with live preview
+// Omanix — theme picker with live preview
 import SwiftUI
 
 struct ThemePickerView: View {
     @ObservedObject var store: StoreViewModel
+    @Environment(\.omanixTheme) var theme
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             HStack {
                 VStack(alignment: .leading) {
                     Text("Theme Picker")
                         .font(.title2)
                         .fontWeight(.semibold)
+                        .foregroundColor(theme.text)
                     Text("Select a theme for your desktop")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(theme.secondaryText)
                 }
                 Spacer()
             }
             .padding()
 
-            // Theme grid
             ScrollView {
                 LazyVGrid(columns: [
                     GridItem(.adaptive(minimum: 280, maximum: 400))
                 ], spacing: 16) {
-                    ForEach(store.themes) { theme in
-                        ThemeCard(theme: theme, isSelected: store.currentTheme == theme.id) {
-                            store.selectTheme(theme)
+                    ForEach(store.themes) { t in
+                        ThemeCard(theme: t, isSelected: store.currentTheme == t.id) {
+                            store.selectTheme(t)
                         }
                     }
                 }
                 .padding()
             }
+            .background(theme.background)
 
-            // Status bar
             HStack {
                 if let error = store.errorMessage {
                     Label(error, systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
+                        .foregroundColor(.red)
                         .font(.caption)
                 } else if let success = store.successMessage {
                     Label(success, systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                        .foregroundColor(.green)
                         .font(.caption)
                 } else {
                     Text("Current: \(store.currentTheme)")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(theme.secondaryText)
                 }
                 Spacer()
                 Button("Rebuild System") {
@@ -56,9 +56,10 @@ struct ThemePickerView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                .tint(theme.accent)
             }
             .padding()
-            .background(.bar)
+            .background(theme.surface)
         }
     }
 }
@@ -67,11 +68,11 @@ struct ThemeCard: View {
     let theme: ThemeItem
     let isSelected: Bool
     let onSelect: () -> Void
+    @Environment(\.omanixTheme) var appTheme
 
     var body: some View {
         Button(action: onSelect) {
             VStack(spacing: 0) {
-                // Color preview
                 HStack(spacing: 0) {
                     colorBlock(theme.colors[.background] ?? .gray, label: "BG")
                     colorBlock(theme.colors[.surface] ?? .gray, label: "Surface")
@@ -80,29 +81,28 @@ struct ThemeCard: View {
                 }
                 .clipShape(UnevenRoundedRectangle(topLeadingRadius: 12, topTrailingRadius: 12))
 
-                // Theme info
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(theme.name)
                             .font(.headline)
-                            .foregroundStyle(.primary)
+                            .foregroundColor(appTheme.text)
                         Text(theme.id)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundColor(appTheme.secondaryText)
                     }
                     Spacer()
                     if isSelected {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
+                            .foregroundColor(.green)
                     }
                 }
                 .padding()
             }
-            .background(.quaternary.opacity(0.3))
+            .background(appTheme.surface)
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? Color.accentColor : .clear, lineWidth: 2)
+                    .stroke(isSelected ? appTheme.accent : .clear, lineWidth: 2)
             )
         }
         .buttonStyle(.plain)
@@ -113,7 +113,7 @@ struct ThemeCard: View {
             Spacer()
             Text(label)
                 .font(.caption2)
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundColor(.white.opacity(0.8))
             Spacer()
         }
         .frame(maxWidth: .infinity, minHeight: 80)

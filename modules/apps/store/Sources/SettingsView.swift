@@ -1,9 +1,10 @@
 // modules/apps/store/Sources/SettingsView.swift
-// Omanix Store — system settings
+// Omanix — system settings
 import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var store: StoreViewModel
+    @Environment(\.omanixTheme) var theme
     @State private var hostName = ""
     @State private var userName = ""
     @State private var autoRebuild = true
@@ -11,69 +12,75 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             HStack {
                 VStack(alignment: .leading) {
                     Text("Settings")
                         .font(.title2)
                         .fontWeight(.semibold)
+                        .foregroundColor(theme.text)
                     Text("Configure Omanix system")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(theme.secondaryText)
                 }
                 Spacer()
             }
             .padding()
 
             Form {
-                // System section
                 Section("System") {
                     HStack {
                         Text("Hostname")
+                            .foregroundColor(theme.text)
                         Spacer()
                         Text(hostName)
-                            .foregroundStyle(.secondary)
+                            .foregroundColor(theme.secondaryText)
                     }
 
                     HStack {
                         Text("Username")
+                            .foregroundColor(theme.text)
                         Spacer()
                         Text(userName)
-                            .foregroundStyle(.secondary)
+                            .foregroundColor(theme.secondaryText)
                     }
 
                     HStack {
                         Text("Omanix Version")
+                            .foregroundColor(theme.text)
                         Spacer()
                         Text("0.1.0")
-                            .foregroundStyle(.secondary)
+                            .foregroundColor(theme.secondaryText)
                     }
 
                     Toggle("Auto-rebuild after changes", isOn: $autoRebuild)
+                        .foregroundColor(theme.text)
                 }
 
-                // Actions section
                 Section("Actions") {
                     Button(action: { Task { await store.rebuild() } }) {
                         Label("Rebuild System", systemImage: "arrow.triangle.2.circlepath")
+                            .foregroundColor(theme.text)
                     }
 
                     Button(action: { rollback() }) {
                         Label("Rollback to Previous Generation", systemImage: "arrow.uturn.backward")
+                            .foregroundColor(theme.text)
                     }
 
                     Button(action: { updateFlake() }) {
                         Label("Update Flake Inputs", systemImage: "arrow.down.circle")
+                            .foregroundColor(theme.text)
                     }
                 }
 
-                // Advanced section
                 Section {
                     Button(action: { showAdvanced.toggle() }) {
                         HStack {
                             Text("Advanced")
+                                .foregroundColor(theme.text)
                             Spacer()
                             Image(systemName: showAdvanced ? "chevron.up" : "chevron.down")
+                                .foregroundColor(theme.secondaryText)
                         }
                     }
                     .buttonStyle(.plain)
@@ -81,33 +88,33 @@ struct SettingsView: View {
                     if showAdvanced {
                         Button(action: { resetConfig() }) {
                             Label("Reset Configuration", systemImage: "arrow.counterclockwise")
-                                .foregroundStyle(.red)
+                                .foregroundColor(.red)
                         }
 
                         Button(action: { uninstallOmanix() }) {
                             Label("Uninstall Omanix", systemImage: "trash")
-                                .foregroundStyle(.red)
+                                .foregroundColor(.red)
                         }
                     }
                 }
             }
             .formStyle(.grouped)
+            .background(theme.background)
 
-            // Status bar
             HStack {
                 if let error = store.errorMessage {
                     Label(error, systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
+                        .foregroundColor(.red)
                         .font(.caption)
                 } else if let success = store.successMessage {
                     Label(success, systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                        .foregroundColor(.green)
                         .font(.caption)
                 }
                 Spacer()
             }
             .padding()
-            .background(.bar)
+            .background(theme.surface)
         }
         .onAppear {
             loadSettings()
@@ -115,9 +122,8 @@ struct SettingsView: View {
     }
 
     private func loadSettings() {
-        // Read from configuration.nix
         hostName = "Vances-MacBook-Pro"
-        userName = "vanceworks"
+        userName = NSUserName()
     }
 
     private func rollback() {
@@ -154,11 +160,9 @@ struct SettingsView: View {
         let configPath = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".config/omanix/configuration.nix").path
 
-        // Create backup
         let backupPath = configPath + ".backup"
         try? FileManager.default.copyItem(atPath: configPath, toPath: backupPath)
 
-        // Reset to default configuration
         let defaultConfig = """
         { config, pkgs, ... }: {
           omanix.host = "my-mac";
@@ -178,15 +182,11 @@ struct SettingsView: View {
     }
 
     private func uninstallOmanix() {
-        // Remove login item
         _ = try? Process.run(URL(fileURLWithPath: "/usr/bin/osascript"), arguments: [
             "-e", "tell application \"System Events\" to delete login item \"Omanix\""
         ])
 
-        // Remove app
         try? FileManager.default.removeItem(atPath: "/Applications/Omanix.app")
-
-        // Remove store build directory
         try? FileManager.default.removeItem(
             atPath: NSHomeDirectory() + "/.omanix-store"
         )

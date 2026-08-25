@@ -1,12 +1,13 @@
 // modules/apps/store/Sources/ContentView.swift
-// Omanix Store — main navigation
+// Omanix — main navigation
 import SwiftUI
 
 struct ContentView: View {
     @State private var searchText = ""
     @State private var selectedTab: SidebarTab = .packages
     @State private var selectedPackage: PackageItem?
-    @StateObject private var store = StoreViewModel()
+    @ObservedObject var store: StoreViewModel
+    @Environment(\.omanixTheme) var theme
 
     enum SidebarTab: String, CaseIterable {
         case packages = "Packages"
@@ -23,6 +24,7 @@ struct ContentView: View {
                     .badge(badgeText(for: tab))
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 200)
+            .background(theme.surface)
         } detail: {
             switch selectedTab {
             case .packages:
@@ -38,10 +40,12 @@ struct ContentView: View {
             }
         }
         .searchable(text: $searchText, prompt: "Search packages...")
+        .background(theme.background)
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 Button(action: { store.loadInstalledPackages() }) {
                     Image(systemName: "arrow.clockwise")
+                        .foregroundColor(theme.accent)
                 }
                 .help("Refresh installed packages")
             }

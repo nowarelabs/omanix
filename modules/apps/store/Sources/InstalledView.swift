@@ -1,22 +1,23 @@
 // modules/apps/store/Sources/InstalledView.swift
-// Omanix Store — view installed packages
+// Omanix — view installed packages
 import SwiftUI
 
 struct InstalledView: View {
     @ObservedObject var store: StoreViewModel
     @State private var selectedPackage: PackageItem?
+    @Environment(\.omanixTheme) var theme
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             HStack {
                 VStack(alignment: .leading) {
                     Text("Installed Packages")
                         .font(.title2)
                         .fontWeight(.semibold)
+                        .foregroundColor(theme.text)
                     Text("\(store.installedPackages.count) packages installed")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(theme.secondaryText)
                 }
                 Spacer()
                 Button(action: { store.loadInstalledPackages() }) {
@@ -24,40 +25,42 @@ struct InstalledView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                .tint(theme.accent)
             }
             .padding()
 
-            // Package list
             if store.installedPackages.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: "checkmark.square")
                         .font(.system(size: 48))
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(theme.secondaryText)
                     Text("No packages installed")
                         .font(.title2)
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(theme.secondaryText)
                     Text("Use the Packages tab to install packages")
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundColor(theme.secondaryText)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(theme.background)
             } else {
                 List(store.packages.filter { store.installedPackages.contains($0.name) },
                      selection: $selectedPackage) { package in
                     InstalledPackageRow(package: package, store: store)
+                        .listRowBackground(theme.surface)
                 }
                 .listStyle(.sidebar)
+                .background(theme.background)
             }
 
-            // Status bar
             HStack {
                 if let error = store.errorMessage {
                     Label(error, systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
+                        .foregroundColor(.red)
                         .font(.caption)
                 } else if let success = store.successMessage {
                     Label(success, systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                        .foregroundColor(.green)
                         .font(.caption)
                 }
                 Spacer()
@@ -66,9 +69,10 @@ struct InstalledView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                .tint(theme.accent)
             }
             .padding()
-            .background(.bar)
+            .background(theme.surface)
         }
     }
 }
@@ -76,22 +80,24 @@ struct InstalledView: View {
 struct InstalledPackageRow: View {
     let package: PackageItem
     @ObservedObject var store: StoreViewModel
+    @Environment(\.omanixTheme) var theme
     @State private var isConfirming = false
 
     var body: some View {
         HStack {
             Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+                .foregroundColor(.green)
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(package.name)
                         .font(.headline)
+                        .foregroundColor(theme.text)
                     SourceBadge(source: package.source)
                 }
                 Text(package.description)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(theme.secondaryText)
                     .lineLimit(1)
             }
 
@@ -99,7 +105,7 @@ struct InstalledPackageRow: View {
 
             Button(action: { isConfirming = true }) {
                 Label("Remove", systemImage: "minus.circle")
-                    .foregroundStyle(.red)
+                    .foregroundColor(.red)
             }
             .buttonStyle(.borderless)
             .help("Click to uninstall")

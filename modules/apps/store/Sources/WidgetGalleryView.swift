@@ -1,27 +1,27 @@
 // modules/apps/store/Sources/WidgetGalleryView.swift
-// Omanix Store — widget management gallery
+// Omanix — widget management gallery
 import SwiftUI
 
 struct WidgetGalleryView: View {
     @ObservedObject var store: StoreViewModel
+    @Environment(\.omanixTheme) var theme
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             HStack {
                 VStack(alignment: .leading) {
                     Text("Widget Gallery")
                         .font(.title2)
                         .fontWeight(.semibold)
+                        .foregroundColor(theme.text)
                     Text("Enable or disable Omanix widgets")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(theme.secondaryText)
                 }
                 Spacer()
             }
             .padding()
 
-            // Widget grid
             ScrollView {
                 LazyVGrid(columns: [
                     GridItem(.adaptive(minimum: 200, maximum: 300))
@@ -32,21 +32,21 @@ struct WidgetGalleryView: View {
                 }
                 .padding()
             }
+            .background(theme.background)
 
-            // Status bar
             HStack {
                 if let error = store.errorMessage {
                     Label(error, systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
+                        .foregroundColor(.red)
                         .font(.caption)
                 } else if let success = store.successMessage {
                     Label(success, systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                        .foregroundColor(.green)
                         .font(.caption)
                 } else {
                     Text("\(store.widgets.filter(\.isEnabled).count) of \(store.widgets.count) widgets enabled")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(theme.secondaryText)
                 }
                 Spacer()
                 Button("Rebuild System") {
@@ -54,9 +54,10 @@ struct WidgetGalleryView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                .tint(theme.accent)
             }
             .padding()
-            .background(.bar)
+            .background(theme.surface)
         }
     }
 }
@@ -64,13 +65,14 @@ struct WidgetGalleryView: View {
 struct WidgetCard: View {
     let widget: WidgetItem
     @ObservedObject var store: StoreViewModel
+    @Environment(\.omanixTheme) var theme
 
     var body: some View {
         VStack(spacing: 12) {
             HStack {
                 Image(systemName: widget.icon)
                     .font(.title2)
-                    .foregroundStyle(widget.isEnabled ? Color.accentColor : .secondary)
+                    .foregroundColor(widget.isEnabled ? theme.accent : theme.secondaryText)
                 Spacer()
                 Toggle("", isOn: Binding(
                     get: { widget.isEnabled },
@@ -78,24 +80,26 @@ struct WidgetCard: View {
                 ))
                 .toggleStyle(.switch)
                 .controlSize(.small)
+                .tint(theme.accent)
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(widget.name)
                     .font(.headline)
+                    .foregroundColor(theme.text)
                 Text(widgetDescription)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(theme.secondaryText)
                     .lineLimit(2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding()
-        .background(.quaternary.opacity(0.3))
+        .background(theme.surface)
         .cornerRadius(12)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(widget.isEnabled ? Color.accentColor.opacity(0.3) : .clear, lineWidth: 1)
+                .stroke(widget.isEnabled ? theme.accent.opacity(0.3) : .clear, lineWidth: 1)
         )
     }
 
