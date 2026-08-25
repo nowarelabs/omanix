@@ -54,6 +54,32 @@ case "${1:-help}" in
     fi
     echo "macOS $MACOS_VERSION detected"
 
+    # Check for internet connectivity
+    echo -n "Checking internet connectivity... "
+    if ! curl -sf --max-time 10 https://nixos.org -o /dev/null 2>/dev/null; then
+      echo "FAILED"
+      echo "ERROR: No internet connection. Omanix requires internet for installation."
+      echo "Please connect to the internet and try again."
+      exit 1
+    fi
+    echo "OK"
+
+    # Check available disk space (need ~5GB for Nix store + packages)
+    echo -n "Checking disk space... "
+    AVAIL_KB=$(df -k / | tail -1 | awk '{print $4}')
+    AVAIL_GB=$((AVAIL_KB / 1024 / 1024))
+    if [[ "$AVAIL_GB" -lt 5 ]]; then
+      echo "WARNING: Only ${AVAIL_GB}GB available. Recommend 5GB+ for Nix store and packages."
+      read -p "Continue anyway? (y/n) " -n 1 -r
+      echo
+      if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Installation cancelled. Free up disk space and try again."
+        exit 1
+      fi
+    else
+      echo "OK (${AVAIL_GB}GB available)"
+    fi
+
     # Check for Xcode Command Line Tools
     if ! xcode-select -p &>/dev/null; then
       echo "Xcode Command Line Tools not found."
