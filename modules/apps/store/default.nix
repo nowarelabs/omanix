@@ -5,102 +5,87 @@
 let
   enabled = config.omanix.widgets.store.enable;
   user = config.omanix.user;
-
-  # Store the source files (don't compile in Nix)
   store-src = ./.;
+
+  # Pre-build the Info.plist as a nix store path so we don't need a heredoc
+  infoPlist = pkgs.writeText "Info.plist" ''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleExecutable</key>
+  <string>Omanix Store</string>
+  <key>CFBundleIdentifier</key>
+  <string>dev.omanix.store</string>
+  <key>CFBundleName</key>
+  <string>Omanix Store</string>
+  <key>CFBundleDisplayName</key>
+  <string>Omanix Store</string>
+  <key>CFBundleVersion</key>
+  <string>0.1.0</string>
+  <key>CFBundleShortVersionString</key>
+  <string>0.1.0</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>13.0</string>
+  <key>NSHighResolutionCapable</key>
+  <true/>
+</dict>
+</plist>'';
 
 in {
   config = lib.mkIf enabled {
-    # Build and install the app on system activation
-    system.activationScripts.omanix-store = {
-      text = ''
-        echo "Building Omanix Store..."
-        STORE_DIR="$HOME/.omanix-store"
-        mkdir -p "$STORE_DIR"
+    system.activationScripts.postActivation.text = ''
+STORE_DIR="$HOME/.omanix-store"
+mkdir -p "$STORE_DIR"
 
-        # Copy source files and Info.plist
-        cp -R ${store-src}/Sources "$STORE_DIR/"
-        cp ${store-src}/Info.plist "$STORE_DIR/" 2>/dev/null || true
+# Copy source files
+cp -R ${store-src}/Sources "$STORE_DIR/"
 
-        # Build with system Swift (use full path for sudo environment)
-        XCRUN="/usr/bin/xcrun"
-        if [[ -x "$XCRUN" ]] || command -v xcrun &>/dev/null; then
-          mkdir -p "/Applications/Omanix Store.app/Contents/MacOS"
-          mkdir -p "/Applications/Omanix Store.app/Contents/Resources"
+# Build with system Swift
+XCRUN="/usr/bin/xcrun"
+if [ -x "$XCRUN" ] || command -v xcrun >/dev/null 2>&1; then
+  mkdir -p "/Applications/Omanix Store.app/Contents/MacOS"
+  mkdir -p "/Applications/Omanix Store.app/Contents/Resources"
 
-          "$XCRUN" swiftc \
-            -framework SwiftUI \
-            -framework Foundation \
-            -o "/Applications/Omanix Store.app/Contents/MacOS/Omanix Store" \
-            "$STORE_DIR/Sources/"*.swift
+  echo "Building Omanix Store..."
+  "$XCRUN" swiftc \
+    -framework SwiftUI \
+    -framework Foundation \
+    -o "/Applications/Omanix Store.app/Contents/MacOS/Omanix Store" \
+    "$STORE_DIR/Sources/"*.swift
 
-          # Copy Info.plist
-          if [[ -f "$STORE_DIR/Info.plist" ]]; then
-            cp "$STORE_DIR/Info.plist" "/Applications/Omanix Store.app/Contents/Info.plist"
-          else
-            # Create Info.plist if not present
-            cat > "/Applications/Omanix Store.app/Contents/Info.plist" << 'PLIST'
-            <?xml version="1.0" encoding="UTF-8"?>
-            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-            <plist version="1.0">
-            <dict>
-              <key>CFBundleExecutable</key>
-              <string>Omanix Store</string>
-              <key>CFBundleIdentifier</key>
-              <string>dev.omanix.store</string>
-              <key>CFBundleName</key>
-              <string>Omanix Store</string>
-              <key>CFBundleDisplayName</key>
-              <string>Omanix Store</string>
-              <key>CFBundleVersion</key>
-              <string>0.1.0</string>
-              <key>CFBundleShortVersionString</key>
-              <string>0.1.0</string>
-              <key>CFBundlePackageType</key>
-              <string>APPL</string>
-              <key>LSMinimumSystemVersion</key>
-              <string>13.0</string>
-              <key>NSHighResolutionCapable</key>
-              <true/>
-            </dict>
-            </plist>
-            PLIST
-          fi
+  cp ${infoPlist} "/Applications/Omanix Store.app/Contents/Info.plist"
 
-          echo "Omanix Store built successfully"
-        else
-          echo "WARNING: Xcode Command Line Tools not found, skipping Store build"
-          echo "Install with: xcode-select --install"
-        fi
-      '';
-    };
+  echo "Omanix Store built successfully"
+else
+  echo "WARNING: Xcode Command Line Tools not found, skipping Store build"
+  echo "Install with: xcode-select --install"
+fi
+    '';
 
-    # Add build script to PATH for manual rebuilds
     home-manager.users.${user}.home.file.".local/bin/build-omanix-store" = {
       text = ''
-        #!/bin/bash
-        # Rebuild Omanix Store manually
-        STORE_DIR="$HOME/.omanix-store"
-        mkdir -p "$STORE_DIR"
+#!/bin/bash
+STORE_DIR="$HOME/.omanix-store"
+mkdir -p "$STORE_DIR"
 
-        # Copy source from nix store or config dir
-        CONFIG_DIR="$HOME/.config/omanix"
-        if [[ -d "$CONFIG_DIR/modules/apps/store/Sources" ]]; then
-          cp -R "$CONFIG_DIR/modules/apps/store/Sources" "$STORE_DIR/"
-        fi
+CONFIG_DIR="$HOME/.config/omanix"
+if [ -d "$CONFIG_DIR/modules/apps/store/Sources" ]; then
+  cp -R "$CONFIG_DIR/modules/apps/store/Sources" "$STORE_DIR/"
+fi
 
-        # Build
-        mkdir -p "/Applications/Omanix Store.app/Contents/MacOS"
-        mkdir -p "/Applications/Omanix Store.app/Contents/Resources"
+mkdir -p "/Applications/Omanix Store.app/Contents/MacOS"
+mkdir -p "/Applications/Omanix Store.app/Contents/Resources"
 
-        xcrun swiftc \
-          -framework SwiftUI \
-          -framework Foundation \
-          -o "/Applications/Omanix Store.app/Contents/MacOS/Omanix Store" \
-          "$STORE_DIR/Sources/"*.swift
+xcrun swiftc \
+  -framework SwiftUI \
+  -framework Foundation \
+  -o "/Applications/Omanix Store.app/Contents/MacOS/Omanix Store" \
+  "$STORE_DIR/Sources/"*.swift
 
-        echo "Omanix Store rebuilt successfully"
-        echo "Open with: open -a 'Omanix Store'"
+echo "Omanix Store rebuilt successfully"
       '';
       executable = true;
     };
