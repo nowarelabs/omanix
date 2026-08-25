@@ -21,12 +21,13 @@ in {
         # Copy source files
         cp -R ${store-src}/Sources "$STORE_DIR/"
 
-        # Build with system Swift
-        if command -v xcrun &>/dev/null; then
+        # Build with system Swift (use full path for sudo environment)
+        XCRUN="/usr/bin/xcrun"
+        if [[ -x "$XCRUN" ]] || command -v xcrun &>/dev/null; then
           mkdir -p "/Applications/Omanix Store.app/Contents/MacOS"
           mkdir -p "/Applications/Omanix Store.app/Contents/Resources"
 
-          xcrun swiftc \
+          "$XCRUN" swiftc \
             -framework SwiftUI \
             -framework Foundation \
             -o "/Applications/Omanix Store.app/Contents/MacOS/Omanix Store" \
