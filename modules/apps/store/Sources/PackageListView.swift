@@ -147,17 +147,9 @@ struct SourceBadge: View {
             .fontWeight(.medium)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(backgroundColor.opacity(0.2))
-            .foregroundColor(backgroundColor)
+            .background(source.badgeColor.opacity(0.2))
+            .foregroundColor(source.badgeColor)
             .cornerRadius(4)
-    }
-
-    var backgroundColor: Color {
-        switch source {
-        case .nixpkgs: return .blue
-        case .homebrew: return .orange
-        case .custom: return .purple
-        }
     }
 }
 

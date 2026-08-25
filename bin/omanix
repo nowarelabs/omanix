@@ -302,6 +302,135 @@ case "${1:-help}" in
     done
     ;;
 
+  list-packages)
+    # Output all declared packages as JSON with source categories
+    CONFIG="$FLAKE_DIR/configuration.nix"
+    if [[ ! -f "$CONFIG" ]]; then
+      echo "[]"
+      exit 0
+    fi
+
+    echo "["
+    FIRST=true
+
+    # Extract nix packages from environment.systemPackages
+    # Handles: environment.systemPackages = with pkgs; [ pkgs.name1 pkgs.name2 ... ]
+    if grep -q "environment.systemPackages" "$CONFIG"; then
+      # Get everything between [ and ] on the systemPackages line(s)
+      NIX_PKGS=$(sed -n '/environment\.systemPackages/,/\];/p' "$CONFIG" \
+        | grep -oE 'pkgs\.[a-zA-Z0-9_-]+' \
+        | sed 's/^pkgs\.//' \
+        | sort -u)
+      for pkg in $NIX_PKGS; do
+        if [ "$FIRST" = true ]; then FIRST=false; else echo ","; fi
+        printf '  {"source":"nixpkgs","name":"%s","description":""}' "$pkg"
+      done
+    fi
+
+    # Extract homebrew casks
+    if grep -q "homebrew.casks" "$CONFIG"; then
+      CASKS=$(sed -n '/homebrew\.casks/,/\];/p' "$CONFIG" \
+        | grep -oE '"[a-zA-Z0-9_-]+"' \
+        | tr -d '"' \
+        | sort -u)
+      for pkg in $CASKS; do
+        if [ "$FIRST" = true ]; then FIRST=false; else echo ","; fi
+        printf '  {"source":"homebrew-cask","name":"%s","description":""}' "$pkg"
+      done
+    fi
+
+    # Extract homebrew brews
+    if grep -q "homebrew.brews" "$CONFIG"; then
+      BREWS=$(sed -n '/homebrew\.brews/,/\];/p' "$CONFIG" \
+        | grep -oE '"[a-zA-Z0-9_-]+"' \
+        | tr -d '"' \
+        | sort -u)
+      for pkg in $BREWS; do
+        if [ "$FIRST" = true ]; then FIRST=false; else echo ","; fi
+        printf '  {"source":"homebrew-brew","name":"%s","description":""}' "$pkg"
+      done
+    fi
+
+    # Extract custom apps (omanix.apps.<name>.enable = true)
+    CUSTOM_APPS=$(grep -oE 'omanix\.apps\.[a-zA-Z0-9_-]+\.enable\s*=\s*true' "$CONFIG" \
+      | grep -oE 'omanix\.apps\.[a-zA-Z0-9_-]+' \
+      | sed 's/^omanix\.apps\.//' \
+      | sort -u)
+    for pkg in $CUSTOM_APPS; do
+      if [ "$FIRST" = true ]; then FIRST=false; else echo ","; fi
+      printf '  {"source":"custom","name":"%s","description":""}' "$pkg"
+    done
+
+    # Also detect packages from hardcoded module files
+    # Check modules/darwin/packages.nix for systemPackages
+    PACKAGES_NIX="$FLAKE_DIR/modules/darwin/packages.nix"
+    if [[ -f "$PACKAGES_NIX" ]]; then
+      # Extract standalone package names from systemPackages block
+      # 1. Strip comments
+      # 2. Only match lines that are bare identifiers (no dots = no attribute paths)
+      # 3. Skip Nix keywords and common section headers
+      NIX_MOD_PKGS=$(sed -n '/environment\.systemPackages/,/\];/p' "$PACKAGES_NIX" \
+        | sed 's/#.*//' \
+        | grep -vE '\.' \
+        | grep -oE '^\s*[a-z][a-z0-9_-]+\b' \
+        | sed 's/^\s*//' \
+        | grep -vE '^(with|pkgs|environment|systemPackages|import|let|in|true|false|null|or|and|if|then|else|rec|lib|dev|tools)$' \
+        | sort -u)
+      for pkg in $NIX_MOD_PKGS; do
+        if [ "$FIRST" = true ]; then FIRST=false; else echo ","; fi
+        printf '  {"source":"nix","name":"%s","description":""}' "$pkg"
+      done
+    fi
+
+    # Check modules/darwin/homebrew.nix for casks and brews (skip commented lines)
+    HOMEBREW_NIX="$FLAKE_DIR/modules/darwin/homebrew.nix"
+    if [[ -f "$HOMEBREW_NIX" ]]; then
+      # Strip comments before extracting quoted strings
+      H_BREWS=$(sed -n '/brews/,/\];/p' "$HOMEBREW_NIX" \
+        | sed 's/#.*//' \
+        | grep -oE '"[a-zA-Z0-9_-]+"' \
+        | tr -d '"' \
+        | sort -u)
+      for pkg in $H_BREWS; do
+        if [ "$FIRST" = true ]; then FIRST=false; else echo ","; fi
+        printf '  {"source":"homebrew-brew","name":"%s","description":""}' "$pkg"
+      done
+
+      H_CASKS=$(sed -n '/casks/,/\];/p' "$HOMEBREW_NIX" \
+        | sed 's/#.*//' \
+        | grep -oE '"[a-zA-Z0-9_-]+"' \
+        | tr -d '"' \
+        | sort -u)
+      for pkg in $H_CASKS; do
+        if [ "$FIRST" = true ]; then FIRST=false; else echo ","; fi
+        printf '  {"source":"homebrew-cask","name":"%s","description":""}' "$pkg"
+      done
+    fi
+
+    # Check modules/apps/custom.nix for custom app definitions
+    CUSTOM_NIX="$FLAKE_DIR/modules/apps/custom.nix"
+    if [[ -f "$CUSTOM_NIX" ]]; then
+      # Custom app names are top-level keys inside the "apps = { ..." block
+      CUSTOM_NAMES=$(sed -n '/apps = {/,/^  };/p' "$CUSTOM_NIX" \
+        | sed 's/#.*//' \
+        | grep -oE '^\s*"[a-zA-Z0-9_-]+"' \
+        | tr -d '"' \
+        | tr -d ' ' \
+        | sort -u)
+      for pkg in $CUSTOM_NAMES; do
+        # Skip if already added from configuration.nix
+        if grep -q "omanix\.apps\.$pkg\.enable" "$CONFIG" 2>/dev/null; then
+          continue
+        fi
+        if [ "$FIRST" = true ]; then FIRST=false; else echo ","; fi
+        printf '  {"source":"custom","name":"%s","description":""}' "$pkg"
+      done
+    fi
+
+    echo ""
+    echo "]"
+    ;;
+
   open)
     open -a "Omanix" 2>/dev/null || echo "Omanix app not built — run 'omanix rebuild' first"
     ;;

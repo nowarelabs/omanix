@@ -122,8 +122,21 @@ struct SettingsView: View {
     }
 
     private func loadSettings() {
-        hostName = "Vances-MacBook-Pro"
         userName = NSUserName()
+
+        let configPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".config/omanix/configuration.nix").path
+        if let config = try? String(contentsOfFile: configPath, encoding: .utf8) {
+            if let range = config.range(of: "omanix.host = \"") {
+                let start = range.upperBound
+                if let end = config[start...].range(of: "\"") {
+                    hostName = String(config[start..<end.lowerBound])
+                }
+            }
+        }
+        if hostName.isEmpty {
+            hostName = ProcessInfo.processInfo.hostName
+        }
     }
 
     private func rollback() {

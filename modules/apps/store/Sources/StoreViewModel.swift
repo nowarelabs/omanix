@@ -7,6 +7,7 @@ import Foundation
 class StoreViewModel: ObservableObject {
     @Published var packages: [PackageItem] = []
     @Published var installedPackages: Set<String> = []
+    @Published var declaredPackages: [PackageItem] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var successMessage: String?
@@ -22,7 +23,7 @@ class StoreViewModel: ObservableObject {
         self.omanixDir = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".config/omanix").path
 
-        loadInstalledPackages()
+        loadDeclaredPackages()
         loadWidgets()
         loadThemes()
     }
@@ -30,7 +31,6 @@ class StoreViewModel: ObservableObject {
     // MARK: - Package Management
 
     func search(query: String) {
-        // Don't cancel if same query
         guard query != lastQuery else { return }
         lastQuery = query
 
@@ -52,10 +52,23 @@ class StoreViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
 
-        // Run searches sequentially to avoid cancellation issues
         var results: [PackageItem] = []
+        let queryLower = query.lowercased()
 
-        // Search nixpkgs
+        // 1. Filter declared packages that match the query (instant, local)
+        for pkg in declaredPackages {
+            if pkg.name.lowercased().contains(queryLower) ||
+               pkg.description.lowercased().contains(queryLower) {
+                results.append(PackageItem(
+                    name: pkg.name,
+                    description: pkg.description.isEmpty ? pkg.source.displayName + " package" : pkg.description,
+                    source: pkg.source,
+                    isInstalled: true
+                ))
+            }
+        }
+
+        // 2. Search nixpkgs (live search for packages not already declared)
         do {
             let nixResults = try await runCommandWithTimeout(
                 "nix", ["search", "nixpkgs", query, "--json"], timeout: 15.0
@@ -63,6 +76,9 @@ class StoreViewModel: ObservableObject {
             if let data = nixResults.data(using: .utf8),
                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 for (name, info) in json {
+                    // Skip if already in results from declared packages
+                    if results.contains(where: { $0.name == name }) { continue }
+
                     if let details = info as? [String: Any],
                        let description = details["description"] as? String {
                         results.append(PackageItem(
@@ -78,23 +94,51 @@ class StoreViewModel: ObservableObject {
             // Continue if nix search fails
         }
 
-        // Search brew
+        // 3. Search Homebrew (brew formulas)
         do {
             let brewResults = try await runCommandWithTimeout(
                 "brew", ["search", query], timeout: 10.0
             )
             let brewPackages = brewResults.components(separatedBy: "\n")
-                .filter { !$0.isEmpty }
+                .filter { !$0.isEmpty && !$0.hasPrefix("==>") && !$0.hasPrefix("==" ) }
             for name in brewPackages {
+                let trimmed = name.trimmingCharacters(in: .whitespaces)
+                if trimmed.isEmpty { continue }
+                // Skip if already in results
+                if results.contains(where: { $0.name == trimmed }) { continue }
+
                 results.append(PackageItem(
-                    name: name,
-                    description: "Homebrew package",
-                    source: .homebrew,
-                    isInstalled: installedPackages.contains(name)
+                    name: trimmed,
+                    description: "Homebrew formula",
+                    source: .homebrewBrew,
+                    isInstalled: installedPackages.contains(trimmed)
                 ))
             }
         } catch {
             // Continue if brew search fails
+        }
+
+        // 4. Search Homebrew casks
+        do {
+            let caskResults = try await runCommandWithTimeout(
+                "brew", ["search", "--cask", query], timeout: 10.0
+            )
+            let caskPackages = caskResults.components(separatedBy: "\n")
+                .filter { !$0.isEmpty && !$0.hasPrefix("==>") && !$0.hasPrefix("==" ) }
+            for name in caskPackages {
+                let trimmed = name.trimmingCharacters(in: .whitespaces)
+                if trimmed.isEmpty { continue }
+                if results.contains(where: { $0.name == trimmed }) { continue }
+
+                results.append(PackageItem(
+                    name: trimmed,
+                    description: "Homebrew cask",
+                    source: .homebrewCask,
+                    isInstalled: installedPackages.contains(trimmed)
+                ))
+            }
+        } catch {
+            // Continue if brew cask search fails
         }
 
         packages = results
@@ -109,10 +153,10 @@ class StoreViewModel: ObservableObject {
         do {
             let command: [String]
             switch package.source {
-            case .nixpkgs:
+            case .nixpkgs, .nix:
                 command = ["omanix", "add", package.name]
-            case .homebrew:
-                command = ["omanix", "add", "--brew", package.name]
+            case .homebrewBrew, .homebrewCask:
+                command = ["omanix", "add", package.name]
             case .custom:
                 command = ["omanix", "install-app", package.name]
             }
@@ -140,10 +184,10 @@ class StoreViewModel: ObservableObject {
         do {
             let command: [String]
             switch package.source {
-            case .nixpkgs:
+            case .nixpkgs, .nix:
                 command = ["omanix", "remove", package.name]
-            case .homebrew:
-                command = ["omanix", "remove", "--brew", package.name]
+            case .homebrewBrew, .homebrewCask:
+                command = ["omanix", "remove", package.name]
             case .custom:
                 command = ["omanix", "uninstall-app", package.name]
             }
@@ -193,7 +237,6 @@ class StoreViewModel: ObservableObject {
 
         widgets[index].isEnabled.toggle()
 
-        // Update configuration.nix
         let configPath = "\(omanixDir)/configuration.nix"
         guard var config = try? String(contentsOfFile: configPath, encoding: .utf8) else {
             errorMessage = "Could not read configuration.nix"
@@ -257,24 +300,64 @@ class StoreViewModel: ObservableObject {
         try? config.write(toFile: configPath, atomically: true, encoding: .utf8)
     }
 
-    // MARK: - Installed Packages
+    // MARK: - Installed Packages (from configuration.nix)
 
-    func loadInstalledPackages() {
+    func loadDeclaredPackages() {
         Task {
             do {
-                let output = try await runCommand("omanix", ["list-apps"])
-                let lines = output.components(separatedBy: "\n")
-                for line in lines {
-                    let trimmed = line.trimmingCharacters(in: .whitespaces)
-                    if trimmed.hasPrefix("✓") {
-                        let name = trimmed.replacingOccurrences(of: "✓ ", with: "")
-                        installedPackages.insert(name)
-                    }
+                let output = try await runCommand("omanix", ["list-packages"])
+                guard let data = output.data(using: .utf8),
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+                    return
                 }
+
+                var items: [PackageItem] = []
+                var names: Set<String> = []
+
+                for entry in json {
+                    guard let sourceStr = entry["source"] as? String,
+                          let name = entry["name"] as? String else { continue }
+
+                    let source: PackageItem.PackageSource
+                    switch sourceStr {
+                    case "nixpkgs": source = .nixpkgs
+                    case "nix": source = .nix
+                    case "homebrew-brew": source = .homebrewBrew
+                    case "homebrew-cask": source = .homebrewCask
+                    case "custom": source = .custom
+                    default: source = .nixpkgs
+                    }
+
+                    let description = entry["description"] as? String ?? ""
+
+                    items.append(PackageItem(
+                        name: name,
+                        description: description,
+                        source: source,
+                        isInstalled: true
+                    ))
+                    names.insert(name)
+                }
+
+                // Sort: by source, then by name
+                items.sort { a, b in
+                    if a.source.rawValue != b.source.rawValue {
+                        return a.source.rawValue < b.source.rawValue
+                    }
+                    return a.name < b.name
+                }
+
+                declaredPackages = items
+                installedPackages = names
             } catch {
                 // Ignore errors on init
             }
         }
+    }
+
+    // Keep backward compat alias
+    func loadInstalledPackages() {
+        loadDeclaredPackages()
     }
 
     // MARK: - Helpers
@@ -316,10 +399,9 @@ class StoreViewModel: ObservableObject {
 
         try process.run()
 
-        // Wait with timeout
         let deadline = Date().addingTimeInterval(timeout)
         while process.isRunning && Date() < deadline {
-            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+            try await Task.sleep(nanoseconds: 100_000_000)
         }
 
         if process.isRunning {
