@@ -8,7 +8,7 @@ let
 in {
   config = lib.mkIf enabled {
     # SketchyBar item
-    xdg.configFile."sketchybar/plugins/clock.sh" = {
+    home-manager.users.${config.omanix.user}.xdg.configFile."sketchybar/plugins/clock.sh" = {
       text = ''
         #!/bin/bash
         sketchybar --set clock \

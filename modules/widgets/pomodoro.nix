@@ -9,7 +9,7 @@ let
 in {
   config = lib.mkIf enabled {
     # SketchyBar item
-    xdg.configFile."sketchybar/plugins/pomodoro.sh" = {
+    home-manager.users.${config.omanix.user}.xdg.configFile."sketchybar/plugins/pomodoro.sh" = {
       text = ''
         #!/bin/bash
         sketchybar --set pomodoro \

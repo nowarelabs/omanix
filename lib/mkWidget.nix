@@ -1,7 +1,7 @@
 # lib/mkWidget.nix — SDK for creating Omanix widgets
 # Takes { name, sketchybarConfig, launchdConfig, ... } → module
 # Branches on isDarwin → launchd.user.agents + sketchybar item
-# Theme tokens ${config.lib.omanixTheme.colors.accent} injected at eval
+# Theme tokens ${colors.accent} injected at eval
 # See conventions.md:5 and principles.md:10
 { lib, pkgs, config }:
 
@@ -15,9 +15,10 @@
 let
   isDarwin = pkgs.stdenv.isDarwin;
   colors = import ../lib/themed.nix { inherit lib; }.getThemeColors config;
+  user = config.omanix.user;
 in {
   # SketchyBar item (darwin) or Quickshell item (linux)
-  xdg.configFile = lib.optionalAttrs isDarwin {
+  home-manager.users.${user}.xdg.configFile = lib.optionalAttrs isDarwin {
     "sketchybar/plugins/${name}.sh" = {
       text = ''
         #!/bin/bash

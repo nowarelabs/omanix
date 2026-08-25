@@ -7,13 +7,17 @@
 
   programs.zsh.enable = true;
 
-  # Install Omanix skills for AI agents
-  home.file = {
-    ".config/omanix/skills/omanix/SKILL.md".source = ../../skills/omanix/SKILL.md;
-    ".config/omanix/skills/omanix/mini-SKILL.md".source = ../../skills/omanix/mini-SKILL.md;
+  home-manager.users.${config.omanix.user} = {
+    home.stateVersion = "25.11";
 
-    # Symlinks for Claude and OpenCode visibility
-    ".claude/skills/omanix/SKILL.md".source = ../../skills/omanix/SKILL.md;
-    ".opencode/skills/omanix/SKILL.md".source = ../../skills/omanix/SKILL.md;
+    # Install Omanix skills for AI agents
+    home.file = {
+      ".config/omanix/skills/omanix/SKILL.md".source = ../../skills/omanix/SKILL.md;
+      ".config/omanix/skills/omanix/mini-SKILL.md".source = ../../skills/omanix/mini-SKILL.md;
+
+      # Symlinks for Claude and OpenCode visibility
+      ".claude/skills/omanix/SKILL.md".source = ../../skills/omanix/SKILL.md;
+      ".opencode/skills/omanix/SKILL.md".source = ../../skills/omanix/SKILL.md;
+    };
   };
 }
