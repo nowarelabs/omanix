@@ -81,7 +81,7 @@ class StoreViewModel: ObservableObject {
         }
 
         // 2. Search nixpkgs
-        if let nixPath = findExecutable("nix") {
+        if let nixPath = await findExecutable("nix") {
             do {
                 let json = try await runJSONCommand(
                     nixPath, ["search", "nixpkgs", query, "--json"],
@@ -233,21 +233,20 @@ class StoreViewModel: ObservableObject {
 
     // MARK: - Search Helpers
 
-    private func findExecutable(_ name: String) -> String? {
+    private func findExecutable(_ name: String) async -> String? {
         let task = Process()
         let pipe = Pipe()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         task.arguments = ["which", name]
         task.standardOutput = pipe
         task.standardError = FileHandle.nullDevice
-        let dataTask = Task.detached { await pipe.fileHandleForReading.readDataToEndOfFile() }
+        let dataTask = Task.detached { pipe.fileHandleForReading.readDataToEndOfFile() }
         try? task.run()
-        // Poll instead of waitUntilExit to avoid blocking the main thread
         while task.isRunning {
             Thread.sleep(forTimeInterval: 0.05)
         }
         guard task.terminationStatus == 0 else { return nil }
-        let data = dataTask.value
+        let data = await dataTask.value
         let path = String(data: data, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return (path?.isEmpty == true) ? nil : path
@@ -264,7 +263,7 @@ class StoreViewModel: ObservableObject {
         process.standardOutput = stdoutPipe
         process.standardError = FileHandle.nullDevice
 
-        let dataTask = Task.detached { await stdoutPipe.fileHandleForReading.readDataToEndOfFile() }
+        let dataTask = Task.detached { stdoutPipe.fileHandleForReading.readDataToEndOfFile() }
         try process.run()
 
         let deadline = Date().addingTimeInterval(timeout)
@@ -528,8 +527,8 @@ class StoreViewModel: ObservableObject {
         process.standardError = stderrPipe
 
         // Read pipe data concurrently to prevent deadlocks on large output
-        let stdoutData = Task.detached { await stdoutPipe.fileHandleForReading.readDataToEndOfFile() }
-        let stderrData = Task.detached { await stderrPipe.fileHandleForReading.readDataToEndOfFile() }
+        let stdoutData = Task.detached { stdoutPipe.fileHandleForReading.readDataToEndOfFile() }
+        let stderrData = Task.detached { stderrPipe.fileHandleForReading.readDataToEndOfFile() }
 
         try process.run()
 
@@ -563,8 +562,8 @@ class StoreViewModel: ObservableObject {
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
 
-        let stdoutData = Task.detached { await stdoutPipe.fileHandleForReading.readDataToEndOfFile() }
-        let stderrData = Task.detached { await stderrPipe.fileHandleForReading.readDataToEndOfFile() }
+        let stdoutData = Task.detached { stdoutPipe.fileHandleForReading.readDataToEndOfFile() }
+        let stderrData = Task.detached { stderrPipe.fileHandleForReading.readDataToEndOfFile() }
 
         try process.run()
 
