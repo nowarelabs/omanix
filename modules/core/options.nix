@@ -20,4 +20,11 @@
     description = "Bar, terminal, and app theme. Rendered at build time via lib/themed.nix. Preview via Store or `overlays/` without editing colors.toml.";
     example = "catppuccin";
   };
+
+  options.omanix.homebrew.cleanup = lib.mkOption {
+    type = lib.types.enum [ "uninstall" "zap" "none" ];
+    default = "uninstall";
+    description = "Homebrew onActivation cleanup mode. 'uninstall' removes brews/casks we added. 'zap' removes all data too. 'none' leaves everything alone.";
+    example = "none";
+  };
 }

@@ -21,6 +21,17 @@
   };
   # omanix.widgets.pomodoro.enable = true;
   # omanix.widgets.clock.enable = true;
+  # omanix.homebrew.cleanup = "none"; # "uninstall" (default), "zap", or "none"
+
+  # Custom apps (not in Homebrew) — set URL to install
+  # omanix.apps.antigravity-ide.enable = true;
+  # omanix.apps.antigravity-ide.url = "https://example.com/antigravity.dmg";
+  # omanix.apps.mkplayer.enable = true;
+  # omanix.apps.tiny-clips.enable = true;
+  # omanix.apps.voicebox.enable = true;
+  # omanix.apps.world-monitor.enable = true;
+
+  # Packages: use `omanix add <name>` or add below.
   # environment.systemPackages = with pkgs; [ ripgrep ];
   # homebrew.casks = [ "google-chrome" ];
 }
