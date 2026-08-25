@@ -99,8 +99,6 @@ class StoreViewModel: ObservableObject {
             }
 
             packages = results
-        } catch is CancellationError {
-            // Search was cancelled, ignore
         } catch {
             errorMessage = "Search failed: \(error.localizedDescription)"
         }
