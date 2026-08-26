@@ -246,7 +246,7 @@ class StoreViewModel: ObservableObject {
         let dataTask = Task.detached { pipe.fileHandleForReading.readDataToEndOfFile() }
         try? task.run()
         while task.isRunning {
-            try await Task.sleep(nanoseconds: 50_000_000)
+            try? await Task.sleep(nanoseconds: 50_000_000)
         }
         guard task.terminationStatus == 0 else { return nil }
         let data = await dataTask.value
