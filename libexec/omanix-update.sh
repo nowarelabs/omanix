@@ -1,13 +1,13 @@
 #!/bin/bash
-# lib/omanix-update.sh — update Omanix to latest or specific version
+# libexec/omanix-update.sh — update Omanix to latest or specific version
 # Handles smart merge: stashes local changes, pulls, pops stash
 set -euo pipefail
 
 FLAKE_DIR="${FLAKE_DIR:-$HOME/.omanix}"
 
 # Source logging
-if [[ -f "$FLAKE_DIR/lib/log.sh" ]]; then
-  source "$FLAKE_DIR/lib/log.sh"
+if [[ -f "$FLAKE_DIR/libexec/log.sh" ]]; then
+  source "$FLAKE_DIR/libexec/log.sh"
 else
   log_info()  { echo "[info] [$1] $2"; }
   log_error() { echo "[error] [$1] $2" >&2; }

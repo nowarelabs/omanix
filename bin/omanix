@@ -1,18 +1,16 @@
 #!/bin/bash
 # bin/omanix — the one command for Omanix
-# install | rebuild | rebuild --preview | generations | add | remove | search | store | ask
+# Routes to libexec/ scripts
 set -e
 
 FLAKE_DIR="${FLAKE_DIR:-$HOME/.omanix}"
-HOST="${HOST:-$(scutil --get LocalHostName 2>/dev/null || echo "Vances-MacBook-Pro")}"
+HOST="${HOST:-$(scutil --get LocalHostName 2>/dev/null || echo "")}"
 
-# Source logging library
-if [[ -f "$FLAKE_DIR/lib/log.sh" ]]; then
-  source "$FLAKE_DIR/lib/log.sh"
+if [[ -f "$FLAKE_DIR/libexec/log.sh" ]]; then
+  source "$FLAKE_DIR/libexec/log.sh"
   mkdir -p "$FLAKE_DIR/logs"
   log_rotate
 else
-  # Stubs when log library is not yet available
   log_debug() { :; }
   log_info()  { :; }
   log_warn()  { :; }
@@ -33,16 +31,17 @@ Commands:
   rebuild --rollback   Undo last build
   rebuild --preview    Build impure overlay preview (no generation)
   generations          List previous system generations
-  clean                Clean old nix generations (keeps last ${OMANIX_KEEP_GENERATIONS:-5})
+  clean                Clean old nix generations (keeps last 5)
   clean --dry-run      Preview what would be deleted
   clean --aggressive   Thorough cleaning (GC store + optimise)
   add <pkg>            Add package (routes nixpkgs → brew)
   remove <pkg>         Remove package
   search <pkg>         Search nixpkgs + brew
-  install-app <name>   Install a custom app (downloads .dmg, installs to /Applications)
+  install-app <name>   Install a custom app
   uninstall-app <name> Uninstall a custom app
   list-apps            List installed custom apps
-  open                 Open Omanix app (packages, themes, widgets, settings)
+  list-packages        List all declared packages (JSON)
+  open                 Open Omanix app
   ask <prompt>         Ask AI (frontier Claude)
   ask --local <prompt> Ask AI (local Qwen, offline)
   version              Print version
@@ -50,361 +49,32 @@ Commands:
 EOF
 }
 
-case "${1:-help}" in
+cmd="${1:-help}"
+[[ $# -gt 0 ]] && shift
+
+case "$cmd" in
   install)
-    log_info "install" "starting installation"
-    echo "Omanix Installer"
-    echo "================"
-    echo ""
-
-    # Pre-flight checks
-    MISSING_DEPS=()
-
-    # Check for macOS
-    if [[ "$(uname)" != "Darwin" ]]; then
-      echo "ERROR: Omanix requires macOS."
-      exit 1
-    fi
-
-    # Check macOS version (need 13+ for SwiftUI features)
-    MACOS_VERSION=$(sw_vers -productVersion | cut -d. -f1)
-    if [[ "$MACOS_VERSION" -lt 13 ]]; then
-      echo "ERROR: macOS 13 (Ventura) or later required. Found: macOS $MACOS_VERSION"
-      exit 1
-    fi
-    echo "macOS $MACOS_VERSION detected"
-
-    # Check for internet connectivity
-    echo -n "Checking internet connectivity... "
-    if ! curl -sf --max-time 10 https://nixos.org -o /dev/null 2>/dev/null; then
-      echo "FAILED"
-      echo "ERROR: No internet connection. Omanix requires internet for installation."
-      echo "Please connect to the internet and try again."
-      exit 1
-    fi
-    echo "OK"
-
-    # Check available disk space (need ~5GB for Nix store + packages)
-    echo -n "Checking disk space... "
-    AVAIL_KB=$(df -k / | tail -1 | awk '{print $4}')
-    AVAIL_GB=$((AVAIL_KB / 1024 / 1024))
-    if [[ "$AVAIL_GB" -lt 5 ]]; then
-      echo "WARNING: Only ${AVAIL_GB}GB available. Recommend 5GB+ for Nix store and packages."
-      read -p "Continue anyway? (y/n) " -n 1 -r
-      echo
-      if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "Installation cancelled. Free up disk space and try again."
-        exit 1
-      fi
-    else
-      echo "OK (${AVAIL_GB}GB available)"
-    fi
-
-    # Check for Xcode Command Line Tools
-    if ! xcode-select -p &>/dev/null; then
-      echo "Xcode Command Line Tools not found."
-      echo "Required for building packages and the Omanix Store."
-      echo ""
-      read -p "Install Xcode Command Line Tools? (y/n) " -n 1 -r
-      echo
-      if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo "Installing Xcode Command Line Tools..."
-        echo "A dialog will appear — click Install and wait for it to finish."
-        xcode-select --install
-        echo ""
-        echo "Press any key after installation completes..."
-        read -n 1 -s
-        # Verify installation
-        if ! xcode-select -p &>/dev/null; then
-          echo "ERROR: Xcode Command Line Tools still not installed."
-          echo "Please install manually: xcode-select --install"
-          exit 1
-        fi
-      else
-        echo "WARNING: Some features may not work without Xcode Command Line Tools."
-        echo "Install later with: xcode-select --install"
-      fi
-    else
-      echo "Xcode Command Line Tools found"
-    fi
-
-    # Check for git (comes with Xcode CLI tools, but verify)
-    if ! command -v git &>/dev/null; then
-      MISSING_DEPS+=("git")
-    fi
-
-    # Check for curl (comes with macOS)
-    if ! command -v curl &>/dev/null; then
-      MISSING_DEPS+=("curl")
-    fi
-
-    # Check for sudo access
-    if ! sudo -n true 2>/dev/null; then
-      echo ""
-      echo "Omanix requires sudo access for system configuration."
-      echo "You'll be prompted for your password during installation."
-      echo ""
-      sudo echo "" || {
-        echo "ERROR: sudo access required but not available."
-        exit 1
-      }
-    fi
-
-    # Report missing dependencies
-    if [[ ${#MISSING_DEPS[@]} -gt 0 ]]; then
-      echo ""
-      echo "ERROR: Missing required dependencies: ${MISSING_DEPS[*]}"
-      echo "Please install them and try again."
-      exit 1
-    fi
-
-    echo ""
-    # Check for Nix
-    if ! command -v nix &>/dev/null; then
-      echo "Nix not found. Installing via Determinate Systems installer..."
-      curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --determinate
-      . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-    else
-      echo "Nix found: $(nix --version)"
-    fi
-
-    # Check for Homebrew (optional, but recommended)
-    if ! command -v brew &>/dev/null; then
-      echo ""
-      echo "Homebrew not found (optional)."
-      echo "Some packages use Homebrew casks. Install later with:"
-      echo '  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
-    else
-      echo "Homebrew found"
-    fi
-
-    echo ""
-    # Clone flake to ~/.omanix
-    TARGET="$HOME/.omanix"
-    if [[ -d "$TARGET" ]]; then
-      echo "Omanix already installed at $TARGET"
-      echo "Run 'omanix rebuild' to apply changes"
-    else
-      echo "Cloning Omanix to $TARGET..."
-      git clone https://github.com/nowarelabs/omanix.git "$TARGET"
-      # Prompt for host and user
-      DEFAULT_HOST=$(scutil --get LocalHostName 2>/dev/null || echo "my-mac")
-      DEFAULT_USER=$(whoami)
-      read -p "Hostname [$DEFAULT_HOST]: " HOSTNAME
-      HOSTNAME="${HOSTNAME:-$DEFAULT_HOST}"
-      read -p "Username [$DEFAULT_USER]: " USERNAME
-      USERNAME="${USERNAME:-$DEFAULT_USER}"
-      # Update flake with host/user
-      sed -i '' "s/omanix.host = \".*\"/omanix.host = \"$HOSTNAME\"/" "$TARGET/configuration.nix"
-      sed -i '' "s/omanix.user = \".*\"/omanix.user = \"$USERNAME\"/" "$TARGET/configuration.nix"
-      echo "Configuration updated: host=$HOSTNAME user=$USERNAME"
-      # Build
-      echo ""
-      echo "Building Omanix..."
-      sudo darwin-rebuild switch --flake "$TARGET#$HOSTNAME" --show-trace
-      echo ""
-      echo "Omanix installed! Reboot recommended."
-      echo "  omanix open — open Omanix app"
-      echo "  omanix rebuild — apply future changes"
-    fi
+    source "$FLAKE_DIR/libexec/install.sh"
+    install_full
     ;;
-
-  rebuild)
-    shift
-    if [[ "${1:-}" == "--rollback" ]]; then
-      log_info "rebuild" "rolling back to previous generation"
-      echo "Rolling back to previous generation..."
-      sudo darwin-rebuild --rollback
-      log_info "rebuild" "rollback complete"
-    elif [[ "${1:-}" == "--preview" ]]; then
-      log_info "rebuild" "building impure overlay preview"
-      echo "Building impure overlay preview..."
-      sudo darwin-rebuild switch --flake "$FLAKE_DIR#$HOST" --impure --show-trace
-      log_info "rebuild" "preview build complete"
-      # Hot-reload IPC
-      sketchybar --reload 2>/dev/null || true
-      aerospace reload-config 2>/dev/null || true
-    else
-      log_info "rebuild" "switching to flake $FLAKE_DIR#$HOST"
-      echo "Rebuilding system..."
-      sudo darwin-rebuild switch --flake "$FLAKE_DIR#$HOST" --show-trace
-      log_info "rebuild" "switch complete"
-      # Hot-reload IPC
-      sketchybar --reload 2>/dev/null || true
-      aerospace reload-config 2>/dev/null || true
-    fi
-    ;;
-
-  generations)
-    darwin-rebuild --list-generations
-    ;;
-
-  update)
-    log_info "update" "updating Omanix"
-    "$FLAKE_DIR/lib/omanix-update.sh" "$@"
-    ;;
-
-  upgrade)
-    log_info "upgrade" "upgrading flake inputs"
-    echo "Updating flake inputs..."
-    nix flake update "$FLAKE_DIR"
-    log_info "upgrade" "flake updated, rebuilding"
-    omanix rebuild
-    ;;
-
-  clean)
-    log_info "clean" "cleaning nix generations"
-    "$FLAKE_DIR/lib/omanix-clean.sh" "$@"
-    ;;
-
-  add)
-    shift
-    if [[ -z "${1:-}" ]]; then
-      echo "Usage: omanix add <package>" >&2
-      exit 1
-    fi
-    log_info "add" "adding package: $1"
-    "$FLAKE_DIR/lib/omanix-add.sh" "$@"
-    ;;
-
-  remove)
-    shift
-    if [[ -z "${1:-}" ]]; then
-      echo "Usage: omanix remove <package>" >&2
-      exit 1
-    fi
-    log_info "remove" "removing package: $1"
-    "$FLAKE_DIR/lib/omanix-remove.sh" "$@"
-    ;;
-
-  search)
-    shift
-    if [[ -z "${1:-}" ]]; then
-      echo "Usage: omanix search <package>" >&2
-      exit 1
-    fi
-    log_debug "search" "query: $1"
-    echo "=== nixpkgs ==="
-    nix search nixpkgs "$1" 2>/dev/null || echo "(no results)"
-    echo ""
-    echo "=== homebrew ==="
-    brew search "$1" 2>/dev/null || echo "(brew not available)"
-    brew search --cask "$1" 2>/dev/null || true
-    ;;
-
-  install-app)
-    shift
-    if [[ -z "${1:-}" ]]; then
-      echo "Usage: omanix install-app <name>" >&2
-      echo "Available apps: antigravity-ide, mkplayer, tiny-clips, voicebox, world-monitor" >&2
-      exit 1
-    fi
-    SCRIPT="$HOME/.local/bin/install-$1"
-    if [[ -x "$SCRIPT" ]]; then
-      "$SCRIPT"
-    else
-      echo "Install script not found: $SCRIPT" >&2
-      echo "Make sure omanix.apps.$1.enable = true in configuration.nix and rebuild" >&2
-      exit 1
-    fi
-    ;;
-
-  uninstall-app)
-    shift
-    if [[ -z "${1:-}" ]]; then
-      echo "Usage: omanix uninstall-app <name>" >&2
-      exit 1
-    fi
-    SCRIPT="$HOME/.local/bin/uninstall-$1"
-    if [[ -x "$SCRIPT" ]]; then
-      "$SCRIPT"
-    else
-      echo "Uninstall script not found: $SCRIPT" >&2
-      exit 1
-    fi
-    ;;
-
-  list-apps)
-    echo "Installed custom apps in /Applications:"
-    for app in "$HOME/.local/bin/install-"*; do
-      [[ -f "$app" ]] || continue
-      name=$(basename "$app" | sed 's/^install-//')
-      APP_PATH="/Applications/${name}.app"
-      # Try common name variations
-      if [[ ! -d "$APP_PATH" ]]; then
-        # Try title case
-        APP_PATH="/Applications/$(echo "$name" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1' | sed 's/ //g').app"
-      fi
-      if [[ -d "$APP_PATH" ]]; then
-        echo "  ✓ $name"
-      else
-        echo "  ○ $name (not installed)"
-      fi
-    done
-    ;;
-
-  list-packages)
-    # Output all declared packages as JSON using nix eval (reads actual resolved config)
-    FLAKE_REF=".#darwinConfigurations.$HOST"
-    TMPDIR_LIST=$(mktemp -d)
-    # Suppress "warning: Git tree is dirty" on stdout which corrupts JSON
-    export NIX_CONFIG="warn-dirty = false"
-
-    log_debug "list-packages" "querying nix eval for $HOST"
-
-    # Query each source separately into temp files
-    nix eval --json "$FLAKE_REF.config.environment.systemPackages" \
-      --apply 'map (p: { source = "nixpkgs"; name = p.name; description = (p.meta.description or ""); })' \
-      > "$TMPDIR_LIST/nixpkgs.json" 2>/dev/null || echo "[]" > "$TMPDIR_LIST/nixpkgs.json"
-
-    nix eval --json "$FLAKE_REF.config.homebrew.casks" \
-      --apply 'map (c: { source = "homebrew-cask"; name = c.name; description = ""; })' \
-      > "$TMPDIR_LIST/casks.json" 2>/dev/null || echo "[]" > "$TMPDIR_LIST/casks.json"
-
-    nix eval --json "$FLAKE_REF.config.homebrew.brews" \
-      --apply 'map (b: { source = "homebrew-brew"; name = (if builtins.isString b then b else b.name); description = ""; })' \
-      > "$TMPDIR_LIST/brews.json" 2>/dev/null || echo "[]" > "$TMPDIR_LIST/brews.json"
-
-    nix eval --json "$FLAKE_REF.config.omanix.apps" \
-      --apply 'cfg: map (name: { source = "custom"; name = name; description = ""; }) (builtins.filter (name: cfg.${name}.enable) (builtins.attrNames cfg))' \
-      > "$TMPDIR_LIST/custom.json" 2>/dev/null || echo "[]" > "$TMPDIR_LIST/custom.json"
-
-    # Merge all JSON arrays into one
-    jq -s 'add // []' "$TMPDIR_LIST/nixpkgs.json" "$TMPDIR_LIST/casks.json" "$TMPDIR_LIST/brews.json" "$TMPDIR_LIST/custom.json"
-
-    # Clean up
-    rm -rf "$TMPDIR_LIST"
-    ;;
-
-  open)
-    open -a "Omanix" 2>/dev/null || echo "Omanix app not built — run 'omanix rebuild' first"
-    ;;
-
-  ask)
-    shift
-    if [[ "${1:-}" == "--local" ]]; then
-      shift
-      echo "Asking local Qwen..."
-      # TODO: Phase 07 — ollama run qwen2.5:7b --skill skills/omanix/mini-SKILL.md -- "$@"
-      echo "Local AI not yet configured. Run 'omanix setup local-ai' first."
-    else
-      echo "Asking frontier Claude..."
-      # TODO: Phase 07 — claude --skill skills/omanix/SKILL.md -- "$@"
-      echo "Frontier AI not yet configured."
-    fi
-    ;;
-
-  version)
-    echo "Omanix $(cat "$FLAKE_DIR/version" 2>/dev/null || echo "dev")"
-    echo "nixpkgs: 917fec990948658ef1ccd07cef2a1ef060786846"
-    ;;
-
-  help|--help|-h|"")
-    usage
-    ;;
-
+  update)           exec "$FLAKE_DIR/libexec/omanix-update.sh" "$@" ;;
+  upgrade)          exec "$FLAKE_DIR/libexec/omanix-upgrade.sh" "$@" ;;
+  rebuild)          exec "$FLAKE_DIR/libexec/omanix-rebuild.sh" "$@" ;;
+  generations)      exec "$FLAKE_DIR/libexec/omanix-generations.sh" "$@" ;;
+  clean)            exec "$FLAKE_DIR/libexec/omanix-clean.sh" "$@" ;;
+  add)              exec "$FLAKE_DIR/libexec/omanix-add.sh" "$@" ;;
+  remove)           exec "$FLAKE_DIR/libexec/omanix-remove.sh" "$@" ;;
+  search)           exec "$FLAKE_DIR/libexec/omanix-search.sh" "$@" ;;
+  install-app)      exec "$FLAKE_DIR/libexec/omanix-install-app.sh" "$@" ;;
+  uninstall-app)    exec "$FLAKE_DIR/libexec/omanix-uninstall-app.sh" "$@" ;;
+  list-apps)        exec "$FLAKE_DIR/libexec/omanix-list-apps.sh" "$@" ;;
+  list-packages)    exec "$FLAKE_DIR/libexec/omanix-list-packages.sh" "$@" ;;
+  open)             exec "$FLAKE_DIR/libexec/omanix-open.sh" "$@" ;;
+  ask)              exec "$FLAKE_DIR/libexec/omanix-ask.sh" "$@" ;;
+  version)          exec "$FLAKE_DIR/libexec/omanix-version.sh" "$@" ;;
+  help|--help|-h|"") usage ;;
   *)
-    echo "Unknown command: $1" >&2
+    echo "Unknown command: $cmd" >&2
     usage >&2
     exit 1
     ;;

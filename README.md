@@ -39,13 +39,12 @@ It runs natively on macOS (Apple Silicon and Intel, macOS 12+), installs with on
 **No prerequisites. Nix is installed for you.**
 
 ```bash
-(which nix || (curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --determinate)) && \
-  nix run github:nowarelabs/omanix#install
+curl -fsSL https://raw.githubusercontent.com/nowarelabs/omanix/main/bin/install | sh -s -- install
 ```
 
 5–15 minutes, then reboot into Omanix. The installer checks for Nix (installs it if missing), clones the Omanix flake to `~/.omanix`, prompts for your Mac username and hostname, and builds your desktop.
 
-*Already have Nix? Just run `nix run github:nowarelabs/omanix#install`.*
+*Already have Nix? The installer skips it. To update: `curl -fsSL https://raw.githubusercontent.com/nowarelabs/omanix/main/bin/install | sh -s -- update`*
 
 ---
 
@@ -171,7 +170,7 @@ which nix; nix --version
 # if missing, install Nix first:
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --determinate
 # then reinstall Omanix:
-nix run github:nowarelabs/omanix#install
+curl -fsSL https://raw.githubusercontent.com/nowarelabs/omanix/main/bin/install | sh -s -- install
 ```
 </details>
 

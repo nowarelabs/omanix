@@ -1,0 +1,96 @@
+#!/bin/bash
+# bin/install — self-contained bootstrap installer for Omanix
+# Usage: curl -fsSL https://raw.githubusercontent.com/nowarelabs/omanix/main/bin/install | sh -s -- install
+set -euo pipefail
+
+FLAKE_DIR="$HOME/.omanix"
+
+log() { echo "[omanix] $1"; }
+err() { echo "[omanix] ERROR: $1" >&2; exit 1; }
+
+usage() {
+  cat <<EOF
+Usage: sh install.sh [command]
+
+Commands:
+  install     Install Omanix (default)
+  update      Update to latest version
+  version     Print version
+  help        Show this help
+EOF
+}
+
+# --- Minimal pre-flight (just enough to clone) ---
+bootstrap_preflight() {
+  [[ "$(uname)" == "Darwin" ]] || err "Omanix requires macOS"
+
+  local macos_version
+  macos_version=$(sw_vers -productVersion | cut -d. -f1)
+  [[ "$macos_version" -ge 13 ]] || err "macOS 13+ required (found macOS $macos_version)"
+
+  command -v git &>/dev/null || err "git not found. Install Xcode Command Line Tools: xcode-select --install"
+  command -v curl &>/dev/null || err "curl not found"
+
+  # Check internet
+  curl -sf --max-time 10 https://nixos.org -o /dev/null 2>/dev/null || err "No internet connection"
+}
+
+# --- Clone repo and source shared logic ---
+bootstrap_install() {
+  bootstrap_preflight
+
+  if [[ -d "$FLAKE_DIR/.git" ]]; then
+    log "Omanix already installed at $FLAKE_DIR"
+    log "Updating to latest..."
+    cd "$FLAKE_DIR"
+    git pull --rebase origin main 2>/dev/null || true
+  else
+    log "Cloning Omanix to $FLAKE_DIR..."
+    git clone https://github.com/nowarelabs/omanix.git "$FLAKE_DIR"
+  fi
+
+  # Source the shared installer
+  source "$FLAKE_DIR/libexec/install.sh"
+
+  # Run full install
+  install_full
+}
+
+# --- Update ---
+bootstrap_update() {
+  [[ -d "$FLAKE_DIR/.git" ]] || err "Omanix not installed. Run 'install' first."
+  cd "$FLAKE_DIR"
+  git pull --rebase origin main
+  log "Updated to $(git rev-parse --short HEAD)"
+  log "Run 'omanix rebuild' to apply changes"
+}
+
+# --- Main ---
+main() {
+  local cmd="${1:-install}"
+
+  case "$cmd" in
+    install)
+      bootstrap_install
+      ;;
+    update)
+      bootstrap_update
+      ;;
+    version)
+      if [[ -d "$FLAKE_DIR" ]]; then
+        cd "$FLAKE_DIR"
+        echo "Omanix $(git rev-parse --short HEAD 2>/dev/null || echo "dev")"
+      else
+        echo "Omanix not installed"
+      fi
+      ;;
+    help|--help|-h)
+      usage
+      ;;
+    *)
+      err "Unknown command: $cmd"
+      ;;
+  esac
+}
+
+main "$@"

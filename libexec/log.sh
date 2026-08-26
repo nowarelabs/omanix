@@ -1,6 +1,6 @@
 #!/bin/bash
-# lib/log.sh — structured logging for Omanix
-# Source this file: source "$FLAKE_DIR/lib/log.sh"
+# libexec/log.sh — structured logging for Omanix
+# Source this file: source "$FLAKE_DIR/libexec/log.sh"
 #
 # Logs go to ~/.omanix/logs/$(date +%Y-%m-%d).log
 # Format: [TIMESTAMP] [LEVEL] [CONTEXT] message

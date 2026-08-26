@@ -87,12 +87,13 @@ omanix/                              # flake root — cloned to ~/.omanix (begin
 
 No `xdg.configFile."aerospace/aerospace.toml".text` raw escape hatch in normal use. If you need it, the option is missing — add the option, don't document a raw edit. This is linted: `tests/cli` fails if a home config contains `xdg.configFile.*.text` that duplicates an existing `omarchy`/`desktop` option.
 
-Installer (`nix run github:nowarelabs/omanix#install`):
+Installer (`curl | sh`):
 
-1. `curl determinate Nix` if `which nix` fails
-2. `git clone` → `~/.omanix`
-3. Prompt `hostname`/`username` and `sed` into `darwinConfigurations."<hostname>"` + `system.primaryUser`/`users.users`
-4. `darwin-rebuild switch --flake .#<hostname>`
+1. Self-contained `bin/install` script (no repo dependencies)
+2. `curl determinate Nix` if `which nix` fails
+3. `git clone` → `~/.omanix`
+4. Prompt `hostname`/`username` and `sed` into `darwinConfigurations."<hostname>"` + `system.primaryUser`/`users.users`
+5. `darwin-rebuild switch --flake .#<hostname>`
 
 `omanix` binary:
 
@@ -102,8 +103,8 @@ case "$1" in
   rebuild) shift; [[ "$1" == --rollback ]] && exec sudo darwin-rebuild --rollback || exec sudo darwin-rebuild switch --flake ~/.omanix#$(scutil --get LocalHostName) "$@" ;;
   generations) darwin-rebuild --list-generations ;;
   update) nix flake update ~/.omanix && omanix rebuild ;;
-  add) shift; ./lib/omanix-add.sh "$@" ;;      # routes via search.nixos/brew (see 6)
-  remove) shift; ./lib/omanix-remove.sh "$@" ;;
+  add) shift; ./libexec/omanix-add.sh "$@" ;;      # routes via search.nixos/brew (see 6)
+  remove) shift; ./libexec/omanix-remove.sh "$@" ;;
   search) shift; nix search nixpkgs "$1"; brew search "$1" ;;
   *) echo "usage: omanix {rebuild|generations|update|add|remove|search}" >&2; exit 1 ;;
 esac
@@ -192,7 +193,7 @@ omanix remove ripgrep       # edit flake to delete entry, rebuild, next generati
 omanix search ripgrep       # nix search nixpkgs ripgrep && brew search ripgrep
 ```
 
-Implementation: `bin/lib/omanix-add.sh`:
+Implementation: `bin/libexec/omanix-add.sh`:
 
 1. `nix search --json nixpkgs ^$name$` (check exact, then substring)
 2. `brew search --cask $name` / `brew search $name`
@@ -296,7 +297,7 @@ The Store is `modules/apps/store/` → `lib/mkApp` SwiftUI (mac, `mkApp` GTK on 
 
 **UX contract:**
 - **Browse:** Nix packages (`nix search` cached JSON) + brew casks/brews + `omanix.widgets` gallery + `omanix.theme` picker. Search box debounces, shows `search.nixos.org` description + `brew info` cask.
-- **Install/Remove:** Buttons call `lib/omanix-add.sh` / `lib/omanix-remove.sh` helpers that edit `configuration.nix` (adds `environment.systemPackages` or `homebrew.casks`), run `nix flake check` dry, show diff preview, then `omanix rebuild` with progress bar. No terminal. On failure, shows `nix` log + `Rollback` button.
+- **Install/Remove:** Buttons call `libexec/omanix-add.sh` / `libexec/omanix-remove.sh` helpers that edit `configuration.nix` (adds `environment.systemPackages` or `homebrew.casks`), run `nix flake check` dry, show diff preview, then `omanix rebuild` with progress bar. No terminal. On failure, shows `nix` log + `Rollback` button.
 - **Widgets:** Toggles `omanix.widgets.pomodoro.enable` etc., previews live via `sketchybar --reload` (mac) / `quickshell ipc` (linux) without full rebuild — `Store` writes to `overlays/store-preview.nix` then `omanix rebuild --preview`.
 - **OS settings:** Sliders for `system.defaults.dock`, `desktop.aerospace.gaps`, Touch ID toggle — all `omanix.*` options, never raw `defaults write`.
 - **Entry points:** `Super → Omanix Store`, `open -a "Omanix Store"`, `omanix store` CLI. Green user never types `omanix add`.

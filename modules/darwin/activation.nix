@@ -16,7 +16,7 @@
     if [[ "$AUTO_CLEAN" == "true" ]]; then
       echo "Auto-clean enabled: keeping last $KEEP_GENS generations"
       OMANIX_KEEP_GENERATIONS="$KEEP_GENS" \
-        "/Users/${config.omanix.user}/.omanix/lib/omanix-clean.sh" --keep "$KEEP_GENS" 2>&1 || true
+        "/Users/${config.omanix.user}/.omanix/libexec/omanix-clean.sh" --keep "$KEEP_GENS" 2>&1 || true
     fi
   '';
 }
