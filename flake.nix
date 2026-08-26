@@ -19,6 +19,9 @@
       lib = import ./lib/mkSystem.nix { inherit inputs; };
       # Read hostname from configuration.nix (single source of truth)
       hostname = lib.readHostFromConfig ./configuration.nix;
+
+      # Helper: create a system-specific package set
+      forAllSystems = nixpkgs.lib.genAttrs [ "aarch64-darwin" "x86_64-darwin" ];
     in {
       # The host the green user edits in `configuration.nix`:
       darwinConfigurations.${hostname} = lib.mkSystem {
@@ -65,6 +68,46 @@
       # };
 
       # Future: nixosConfigurations."my-linux" = lib.mkSystem { system = "x86_64-linux"; ... };
+
+      # `nix run github:nowarelabs/omanix#install`
+      apps = forAllSystems (system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          installScript = pkgs.writeShellApplication {
+            name = "omanix-install";
+            runtimeInputs = [ pkgs.git pkgs.nix pkgs.jq ];
+            text = ''
+              set -euo pipefail
+
+              TARGET="$HOME/.omanix"
+
+              echo "Omanix Installer"
+              echo "================"
+              echo ""
+
+              # Clone if not exists
+              if [[ -d "$TARGET" ]]; then
+                echo "Omanix already installed at $TARGET"
+                echo ""
+                echo "To update:  omanix update"
+                echo "To rebuild: omanix rebuild"
+                exit 0
+              fi
+
+              echo "Cloning Omanix to $TARGET..."
+              git clone https://github.com/nowarelabs/omanix.git "$TARGET"
+
+              # Run the installer
+              exec "$TARGET/bin/omanix" install "$@"
+            '';
+          };
+        in {
+          install = {
+            type = "app";
+            program = "${installScript}/bin/omanix-install";
+          };
+        }
+      );
 
       # For `nix develop` and CI
       devShells.aarch64-darwin.default = import ./shell.nix { inherit inputs; };

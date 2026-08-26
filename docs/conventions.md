@@ -87,7 +87,7 @@ omanix/                              # flake root — cloned to ~/.omanix (begin
 
 No `xdg.configFile."aerospace/aerospace.toml".text` raw escape hatch in normal use. If you need it, the option is missing — add the option, don't document a raw edit. This is linted: `tests/cli` fails if a home config contains `xdg.configFile.*.text` that duplicates an existing `omarchy`/`desktop` option.
 
-Installer (`git clone` + `bin/omanix install`):
+Installer (`nix run github:nowarelabs/omanix#install`):
 
 1. `curl determinate Nix` if `which nix` fails
 2. `git clone` → `~/.omanix`

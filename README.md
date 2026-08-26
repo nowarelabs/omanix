@@ -39,13 +39,13 @@ It runs natively on macOS (Apple Silicon and Intel, macOS 12+), installs with on
 **No prerequisites. Nix is installed for you.**
 
 ```bash
-git clone https://github.com/nowarelabs/omanix.git ~/.omanix && \
-  ~/.omanix/bin/omanix install
+(which nix || (curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --determinate)) && \
+  nix run github:nowarelabs/omanix#install
 ```
 
-5–15 minutes, then reboot into Omanix. The installer checks for Nix (installs it if missing), prompts for your Mac username and hostname, and builds your desktop.
+5–15 minutes, then reboot into Omanix. The installer checks for Nix (installs it if missing), clones the Omanix flake to `~/.omanix`, prompts for your Mac username and hostname, and builds your desktop.
 
-*Already have Nix? The installer skips it. Need it for a team? Fork `nowarelabs/omanix` and clone your fork instead.*
+*Already have Nix? Just run `nix run github:nowarelabs/omanix#install`.*
 
 ---
 
@@ -142,7 +142,7 @@ sudo rm /Library/LaunchDaemons/org.nixos.* 2>/dev/null || true
 sudo reboot
 ```
 
-No `~/Library/LaunchAgents` plist, no `/Applications/Omanix Store` symlink, no `~/.config` residue — all were `/nix/store` symlinks or `homebrew` entries. Verified by `tests/pristine`.
+No `~/Library/LaunchAgents` plist, no `/Applications/Omanix` symlink, no `~/.omanix` residue — all were `/nix/store` symlinks or `homebrew` entries. Verified by `tests/pristine`.
 
 ---
 
@@ -171,7 +171,7 @@ which nix; nix --version
 # if missing, install Nix first:
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --determinate
 # then reinstall Omanix:
-git clone https://github.com/nowarelabs/omanix.git ~/.omanix && ~/.omanix/bin/omanix install
+nix run github:nowarelabs/omanix#install
 ```
 </details>
 
@@ -208,6 +208,8 @@ nix-collect-garbage -d
   cd ~/.omanix && nix develop
   omanix rebuild
   ```
+
+  This overwrites the installed version with your dev copy. To restore: run the install command again.
 - **Docs for builders:** [Principles](./docs/principles.md) (invariants), [Philosophies](./docs/philosophies.md) (why), [Conventions](./docs/conventions.md) (how + folder structure). The README is for *users*; docs are for *builders*.
 
 ## License
