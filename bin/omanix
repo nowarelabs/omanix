@@ -306,7 +306,8 @@ case "${1:-help}" in
     # Output all declared packages as JSON using nix eval (reads actual resolved config)
     FLAKE_REF=".#darwinConfigurations.$HOST"
     TMPDIR_LIST=$(mktemp -d)
-    trap 'rm -rf "$TMPDIR_LIST"' RETURN
+    # Suppress "warning: Git tree is dirty" on stdout which corrupts JSON
+    export NIX_CONFIG="warn-dirty = false"
 
     # Query each source separately into temp files
     nix eval --json "$FLAKE_REF.config.environment.systemPackages" \
@@ -327,6 +328,9 @@ case "${1:-help}" in
 
     # Merge all JSON arrays into one
     jq -s 'add // []' "$TMPDIR_LIST/nixpkgs.json" "$TMPDIR_LIST/casks.json" "$TMPDIR_LIST/brews.json" "$TMPDIR_LIST/custom.json"
+
+    # Clean up
+    rm -rf "$TMPDIR_LIST"
     ;;
 
   open)
