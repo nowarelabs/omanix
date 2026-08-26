@@ -2,7 +2,7 @@
 # lib/omanix-add.sh — add a package declaratively
 # Routes: nixpkgs → homebrew cask → error
 # Edits configuration.nix, then user runs omanix rebuild
-set -e
+set -euo pipefail
 
 FLAKE_DIR="${FLAKE_DIR:-$HOME/.config/omanix}"
 CONFIG="$FLAKE_DIR/configuration.nix"
@@ -25,10 +25,19 @@ if nix search --json nixpkgs "^${NAME}$" 2>/dev/null | jq -e 'keys | length > 0'
   echo "Found in nixpkgs — adding to environment.systemPackages"
 
   if grep -qE "^[^#]*environment\.systemPackages" "$CONFIG"; then
-    # Uncommented systemPackages line exists — append to it
-    sed -i '' "/^[^#]*environment\.systemPackages/{/pkgs\.$NAME/!s|\]| pkgs.$NAME ]|;}" "$CONFIG"
+    # Existing uncommented line — insert package before the closing ]
+    # Handle both single-line [... ] and multi-line [...\n]
+    if grep -qE "^[^#]*environment\.systemPackages.*\];" "$CONFIG"; then
+      # Single-line: pkgs.foo ]; → pkgs.foo pkgs.NAME ];
+      sed -i '' "/^[^#]*environment\.systemPackages/s|\];| pkgs.$NAME ]|;" "$CONFIG"
+    else
+      # Multi-line: insert before the ] line
+      sed -i '' "/^\];$/i\\
+  pkgs.$NAME
+" "$CONFIG"
+    fi
   else
-    # No uncommented line — add one before closing }
+    # No existing line — add before closing }
     sed -i '' "/^}/i\\
   environment.systemPackages = with pkgs; [ pkgs.$NAME ];\\
 " "$CONFIG"
@@ -45,8 +54,18 @@ if brew search --cask "$NAME" 2>/dev/null | grep -q "^${NAME}$"; then
   echo "Found as homebrew cask — adding to homebrew.casks"
 
   if grep -qE "^[^#]*homebrew\.casks" "$CONFIG"; then
-    sed -i '' "/^[^#]*homebrew\.casks/{/\"$NAME\"/!s|\]| \"$NAME\" ]|;}" "$CONFIG"
+    # Existing uncommented line — insert package before closing ]
+    if grep -qE "^[^#]*homebrew\.casks.*\];" "$CONFIG"; then
+      # Single-line: [ "foo" ]; → [ "foo" "NAME" ];
+      sed -i '' "/^[^#]*homebrew\.casks/s|\];| \"$NAME\" ]|;" "$CONFIG"
+    else
+      # Multi-line: insert before the ] line
+      sed -i '' "/^\];$/i\\
+  \"$NAME\"
+" "$CONFIG"
+    fi
   else
+    # No existing line — add before closing }
     sed -i '' "/^}/i\\
   homebrew.casks = [ \"$NAME\" ];\\
 " "$CONFIG"

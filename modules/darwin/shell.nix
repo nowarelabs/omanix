@@ -30,8 +30,8 @@
         alias mailhog:stop='sudo launchctl unload /Library/LaunchDaemons/mailhog.plist'
         alias mailhog:open='open -a "Google Chrome" http://localhost:8025'
 
-        # WiFi
-        alias wifi:password='security find-generic-password -wa "MotherLAN"'
+        # WiFi — configure via: security find-generic-password -wa "YourSSID"
+        # alias wifi:password='security find-generic-password -wa "MotherLAN"'
 
         # Git
         alias git:lithium='function _gitl() { git clone git@github.com-lithium:lithiumtech/$1.git; }; _gitl'
@@ -41,8 +41,12 @@
         alias unfixsleep='sudo pmset -a hibernatemode 3 && sudo pmset -a standby 1 && sudo pmset -a autopoweroff 1 && echo "Sleep settings restored"'
         alias checksleep='pmset -g'
 
-        # Java
-        export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+        # Java — use nixpkgs zulu if available, else fall back to Android Studio
+        if [[ -d "${pkgs.zulu}/libexec/openjdk" ]]; then
+          export JAVA_HOME="${pkgs.zulu}/libexec/openjdk"
+        elif [[ -d "/Applications/Android Studio.app/Contents/jbr/Contents/Home" ]]; then
+          export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+        fi
 
         # AWS
         export AWS_DEFAULT_REGION=eu-west-1
@@ -50,11 +54,11 @@
         # NPM
         export PATH="$PATH:$HOME/.npm-packages/bin"
 
-        # Flutter
-        export PATH=$HOME/Code/flutter/bin:$PATH
+        # Flutter — only if installed
+        [[ -d "$HOME/Code/flutter" ]] && export PATH="$HOME/Code/flutter/bin:$PATH"
 
-        # Node modules
-        export PATH="$HOME/Code/node_modules/.bin:$PATH"
+        # Node modules — only if exists
+        [[ -d "$HOME/Code/node_modules/.bin" ]] && export PATH="$HOME/Code/node_modules/.bin:$PATH"
 
         # Local bin
         export PATH="$HOME/.local/bin:$PATH"

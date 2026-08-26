@@ -103,7 +103,10 @@ class StoreViewModel: ObservableObject {
                         ))
                     }
                 }
-            } catch { }
+            } catch {
+                // Nix search failed — continue without nixpkgs results
+                print("Nix search failed: \(error.localizedDescription)")
+            }
         }
 
         // 3. Search Homebrew index (cached, instant)
@@ -425,7 +428,7 @@ class StoreViewModel: ObservableObject {
     }
 
     // MARK: - Widget Management
-
+    // NOTE: When adding new widgets, add them here AND in modules/widgets/options.nix
     func loadWidgets() {
         widgets = [
             WidgetItem(id: "store", name: "Omanix", icon: "bag", isEnabled: true),
@@ -462,7 +465,7 @@ class StoreViewModel: ObservableObject {
     }
 
     // MARK: - Theme Management
-
+    // NOTE: When adding new themes, add them here AND in themes/ directory
     func loadThemes() {
         themes = [
             ThemeItem(id: "tokyo-night", name: "Tokyo Night", colors: [
@@ -551,7 +554,9 @@ class StoreViewModel: ObservableObject {
 
                 declaredPackages = items
                 installedPackages = names
-            } catch { }
+            } catch {
+                print("Failed to load declared packages: \(error.localizedDescription)")
+            }
         }
     }
 

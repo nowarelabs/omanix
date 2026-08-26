@@ -17,9 +17,11 @@
   outputs = inputs@{ self, nixpkgs, nix-darwin, home-manager }:
     let
       lib = import ./lib/mkSystem.nix { inherit inputs; };
+      # Read hostname from configuration.nix (single source of truth)
+      hostname = lib.readHostFromConfig ./configuration.nix;
     in {
       # The host the green user edits in `configuration.nix`:
-      darwinConfigurations."Vances-MacBook-Pro" = lib.mkSystem {
+      darwinConfigurations.${hostname} = lib.mkSystem {
         system = "aarch64-darwin"; # from inventory.json, Apple M1 Pro
         modules = [
           # Core (shared mac+linux)

@@ -1,15 +1,15 @@
 # modules/core/options.nix — typed options for omanix.* (green user sees these in configuration.nix)
-{ lib, ... }: {
+{ lib, config, ... }: {
   options.omanix.host = lib.mkOption {
     type = lib.types.str;
-    default = "Vances-MacBook-Pro";
+    default = "";
     description = "Machine hostname. Set via `scutil --get LocalHostName`. Used by `darwinConfigurations.<host>` and `networking.hostName`.";
     example = "work-mac";
   };
 
   options.omanix.user = lib.mkOption {
     type = lib.types.str;
-    default = "vanceworks";
+    default = "";
     description = "Primary user. Set via `whoami`. Used by `system.primaryUser`, `users.users`, and activation scripts.";
     example = "yourname";
   };
@@ -27,4 +27,15 @@
     description = "Homebrew onActivation cleanup mode. 'uninstall' removes brews/casks we added. 'zap' removes all data too. 'none' leaves everything alone.";
     example = "none";
   };
+
+  config.assertions = [
+    {
+      assertion = config.omanix.host != "";
+      message = "omanix.host must be set in configuration.nix (e.g., omanix.host = \"my-mac\";)";
+    }
+    {
+      assertion = config.omanix.user != "";
+      message = "omanix.user must be set in configuration.nix (e.g., omanix.user = \"yourname\";)";
+    }
+  ];
 }

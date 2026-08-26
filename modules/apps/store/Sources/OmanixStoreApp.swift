@@ -89,7 +89,9 @@ struct OmanixTheme {
         let configPath = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".config/omanix/configuration.nix").path
         if let config = try? String(contentsOfFile: configPath, encoding: .utf8) {
-            if config.contains("catppuccin") {
+            // Match only the omanix.theme assignment, not comments or package names
+            let pattern = #"omanix\.theme\s*=\s*"(catppuccin)""#
+            if let _ = config.range(of: pattern, options: .regularExpression) {
                 return .catppuccin
             }
         }

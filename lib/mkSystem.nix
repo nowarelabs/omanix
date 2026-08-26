@@ -18,4 +18,12 @@
         modules = modules;
         specialArgs = { inherit self; };
       };
+
+  # Read hostname from configuration.nix (single source of truth)
+  # Matches: omanix.host = "hostname";
+  readHostFromConfig = configPath:
+    let
+      raw = builtins.readFile configPath;
+      matchResult = builtins.match ".*omanix.host *= *\"([^\"]+)\".*" raw;
+    in builtins.head matchResult;
 }
