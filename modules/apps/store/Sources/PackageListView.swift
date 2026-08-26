@@ -24,12 +24,12 @@ struct PackageListView: View {
 
     private var header: some View {
         HStack(alignment: .lastTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Browse Packages")
-                    .font(.system(.title2, design: .rounded, weight: .bold))
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Browse")
+                    .font(.system(size: 22, weight: .semibold, design: .rounded))
                     .foregroundColor(theme.text)
                 Text("Search across nixpkgs, Homebrew, and custom sources")
-                    .font(.caption)
+                    .font(.system(size: 12))
                     .foregroundColor(theme.tertiaryText)
             }
             Spacer()
@@ -37,9 +37,9 @@ struct PackageListView: View {
                 resultSummary
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 16)
-        .padding(.bottom, 8)
+        .padding(.horizontal, 24)
+        .padding(.top, 20)
+        .padding(.bottom, 12)
     }
 
     private var resultSummary: some View {
@@ -50,9 +50,9 @@ struct PackageListView: View {
                     HStack(spacing: 4) {
                         Circle()
                             .fill(source.badgeColor)
-                            .frame(width: 6, height: 6)
+                            .frame(width: 5, height: 5)
                         Text("\(count)")
-                            .font(.system(.caption2, weight: .medium))
+                            .font(.system(size: 11, weight: .medium, design: .monospaced))
                             .foregroundColor(theme.secondaryText)
                     }
                 }
@@ -76,7 +76,7 @@ struct PackageListView: View {
 
             TextField("Search packages...", text: $searchText)
                 .textFieldStyle(.plain)
-                .font(.system(.body, design: .monospaced))
+                .font(.system(size: 13, design: .monospaced))
                 .onChange(of: searchText) { _, newValue in
                     store.search(query: newValue)
                 }
@@ -91,16 +91,16 @@ struct PackageListView: View {
                 .help("Clear search")
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
         .background(theme.tertiarySurface)
-        .cornerRadius(10)
+        .cornerRadius(8)
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(searchText.isEmpty ? theme.border : theme.accent.opacity(0.4), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(searchText.isEmpty ? theme.border : theme.accent.opacity(0.3), lineWidth: 1)
         )
-        .padding(.horizontal, 20)
-        .padding(.bottom, 8)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 12)
         .animation(.easeInOut(duration: 0.15), value: searchText.isEmpty)
     }
 
@@ -118,9 +118,9 @@ struct PackageListView: View {
                             )
                         }
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, 24)
                 }
-                .padding(.bottom, 4)
+                .padding(.bottom, 8)
             }
         }
     }
@@ -136,21 +136,20 @@ struct PackageListView: View {
     @ViewBuilder
     private var rebuildBanner: some View {
         if store.isLoading && store.needsRebuild {
-            // Rebuild in progress
             VStack(spacing: 0) {
                 HStack(spacing: 10) {
                     ProgressView()
                         .controlSize(.small)
                     Text("Rebuilding system...")
-                        .font(.system(.subheadline, weight: .semibold))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundColor(theme.text)
                     Spacer()
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .background(theme.accent.opacity(0.08))
+                .background(theme.accent.opacity(0.06))
                 .overlay(alignment: .bottom) {
-                    Divider().background(theme.border)
+                    Divider().background(theme.border).opacity(0.5)
                 }
 
                 if !store.rebuildLog.isEmpty {
@@ -159,7 +158,7 @@ struct PackageListView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 ForEach(Array(store.rebuildLog.enumerated()), id: \.offset) { _, line in
                                     Text(line)
-                                        .font(.system(.caption, design: .monospaced))
+                                        .font(.system(size: 11, design: .monospaced))
                                         .foregroundColor(line.contains("error") || line.contains("ERROR")
                                             ? theme.error : theme.tertiaryText)
                                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -169,8 +168,8 @@ struct PackageListView: View {
                             .padding(12)
                         }
                         .frame(maxHeight: 160)
-                        .background(Color.black.opacity(0.3))
-                        .cornerRadius(8)
+                        .background(Color.black.opacity(0.4))
+                        .cornerRadius(6)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
                         .onChange(of: store.rebuildLog.count) { _, _ in
@@ -180,27 +179,26 @@ struct PackageListView: View {
                 }
             }
         } else if store.needsRebuild {
-            // Rebuild pending
             HStack(spacing: 10) {
                 Image(systemName: "arrow.triangle.2.circlepath")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundColor(theme.warning)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Rebuild required")
-                        .font(.system(.subheadline, weight: .semibold))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundColor(theme.text)
                     Text("Packages added — rebuild to apply changes")
-                        .font(.caption)
+                        .font(.system(size: 11))
                         .foregroundColor(theme.secondaryText)
                 }
                 Spacer()
                 Button(action: { Task { await store.rebuild() } }) {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.triangle.2.circlepath")
-                            .font(.system(size: 11))
-                        Text("Rebuild now")
+                            .font(.system(size: 10))
+                        Text("Rebuild")
                     }
-                    .font(.system(.caption, weight: .semibold))
+                    .font(.system(size: 11, weight: .medium))
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
@@ -208,9 +206,9 @@ struct PackageListView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(theme.warning.opacity(0.08))
+            .background(theme.warning.opacity(0.06))
             .overlay(alignment: .bottom) {
-                Divider().background(theme.border)
+                Divider().background(theme.border).opacity(0.5)
             }
             .transition(.move(edge: .top).combined(with: .opacity))
             .animation(.easeInOut(duration: 0.25), value: store.needsRebuild)
@@ -233,22 +231,17 @@ struct PackageListView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             Spacer()
-            ZStack {
-                Circle()
-                    .fill(theme.accent.opacity(0.08))
-                    .frame(width: 100, height: 100)
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 36, weight: .light))
-                    .foregroundColor(theme.accent.opacity(0.5))
-            }
-            VStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 32, weight: .light))
+                .foregroundColor(theme.tertiaryText.opacity(0.5))
+            VStack(spacing: 4) {
                 Text("Search for packages")
-                    .font(.system(.title3, design: .rounded, weight: .semibold))
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
                     .foregroundColor(theme.text)
                 Text("Find packages from nixpkgs, Homebrew, and custom sources")
-                    .font(.subheadline)
+                    .font(.system(size: 12))
                     .foregroundColor(theme.tertiaryText)
                     .multilineTextAlignment(.center)
             }
@@ -257,34 +250,29 @@ struct PackageListView: View {
     }
 
     private var loadingState: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             Spacer()
             ProgressView()
                 .controlSize(.large)
-            Text("Searching all sources...")
-                .font(.subheadline)
+            Text("Searching...")
+                .font(.system(size: 12))
                 .foregroundColor(theme.tertiaryText)
             Spacer()
         }
     }
 
     private var noResults: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             Spacer()
-            ZStack {
-                Circle()
-                    .fill(theme.warning.opacity(0.08))
-                    .frame(width: 100, height: 100)
-                Image(systemName: "questionmark.folder")
-                    .font(.system(size: 36, weight: .light))
-                    .foregroundColor(theme.warning.opacity(0.5))
-            }
-            VStack(spacing: 6) {
+            Image(systemName: "questionmark")
+                .font(.system(size: 32, weight: .light))
+                .foregroundColor(theme.tertiaryText.opacity(0.5))
+            VStack(spacing: 4) {
                 Text("No packages found")
-                    .font(.system(.title3, design: .rounded, weight: .semibold))
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
                     .foregroundColor(theme.text)
-                Text("Try a different search term or check spelling")
-                    .font(.subheadline)
+                Text("Try a different search term")
+                    .font(.system(size: 12))
                     .foregroundColor(theme.tertiaryText)
             }
             Spacer()
@@ -293,7 +281,7 @@ struct PackageListView: View {
 
     private var packageList: some View {
         ScrollView {
-            LazyVStack(spacing: 2) {
+            LazyVStack(spacing: 1) {
                 ForEach(store.packages) { package in
                     PackageRow(
                         package: package,
@@ -305,7 +293,7 @@ struct PackageListView: View {
                     }
                 }
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 16)
             .padding(.vertical, 8)
         }
         .background(theme.background)
@@ -319,29 +307,29 @@ struct PackageListView: View {
                 ProgressView()
                     .controlSize(.mini)
                 Text("Indexing Homebrew...")
-                    .font(.caption)
+                    .font(.system(size: 11))
                     .foregroundColor(theme.tertiaryText)
             } else if let error = store.errorMessage {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 11))
+                    .font(.system(size: 10))
                     .foregroundColor(theme.error)
                 Text(error)
-                    .font(.caption)
+                    .font(.system(size: 11))
                     .foregroundColor(theme.error)
                     .lineLimit(1)
             } else if let success = store.successMessage {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 11))
+                    .font(.system(size: 10))
                     .foregroundColor(theme.success)
                 Text(success)
-                    .font(.caption)
+                    .font(.system(size: 11))
                     .foregroundColor(theme.success)
             } else {
                 Circle()
-                    .fill(theme.tertiaryText.opacity(0.4))
+                    .fill(theme.tertiaryText.opacity(0.3))
                     .frame(width: 4, height: 4)
-                Text("\(store.packages.count) packages found")
-                    .font(.caption)
+                Text("\(store.packages.count) packages")
+                    .font(.system(size: 11))
                     .foregroundColor(theme.tertiaryText)
             }
 
@@ -354,7 +342,7 @@ struct PackageListView: View {
                             .font(.system(size: 9))
                         Text("Update index")
                     }
-                    .font(.system(.caption2, weight: .medium))
+                    .font(.system(size: 10, weight: .medium))
                 }
                 .buttonStyle(.plain)
                 .foregroundColor(theme.tertiaryText)
@@ -364,10 +352,10 @@ struct PackageListView: View {
             Button(action: { Task { await store.rebuild() } }) {
                 HStack(spacing: 4) {
                     Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.system(size: 11))
+                        .font(.system(size: 10))
                     Text("Rebuild")
                 }
-                .font(.system(.caption, weight: .medium))
+                .font(.system(size: 11, weight: .medium))
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
@@ -377,7 +365,7 @@ struct PackageListView: View {
         .padding(.vertical, 8)
         .background(theme.surface)
         .overlay(alignment: .top) {
-            Divider().background(theme.border)
+            Divider().background(theme.border).opacity(0.5)
         }
     }
 
@@ -400,29 +388,29 @@ struct PackageRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Source icon
-            Image(systemName: package.source.icon)
+            // App icon
+            Image(systemName: AppIcons.icon(for: package.name))
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(package.source.badgeColor)
                 .frame(width: 28, height: 28)
-                .background(package.source.badgeColor.opacity(0.1))
+                .background(package.source.badgeColor.opacity(0.08))
                 .cornerRadius(6)
 
-            // Info
+            // Package info
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(package.name)
-                        .font(.system(.body, design: .monospaced, weight: .medium))
+                        .font(.system(size: 13, weight: .medium, design: .monospaced))
                         .foregroundColor(theme.text)
                     if package.isInstalled {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 10))
+                            .font(.system(size: 9))
                             .foregroundColor(theme.success)
                     }
                 }
                 if !package.description.isEmpty {
                     Text(package.description)
-                        .font(.caption)
+                        .font(.system(size: 11))
                         .foregroundColor(theme.secondaryText)
                         .lineLimit(1)
                 }
@@ -430,14 +418,23 @@ struct PackageRow: View {
 
             Spacer()
 
+            // Source badge
+            Text(package.source.displayName)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(package.source.badgeColor)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(package.source.badgeColor.opacity(0.08))
+                .cornerRadius(4)
+
             // Action button
             actionButton
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isHovered ? theme.tertiarySurface : .clear)
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isHovered ? theme.tertiarySurface.opacity(0.5) : .clear)
         )
         .animation(.easeInOut(duration: 0.1), value: isHovered)
     }
@@ -451,15 +448,15 @@ struct PackageRow: View {
             Button(action: { confirmUninstall() }) {
                 HStack(spacing: 3) {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.system(size: 8, weight: .bold))
                     Text("Installed")
                 }
-                .font(.system(.caption, weight: .medium))
+                .font(.system(size: 10, weight: .medium))
                 .foregroundColor(theme.success)
-                .padding(.horizontal, 10)
+                .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(theme.success.opacity(0.1))
-                .cornerRadius(6)
+                .background(theme.success.opacity(0.08))
+                .cornerRadius(4)
             }
             .buttonStyle(.plain)
             .help("Click to uninstall")
@@ -467,21 +464,15 @@ struct PackageRow: View {
             Button(action: { install() }) {
                 HStack(spacing: 3) {
                     Image(systemName: "plus")
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.system(size: 8, weight: .bold))
                     Text("Install")
                 }
-                .font(.system(.caption, weight: .medium))
+                .font(.system(size: 10, weight: .medium))
                 .foregroundColor(.white)
-                .padding(.horizontal, 10)
+                .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(
-                    LinearGradient(
-                        colors: [theme.accent, theme.accent.opacity(0.8)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .cornerRadius(6)
+                .background(theme.accent)
+                .cornerRadius(4)
             }
             .buttonStyle(.plain)
         }
@@ -496,32 +487,11 @@ struct PackageRow: View {
     }
 
     private func confirmUninstall() {
-        // Direct uninstall with confirmation handled by the row
         isInstalling = true
         Task {
             await store.uninstallPackage(package)
             isInstalling = false
         }
-    }
-}
-
-// MARK: - Source Badge (reusable)
-
-struct SourceBadge: View {
-    let source: PackageItem.PackageSource
-
-    var body: some View {
-        HStack(spacing: 3) {
-            Image(systemName: source.icon)
-                .font(.system(size: 8))
-            Text(source.rawValue)
-        }
-        .font(.system(.caption2, weight: .semibold))
-        .foregroundColor(source.badgeColor)
-        .padding(.horizontal, 6)
-        .padding(.vertical, 2)
-        .background(source.badgeColor.opacity(0.1))
-        .cornerRadius(4)
     }
 }
 
@@ -537,16 +507,16 @@ struct SourceFilterChip: View {
             Image(systemName: source.icon)
                 .font(.system(size: 9))
             Text(source.displayName)
-                .font(.system(.caption2, weight: .medium))
+                .font(.system(size: 10, weight: .medium))
             Text("\(count)")
-                .font(.system(.caption2, weight: .bold))
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .foregroundColor(source.badgeColor)
         }
         .foregroundColor(source.badgeColor)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(source.badgeColor.opacity(0.08))
-        .cornerRadius(6)
+        .background(source.badgeColor.opacity(0.06))
+        .cornerRadius(4)
     }
 }
 

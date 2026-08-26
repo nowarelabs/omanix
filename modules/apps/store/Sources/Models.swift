@@ -50,6 +50,49 @@ struct PackageItem: Identifiable, Hashable {
     }
 }
 
+// MARK: - App Icon Mapping
+
+struct AppIcons {
+    static func icon(for name: String) -> String {
+        let lower = name.lowercased()
+        switch lower {
+        // Browsers
+        case "google-chrome", "chromium", "firefox", "safari", "arc", "brave-browser":
+            return "globe"
+        // Editors
+        case "visual-studio-code", "vscode", "zed", "sublime-text", "neovim", "vim":
+            return "chevron.left.forwardslash.chevron.right"
+        // Terminals
+        case "iterm2", "kitty", "alacritty", "wezterm", "ghostty":
+            return "terminal"
+        // Communication
+        case "slack", "discord", "telegram", "whatsapp", "signal", "teams":
+            return "bubble.left.and.bubble.right"
+        // Media
+        case "vlc", "iina", "mpv", "spotify", "obsidian":
+            return "play.rectangle"
+        // Dev tools
+        case "docker", "orbstack", "postman", "github", "visual-studio":
+            return "hammer"
+        // Databases
+        case "mongodb-compass", "postico", "dbvisualizer", "tableplus":
+            return "cylinder"
+        // Utils
+        case "alfred", "raycast", "1password", "rectangle", "stats":
+            return "square.grid.2x2"
+        // Cloud
+        case "aws", "gcloud", "azure":
+            return "cloud"
+        // Design
+        case "figma", "sketch", "blender":
+            return "paintbrush"
+        // Default
+        default:
+            return "app"
+        }
+    }
+}
+
 struct WidgetItem: Identifiable {
     let id: String
     let name: String

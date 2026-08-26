@@ -31,30 +31,25 @@ struct ContentView: View {
 
     private var sidebar: some View {
         VStack(spacing: 0) {
-            // Logo header
+            // Logo
             HStack(spacing: 8) {
-                Image(systemName: "cube.transparent.fill")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [theme.accent, theme.accent.opacity(0.6)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                Image(systemName: "cube.transparent")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(theme.accent)
                 Text("Omanix")
-                    .font(.system(.title3, design: .rounded, weight: .bold))
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundColor(theme.text)
                 Spacer()
             }
             .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 8)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
 
             Divider()
                 .background(theme.border)
+                .opacity(0.5)
 
-            // Tab list
+            // Navigation
             List(SidebarTab.allCases, id: \.self, selection: $selectedTab) { tab in
                 sidebarRow(tab)
             }
@@ -63,49 +58,55 @@ struct ContentView: View {
 
             Spacer(minLength: 0)
 
-            // Bottom info
+            // Status
             Divider()
                 .background(theme.border)
-            HStack {
+                .opacity(0.5)
+
+            HStack(spacing: 6) {
                 Circle()
                     .fill(theme.success)
-                    .frame(width: 6, height: 6)
+                    .frame(width: 5, height: 5)
                 Text("System OK")
-                    .font(.caption2)
+                    .font(.system(size: 11))
                     .foregroundColor(theme.tertiaryText)
                 Spacer()
                 Text("v\(versionString)")
-                    .font(.caption2)
+                    .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(theme.tertiaryText)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.vertical, 10)
         }
-        .navigationSplitViewColumnWidth(min: 190, ideal: 210, max: 240)
+        .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 220)
         .background(theme.surface)
     }
 
     private func sidebarRow(_ tab: SidebarTab) -> some View {
-        Label {
-            HStack {
-                Text(tab.rawValue)
-                    .font(.system(.body, weight: selectedTab == tab ? .semibold : .regular))
-                Spacer()
-                if let badge = badgeText(for: tab) {
-                    Text(badge)
-                        .font(.system(.caption2, weight: .medium))
-                        .foregroundColor(theme.accent)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(theme.accent.opacity(0.12))
-                        .cornerRadius(6)
-                }
-            }
-        } icon: {
+        HStack(spacing: 8) {
             Image(systemName: iconName(for: tab))
                 .font(.system(size: 14, weight: selectedTab == tab ? .semibold : .regular))
+                .foregroundColor(selectedTab == tab ? theme.accent : theme.tertiaryText)
+                .frame(width: 20)
+
+            Text(tab.rawValue)
+                .font(.system(size: 13, weight: selectedTab == tab ? .medium : .regular))
+                .foregroundColor(selectedTab == tab ? theme.text : theme.secondaryText)
+
+            Spacer()
+
+            if let badge = badgeText(for: tab) {
+                Text(badge)
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundColor(theme.accent)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(theme.accent.opacity(0.1))
+                    .cornerRadius(4)
+            }
         }
-        .foregroundColor(selectedTab == tab ? theme.accent : theme.secondaryText)
+        .padding(.vertical, 4)
+        .listRowSeparator(.hidden)
     }
 
     // MARK: - Detail

@@ -23,18 +23,18 @@ struct SettingsView: View {
 
     private var header: some View {
         HStack(alignment: .lastTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text("Settings")
-                    .font(.system(.title2, design: .rounded, weight: .bold))
+                    .font(.system(size: 22, weight: .semibold, design: .rounded))
                     .foregroundColor(theme.text)
                 Text("Configure your Omanix system")
-                    .font(.caption)
+                    .font(.system(size: 12))
                     .foregroundColor(theme.tertiaryText)
             }
             Spacer()
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 16)
+        .padding(.horizontal, 24)
+        .padding(.top, 20)
         .padding(.bottom, 12)
     }
 
@@ -47,7 +47,7 @@ struct SettingsView: View {
                 actionsSection
                 advancedSection
             }
-            .padding(20)
+            .padding(24)
         }
         .background(theme.background)
     }
@@ -64,26 +64,26 @@ struct SettingsView: View {
                     value: hostName,
                     icon: "server.rack"
                 )
-                Divider().background(theme.border).padding(.leading, 36)
+                Divider().background(theme.border).opacity(0.5).padding(.leading, 32)
                 settingRow(
                     label: "Username",
                     value: userName,
                     icon: "person"
                 )
-                Divider().background(theme.border).padding(.leading, 36)
+                Divider().background(theme.border).opacity(0.5).padding(.leading, 32)
                 settingRow(
                     label: "Version",
                     value: "0.1.0",
                     icon: "tag"
                 )
-                Divider().background(theme.border).padding(.leading, 36)
+                Divider().background(theme.border).opacity(0.5).padding(.leading, 32)
                 HStack {
                     Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.system(size: 12))
+                        .font(.system(size: 11))
                         .foregroundColor(theme.tertiaryText)
-                        .frame(width: 24)
+                        .frame(width: 20)
                     Text("Auto-rebuild after changes")
-                        .font(.system(.body))
+                        .font(.system(size: 12))
                         .foregroundColor(theme.text)
                     Spacer()
                     Toggle("", isOn: $autoRebuild)
@@ -91,11 +91,11 @@ struct SettingsView: View {
                         .controlSize(.small)
                         .tint(theme.accent)
                 }
-                .padding(.horizontal, 14)
+                .padding(.horizontal, 12)
                 .padding(.vertical, 10)
             }
             .background(theme.surface)
-            .cornerRadius(10)
+            .cornerRadius(8)
         }
     }
 
@@ -114,7 +114,7 @@ struct SettingsView: View {
                 ) {
                     Task { await store.rebuild() }
                 }
-                Divider().background(theme.border).padding(.leading, 36)
+                Divider().background(theme.border).opacity(0.5).padding(.leading, 32)
                 actionRow(
                     title: "Rollback",
                     subtitle: "Revert to the previous generation",
@@ -123,7 +123,7 @@ struct SettingsView: View {
                 ) {
                     rollback()
                 }
-                Divider().background(theme.border).padding(.leading, 36)
+                Divider().background(theme.border).opacity(0.5).padding(.leading, 32)
                 actionRow(
                     title: "Update Flake Inputs",
                     subtitle: "Pull latest nixpkgs and rebuild",
@@ -134,7 +134,7 @@ struct SettingsView: View {
                 }
             }
             .background(theme.surface)
-            .cornerRadius(10)
+            .cornerRadius(8)
         }
     }
 
@@ -148,24 +148,24 @@ struct SettingsView: View {
                 Button(action: { withAnimation(.easeInOut(duration: 0.2)) { showAdvanced.toggle() } }) {
                     HStack {
                         Image(systemName: "exclamationmark.triangle")
-                            .font(.system(size: 12))
+                            .font(.system(size: 11))
                             .foregroundColor(theme.warning)
-                            .frame(width: 24)
+                            .frame(width: 20)
                         Text("Danger Zone")
-                            .font(.system(.body, weight: .medium))
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundColor(theme.warning)
                         Spacer()
                         Image(systemName: showAdvanced ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(.system(size: 9, weight: .semibold))
                             .foregroundColor(theme.tertiaryText)
                     }
-                    .padding(.horizontal, 14)
+                    .padding(.horizontal, 12)
                     .padding(.vertical, 10)
                 }
                 .buttonStyle(.plain)
 
                 if showAdvanced {
-                    Divider().background(theme.border).padding(.leading, 36)
+                    Divider().background(theme.border).opacity(0.5).padding(.leading, 32)
 
                     actionRow(
                         title: "Reset Configuration",
@@ -176,7 +176,7 @@ struct SettingsView: View {
                         resetConfig()
                     }
 
-                    Divider().background(theme.border).padding(.leading, 36)
+                    Divider().background(theme.border).opacity(0.5).padding(.leading, 32)
 
                     actionRow(
                         title: "Uninstall Omanix",
@@ -189,7 +189,7 @@ struct SettingsView: View {
                 }
             }
             .background(theme.surface)
-            .cornerRadius(10)
+            .cornerRadius(8)
         }
     }
 
@@ -198,10 +198,10 @@ struct SettingsView: View {
     private func sectionHeader(_ title: String, icon: String) -> some View {
         HStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 10, weight: .semibold))
                 .foregroundColor(theme.accent)
             Text(title)
-                .font(.system(.caption, weight: .semibold))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(theme.secondaryText)
                 .textCase(.uppercase)
         }
@@ -212,18 +212,18 @@ struct SettingsView: View {
     private func settingRow(label: String, value: String, icon: String) -> some View {
         HStack {
             Image(systemName: icon)
-                .font(.system(size: 12))
+                .font(.system(size: 11))
                 .foregroundColor(theme.tertiaryText)
-                .frame(width: 24)
+                .frame(width: 20)
             Text(label)
-                .font(.system(.body))
+                .font(.system(size: 12))
                 .foregroundColor(theme.text)
             Spacer()
             Text(value)
-                .font(.system(.body, design: .monospaced))
+                .font(.system(size: 12, design: .monospaced))
                 .foregroundColor(theme.secondaryText)
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 12)
         .padding(.vertical, 10)
     }
 
@@ -237,23 +237,23 @@ struct SettingsView: View {
         Button(action: action) {
             HStack(spacing: 10) {
                 Image(systemName: icon)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundColor(color)
-                    .frame(width: 24)
+                    .frame(width: 20)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(title)
-                        .font(.system(.body, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundColor(theme.text)
                     Text(subtitle)
-                        .font(.caption)
+                        .font(.system(size: 10))
                         .foregroundColor(theme.tertiaryText)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: 9, weight: .semibold))
                     .foregroundColor(theme.tertiaryText)
             }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 12)
             .padding(.vertical, 10)
         }
         .buttonStyle(.plain)
@@ -265,18 +265,18 @@ struct SettingsView: View {
         HStack(spacing: 8) {
             if let error = store.errorMessage {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 11))
+                    .font(.system(size: 10))
                     .foregroundColor(theme.error)
                 Text(error)
-                    .font(.caption)
+                    .font(.system(size: 11))
                     .foregroundColor(theme.error)
                     .lineLimit(1)
             } else if let success = store.successMessage {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 11))
+                    .font(.system(size: 10))
                     .foregroundColor(theme.success)
                 Text(success)
-                    .font(.caption)
+                    .font(.system(size: 11))
                     .foregroundColor(theme.success)
             }
             Spacer()
@@ -285,7 +285,7 @@ struct SettingsView: View {
         .padding(.vertical, 8)
         .background(theme.surface)
         .overlay(alignment: .top) {
-            Divider().background(theme.border)
+            Divider().background(theme.border).opacity(0.5)
         }
     }
 

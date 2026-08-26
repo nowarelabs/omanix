@@ -18,23 +18,23 @@ struct ThemePickerView: View {
 
     private var header: some View {
         HStack(alignment: .lastTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text("Themes")
-                    .font(.system(.title2, design: .rounded, weight: .bold))
+                    .font(.system(size: 22, weight: .semibold, design: .rounded))
                     .foregroundColor(theme.text)
                 HStack(spacing: 4) {
                     Text("Current:")
-                        .font(.caption)
+                        .font(.system(size: 12))
                         .foregroundColor(theme.tertiaryText)
                     Text(store.currentTheme)
-                        .font(.system(.caption, weight: .semibold))
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
                         .foregroundColor(theme.accent)
                 }
             }
             Spacer()
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 16)
+        .padding(.horizontal, 24)
+        .padding(.top, 20)
         .padding(.bottom, 12)
     }
 
@@ -43,15 +43,15 @@ struct ThemePickerView: View {
     private var content: some View {
         ScrollView {
             LazyVGrid(columns: [
-                GridItem(.adaptive(minimum: 300, maximum: 480), spacing: 16)
-            ], spacing: 16) {
+                GridItem(.adaptive(minimum: 300, maximum: 480), spacing: 14)
+            ], spacing: 14) {
                 ForEach(store.themes) { t in
                     ThemeCard(theme: t, isSelected: store.currentTheme == t.id) {
                         store.selectTheme(t)
                     }
                 }
             }
-            .padding(20)
+            .padding(24)
         }
         .background(theme.background)
     }
@@ -62,25 +62,25 @@ struct ThemePickerView: View {
         HStack(spacing: 8) {
             if let error = store.errorMessage {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 11))
+                    .font(.system(size: 10))
                     .foregroundColor(theme.error)
                 Text(error)
-                    .font(.caption)
+                    .font(.system(size: 11))
                     .foregroundColor(theme.error)
                     .lineLimit(1)
             } else if let success = store.successMessage {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 11))
+                    .font(.system(size: 10))
                     .foregroundColor(theme.success)
                 Text(success)
-                    .font(.caption)
+                    .font(.system(size: 11))
                     .foregroundColor(theme.success)
             } else {
                 Circle()
-                    .fill(theme.tertiaryText.opacity(0.4))
+                    .fill(theme.tertiaryText.opacity(0.3))
                     .frame(width: 4, height: 4)
                 Text("Select a theme, then rebuild to apply")
-                    .font(.caption)
+                    .font(.system(size: 11))
                     .foregroundColor(theme.tertiaryText)
             }
 
@@ -89,10 +89,10 @@ struct ThemePickerView: View {
             Button(action: { Task { await store.rebuild() } }) {
                 HStack(spacing: 4) {
                     Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.system(size: 11))
+                        .font(.system(size: 10))
                     Text("Rebuild")
                 }
-                .font(.system(.caption, weight: .medium))
+                .font(.system(size: 11, weight: .medium))
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
@@ -102,7 +102,7 @@ struct ThemePickerView: View {
         .padding(.vertical, 8)
         .background(theme.surface)
         .overlay(alignment: .top) {
-            Divider().background(theme.border)
+            Divider().background(theme.border).opacity(0.5)
         }
     }
 }
@@ -116,7 +116,7 @@ struct ThemeCard: View {
     @Environment(\.omanixTheme) var appTheme
     @State private var isHovered = false
 
-    private let cardHeight: CGFloat = 160
+    private let cardHeight: CGFloat = 140
 
     var body: some View {
         Button(action: onSelect) {
@@ -129,49 +129,49 @@ struct ThemeCard: View {
                     colorBlock(theme.colors[.text] ?? .gray, label: "Text")
                 }
                 .frame(height: cardHeight)
-                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 14, topTrailingRadius: 14))
+                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 10, topTrailingRadius: 10))
 
                 // Info section
                 VStack(spacing: 8) {
                     HStack {
-                        VStack(alignment: .leading, spacing: 3) {
+                        VStack(alignment: .leading, spacing: 2) {
                             Text(theme.name)
-                                .font(.system(.headline, weight: .semibold))
+                                .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(appTheme.text)
                             Text(theme.id)
-                                .font(.system(.caption, design: .monospaced))
+                                .font(.system(size: 10, design: .monospaced))
                                 .foregroundColor(appTheme.tertiaryText)
                         }
                         Spacer()
                         if isSelected {
                             HStack(spacing: 4) {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 14))
+                                    .font(.system(size: 12))
                                 Text("Active")
-                                    .font(.system(.caption, weight: .medium))
+                                    .font(.system(size: 10, weight: .medium))
                             }
                             .foregroundColor(appTheme.success)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(appTheme.success.opacity(0.1))
-                            .cornerRadius(6)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(appTheme.success.opacity(0.08))
+                            .cornerRadius(4)
                         }
                     }
 
                     // Mini terminal preview
                     miniPreview
                 }
-                .padding(14)
+                .padding(12)
             }
             .background(appTheme.surface)
-            .cornerRadius(14)
+            .cornerRadius(10)
             .overlay(
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: 10)
                     .stroke(
                         isSelected
                             ? appTheme.accent
                             : (isHovered ? appTheme.border : .clear),
-                        lineWidth: isSelected ? 2 : 1
+                        lineWidth: isSelected ? 1.5 : 1
                     )
             )
             .scaleEffect(isHovered ? 1.01 : 1.0)
@@ -185,34 +185,33 @@ struct ThemeCard: View {
         }
     }
 
-    // Mini terminal-style preview showing the theme colors
     private var miniPreview: some View {
         HStack(spacing: 0) {
             HStack(spacing: 4) {
-                Circle().fill(Color.red.opacity(0.8)).frame(width: 7, height: 7)
-                Circle().fill(Color.yellow.opacity(0.8)).frame(width: 7, height: 7)
-                Circle().fill(Color.green.opacity(0.8)).frame(width: 7, height: 7)
+                Circle().fill(Color.red.opacity(0.8)).frame(width: 6, height: 6)
+                Circle().fill(Color.yellow.opacity(0.8)).frame(width: 6, height: 6)
+                Circle().fill(Color.green.opacity(0.8)).frame(width: 6, height: 6)
             }
             .padding(.horizontal, 8)
 
             Text("$ omanix rebuild")
-                .font(.system(.caption2, design: .monospaced))
+                .font(.system(size: 9, design: .monospaced))
                 .foregroundColor(theme.colors[.text] ?? .white)
                 .padding(.horizontal, 6)
 
             Spacer()
         }
-        .frame(height: 22)
+        .frame(height: 20)
         .background(theme.colors[.background] ?? .black)
-        .cornerRadius(6)
+        .cornerRadius(4)
     }
 
     func colorBlock(_ color: Color, label: String) -> some View {
         VStack {
             Spacer()
             Text(label)
-                .font(.system(.caption2, weight: .medium))
-                .foregroundColor(.white.opacity(0.7))
+                .font(.system(size: 9, weight: .medium))
+                .foregroundColor(.white.opacity(0.6))
             Spacer()
         }
         .frame(maxWidth: .infinity)

@@ -29,19 +29,19 @@ struct InstalledView: View {
 
     private var header: some View {
         HStack(alignment: .lastTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Installed Packages")
-                    .font(.system(.title2, design: .rounded, weight: .bold))
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Installed")
+                    .font(.system(size: 22, weight: .semibold, design: .rounded))
                     .foregroundColor(theme.text)
                 HStack(spacing: 4) {
                     Text("\(store.declaredPackages.count) packages")
-                        .font(.caption)
+                        .font(.system(size: 12))
                         .foregroundColor(theme.tertiaryText)
                     Text("in")
-                        .font(.caption)
+                        .font(.system(size: 12))
                         .foregroundColor(theme.tertiaryText)
                     Text("\(sourceCount) sources")
-                        .font(.caption)
+                        .font(.system(size: 12))
                         .foregroundColor(theme.tertiaryText)
                 }
             }
@@ -49,17 +49,17 @@ struct InstalledView: View {
             Button(action: { store.loadDeclaredPackages() }) {
                 HStack(spacing: 4) {
                     Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 11))
+                        .font(.system(size: 10))
                     Text("Refresh")
                 }
-                .font(.system(.caption, weight: .medium))
+                .font(.system(size: 11, weight: .medium))
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
             .tint(theme.accent)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 16)
+        .padding(.horizontal, 24)
+        .padding(.top, 20)
         .padding(.bottom, 12)
     }
 
@@ -79,7 +79,7 @@ struct InstalledView: View {
                     )
                 }
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 16)
             .padding(.vertical, 8)
         }
         .background(theme.background)
@@ -88,22 +88,17 @@ struct InstalledView: View {
     // MARK: - Empty State
 
     private var emptyState: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             Spacer()
-            ZStack {
-                Circle()
-                    .fill(theme.accent.opacity(0.08))
-                    .frame(width: 100, height: 100)
-                Image(systemName: "tray")
-                    .font(.system(size: 36, weight: .light))
-                    .foregroundColor(theme.accent.opacity(0.5))
-            }
-            VStack(spacing: 6) {
+            Image(systemName: "tray")
+                .font(.system(size: 32, weight: .light))
+                .foregroundColor(theme.tertiaryText.opacity(0.5))
+            VStack(spacing: 4) {
                 Text("No packages declared")
-                    .font(.system(.title3, design: .rounded, weight: .semibold))
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
                     .foregroundColor(theme.text)
                 Text("Add packages with omanix add or edit configuration.nix")
-                    .font(.subheadline)
+                    .font(.system(size: 12))
                     .foregroundColor(theme.tertiaryText)
                     .multilineTextAlignment(.center)
             }
@@ -117,25 +112,25 @@ struct InstalledView: View {
         HStack(spacing: 8) {
             if let error = store.errorMessage {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 11))
+                    .font(.system(size: 10))
                     .foregroundColor(theme.error)
                 Text(error)
-                    .font(.caption)
+                    .font(.system(size: 11))
                     .foregroundColor(theme.error)
                     .lineLimit(1)
             } else if let success = store.successMessage {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 11))
+                    .font(.system(size: 10))
                     .foregroundColor(theme.success)
                 Text(success)
-                    .font(.caption)
+                    .font(.system(size: 11))
                     .foregroundColor(theme.success)
             } else {
                 Circle()
                     .fill(theme.success)
                     .frame(width: 4, height: 4)
                 Text("All packages from configuration.nix")
-                    .font(.caption)
+                    .font(.system(size: 11))
                     .foregroundColor(theme.tertiaryText)
             }
 
@@ -144,10 +139,10 @@ struct InstalledView: View {
             Button(action: { Task { await store.rebuild() } }) {
                 HStack(spacing: 4) {
                     Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.system(size: 11))
+                        .font(.system(size: 10))
                     Text("Rebuild")
                 }
-                .font(.system(.caption, weight: .medium))
+                .font(.system(size: 11, weight: .medium))
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
@@ -157,7 +152,7 @@ struct InstalledView: View {
         .padding(.vertical, 8)
         .background(theme.surface)
         .overlay(alignment: .top) {
-            Divider().background(theme.border)
+            Divider().background(theme.border).opacity(0.5)
         }
     }
 
@@ -201,32 +196,31 @@ struct SourceSection: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             Button(action: onToggle) {
                 HStack(spacing: 10) {
                     Image(systemName: source.icon)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundColor(source.badgeColor)
-                        .frame(width: 26, height: 26)
-                        .background(source.badgeColor.opacity(0.1))
-                        .cornerRadius(6)
+                        .frame(width: 24, height: 24)
+                        .background(source.badgeColor.opacity(0.08))
+                        .cornerRadius(5)
 
                     Text(source.sectionName)
-                        .font(.system(.body, weight: .semibold))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(theme.text)
 
                     Spacer()
 
                     Text("\(packages.count)")
-                        .font(.system(.caption, weight: .bold))
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .foregroundColor(source.badgeColor)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(source.badgeColor.opacity(0.1))
-                        .cornerRadius(6)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(source.badgeColor.opacity(0.08))
+                        .cornerRadius(4)
 
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: 9, weight: .semibold))
                         .foregroundColor(theme.tertiaryText)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
@@ -246,7 +240,8 @@ struct SourceSection: View {
 
             Divider()
                 .background(theme.border)
-                .padding(.leading, 48)
+                .opacity(0.5)
+                .padding(.leading, 44)
         }
     }
 }
@@ -264,16 +259,22 @@ struct InstalledPackageRow: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 13))
+                .font(.system(size: 12))
                 .foregroundColor(theme.success)
+
+            // App icon
+            Image(systemName: AppIcons.icon(for: package.name))
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(theme.secondaryText)
+                .frame(width: 20)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(package.name)
-                    .font(.system(.body, design: .monospaced, weight: .medium))
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
                     .foregroundColor(theme.text)
                 if !package.description.isEmpty {
                     Text(package.description)
-                        .font(.caption)
+                        .font(.system(size: 10))
                         .foregroundColor(theme.tertiaryText)
                         .lineLimit(1)
                 }
@@ -287,8 +288,8 @@ struct InstalledPackageRow: View {
             } else {
                 Button(action: { isConfirming = true }) {
                     Image(systemName: "minus.circle")
-                        .font(.system(size: 13))
-                        .foregroundColor(theme.error.opacity(isHovered ? 1.0 : 0.5))
+                        .font(.system(size: 12))
+                        .foregroundColor(theme.error.opacity(isHovered ? 1.0 : 0.4))
                 }
                 .buttonStyle(.plain)
                 .help("Remove from configuration.nix")
@@ -298,8 +299,8 @@ struct InstalledPackageRow: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .padding(.leading, 36)
-        .background(isHovered ? theme.tertiarySurface.opacity(0.5) : .clear)
+        .padding(.leading, 44)
+        .background(isHovered ? theme.tertiarySurface.opacity(0.3) : .clear)
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.1)) {
                 isHovered = hovering
