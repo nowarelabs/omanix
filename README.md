@@ -39,14 +39,13 @@ It runs natively on macOS (Apple Silicon and Intel, macOS 12+), installs with on
 **No prerequisites. Nix is installed for you.**
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | \
-  sh -s -- install --determinate && \
-  nix run github:nowarelabs/omanix#install
+git clone https://github.com/nowarelabs/omanix.git ~/.omanix && \
+  ~/.omanix/bin/omanix install
 ```
 
-5–15 minutes, then reboot into Omanix. The installer clones the Omanix flake to `~/.omanix`, asks for your Mac username and hostname, and builds your desktop.
+5–15 minutes, then reboot into Omanix. The installer checks for Nix (installs it if missing), prompts for your Mac username and hostname, and builds your desktop.
 
-*Already have Nix? The installer skips it. Need it for a team? Fork `nowarelabs/omanix` and run `nix run github:nowarelabs/omanix#install -- --repo your-org/omanix`.*
+*Already have Nix? The installer skips it. Need it for a team? Fork `nowarelabs/omanix` and clone your fork instead.*
 
 ---
 
@@ -169,8 +168,10 @@ Full list is in `flake.nix`.
 ```bash
 exec $SHELL
 which nix; nix --version
-# if missing:
+# if missing, install Nix first:
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --determinate
+# then reinstall Omanix:
+git clone https://github.com/nowarelabs/omanix.git ~/.omanix && ~/.omanix/bin/omanix install
 ```
 </details>
 
@@ -203,9 +204,9 @@ nix-collect-garbage -d
 - **Bugs / ideas:** [GitHub Issues](https://github.com/nowarelabs/omanix/issues) · [Discussions](https://github.com/nowarelabs/omanix/discussions)
 - **Hack locally:**
   ```bash
-  git clone https://github.com/nowarelabs/omanix.git ~/.local/share/omanix-dev
-  cd ~/.local/share/omanix-dev && nix develop
-  omanix rebuild --flake .#my-mac
+  git clone https://github.com/nowarelabs/omanix.git ~/.omanix
+  cd ~/.omanix && nix develop
+  omanix rebuild
   ```
 - **Docs for builders:** [Principles](./docs/principles.md) (invariants), [Philosophies](./docs/philosophies.md) (why), [Conventions](./docs/conventions.md) (how + folder structure). The README is for *users*; docs are for *builders*.
 
