@@ -309,33 +309,11 @@ struct SettingsView: View {
     }
 
     private func rollback() {
-        Task {
-            do {
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-                process.arguments = ["omanix", "rebuild", "--rollback"]
-                try process.run()
-                process.waitUntilExit()
-                store.successMessage = "Rolled back successfully"
-            } catch {
-                store.errorMessage = "Rollback failed: \(error.localizedDescription)"
-            }
-        }
+        Task { await store.rollback() }
     }
 
     private func updateFlake() {
-        Task {
-            do {
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-                process.arguments = ["omanix", "update"]
-                try process.run()
-                process.waitUntilExit()
-                store.successMessage = "Flake updated successfully"
-            } catch {
-                store.errorMessage = "Update failed: \(error.localizedDescription)"
-            }
-        }
+        Task { await store.updateFlake() }
     }
 
     private func resetConfig() {
