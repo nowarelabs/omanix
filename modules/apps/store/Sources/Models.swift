@@ -55,15 +55,18 @@ struct PackageItem: Identifiable, Hashable {
 struct AppIcons {
     static func icon(for name: String) -> String {
         let lower = name.lowercased()
-        switch lower {
+        // Strip version suffixes for matching (e.g. "postgresql-16.13" → "postgresql")
+        let base = lower.replacingOccurrences(of: #"-[\d.]+$"#, with: "", options: .regularExpression)
+
+        switch base {
         // Browsers
         case "google-chrome", "chromium", "firefox", "safari", "arc", "brave-browser":
             return "globe"
         // Editors
-        case "visual-studio-code", "vscode", "zed", "sublime-text", "neovim", "vim":
+        case "visual-studio-code", "vscode", "zed", "sublime-text", "vim", "helix":
             return "chevron.left.forwardslash.chevron.right"
         // Terminals
-        case "iterm2", "kitty", "alacritty", "wezterm", "ghostty":
+        case "iterm2", "kitty", "alacritty", "wezterm", "ghostty", "foot", "warp", "neovim":
             return "terminal"
         // Communication
         case "slack", "discord", "telegram", "whatsapp", "signal", "teams":
@@ -75,25 +78,38 @@ struct AppIcons {
         case "docker", "orbstack", "postman", "github", "visual-studio":
             return "hammer"
         // Databases
-        case "mongodb-compass", "postico", "dbvisualizer", "tableplus":
+        case "mongodb-compass", "postico", "dbvisualizer", "tableplus",
+             "postgresql", "redis", "mysql", "sqlite", "clickhouse", "mariadb", "influxdb":
             return "cylinder"
-        // Utils
-        case "alfred", "raycast", "1password", "rectangle", "stats":
-            return "square.grid.2x2"
-        // Cloud
-        case "aws", "gcloud", "azure":
+        // Languages / Runtimes
+        case "python3", "python", "ruby", "rustc-wrapper", "rustc", "cargo", "go", "node",
+             "nodejs", "deno", "bun", "perl", "lua", "julia", "r":
+            return "chevron.left.forwardslash.chevron.right"
+        // CLI Utilities
+        case "tree", "subversion", "starship", "sketchybar", "turso-cli", "gh", "git",
+             "curl", "wget", "ripgrep", "fd", "fzf", "bat", "eza", "zoxide", "tmux",
+             "jq", "yq", "htop", "btop", "glow", "tldr", "asdf",
+             "mise", "volta", "nvm", "pyenv", "rbenv", "goenv", "direnv",
+             "mas", "brew", "nix", "darwin-rebuild":
+            return "terminal"
+        // Cloud / Infrastructure
+        case "aws", "gcloud", "azure", "terraform", "ansible", "vagrant":
             return "cloud"
         // Design
         case "figma", "sketch", "blender":
             return "paintbrush"
-        // Default
+        // Utils
+        case "alfred", "raycast", "1password", "rectangle", "stats", "caffeine":
+            return "square.grid.2x2"
+        // Services / Daemons
+        case "aeropace", "aerospace", "skhd", "yabai", "jankyborders", "dozer":
+            return "sidebar.left"
         default:
             return "app"
         }
     }
 
     static func iconColor(for name: String, source: PackageItem.PackageSource) -> Color {
-        // Use source brand color for default icon, specific colors for known apps
         let lower = name.lowercased()
         switch lower {
         case "google-chrome", "chromium": return Color(red: 0.34, green: 0.68, blue: 0.92)
@@ -113,6 +129,34 @@ struct AppIcons {
         default: return source.badgeColor
         }
     }
+
+    /// Stable color derived from the package name (for letter-avatar chips).
+    static func hashColor(for name: String) -> Color {
+        let hash = abs(name.hashValue)
+        let r = Double((hash >> 16) & 0xFF) / 255.0
+        let g = Double((hash >> 8) & 0xFF) / 255.0
+        let b = Double(hash & 0xFF) / 255.0
+        // Desaturate slightly so it doesn't clash
+        let avg = (r + g + b) / 3.0
+        let mix = 0.35
+        return Color(
+            red: r * (1 - mix) + avg * mix,
+            green: g * (1 - mix) + avg * mix,
+            blue: b * (1 - mix) + avg * mix
+        )
+    }
+
+    /// First 1–2 character(s) of the package name for the letter avatar.
+    static func initials(for name: String) -> String {
+        let clean = name
+            .replacingOccurrences(of: #"-[\d.]+$"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: "-", with: " ")
+        let words = clean.split(separator: " ")
+        if words.count >= 2 {
+            return String(words[0].prefix(1) + words[1].prefix(1)).uppercased()
+        }
+        return String(clean.prefix(2)).uppercased()
+    }
 }
 
 // MARK: - View Helpers
@@ -130,14 +174,29 @@ struct PackageIcon: View {
     }
 
     var body: some View {
-        let iconSize = size * 0.5
-        let iconColor = AppIcons.iconColor(for: name, source: source)
-        Image(systemName: AppIcons.icon(for: name))
-            .font(.system(size: iconSize, weight: .medium))
-            .foregroundColor(iconColor)
-            .frame(width: size, height: size)
-            .background(iconColor.opacity(0.1))
-            .cornerRadius(size * 0.22)
+        let iconName = AppIcons.icon(for: name)
+        let isFallback = iconName == "app"
+
+        if isFallback {
+            // Letter avatar for unknown packages
+            let color = AppIcons.hashColor(for: name)
+            let letter = AppIcons.initials(for: name)
+            Text(letter)
+                .font(.system(size: size * 0.38, weight: .bold, design: .rounded))
+                .foregroundColor(color)
+                .frame(width: size, height: size)
+                .background(color.opacity(0.12))
+                .cornerRadius(size * 0.22)
+        } else {
+            let iconSize = size * 0.5
+            let iconColor = AppIcons.iconColor(for: name, source: source)
+            Image(systemName: iconName)
+                .font(.system(size: iconSize, weight: .medium))
+                .foregroundColor(iconColor)
+                .frame(width: size, height: size)
+                .background(iconColor.opacity(0.1))
+                .cornerRadius(size * 0.22)
+        }
     }
 }
 

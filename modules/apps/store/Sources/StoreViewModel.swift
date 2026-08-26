@@ -534,7 +534,7 @@ class StoreViewModel: ObservableObject {
                 }
 
                 var items: [PackageItem] = []
-                var names: Set<String> = []
+                var seen: Set<String> = []
 
                 for entry in json {
                     guard let sourceStr = entry["source"] as? String,
@@ -550,6 +550,13 @@ class StoreViewModel: ObservableObject {
                     default: source = .nixpkgs
                     }
 
+                    // Dedupe by name+source so same package from different
+                    // stanzas doesn't appear twice, but same name in
+                    // different sources (e.g. nixpkgs vs homebrew) is kept.
+                    let key = "\(name)|\(source.rawValue)"
+                    guard !seen.contains(key) else { continue }
+                    seen.insert(key)
+
                     let description = entry["description"] as? String ?? ""
 
                     items.append(PackageItem(
@@ -558,7 +565,6 @@ class StoreViewModel: ObservableObject {
                         source: source,
                         isInstalled: true
                     ))
-                    names.insert(name)
                 }
 
                 items.sort { a, b in
@@ -568,9 +574,9 @@ class StoreViewModel: ObservableObject {
                     return a.name < b.name
                 }
 
-                FileLogger.shared.info("store", "loaded \(items.count) declared packages (\(names.count) unique)")
+                FileLogger.shared.info("store", "loaded \(items.count) declared packages (\(seen.count) unique)")
                 declaredPackages = items
-                installedPackages = names
+                installedPackages = Set(items.map(\.name))
             } catch {
                 FileLogger.shared.error("store", "loadDeclaredPackages failed: \(error.localizedDescription)")
             }

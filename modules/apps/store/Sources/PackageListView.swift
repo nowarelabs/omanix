@@ -431,8 +431,9 @@ struct PackageRow: View {
     @State private var isInstalling = false
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             PackageIcon(name: package.name, source: package.source, size: UIConstants.iconChipLarge)
+                .frame(width: UIConstants.iconChipLarge, height: UIConstants.iconChipLarge)
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
@@ -480,6 +481,7 @@ struct PackageRow: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+        .frame(minHeight: 44)
         .background(
             RoundedRectangle(cornerRadius: UIConstants.cornerRow)
                 .fill(isHovered ? Color.white.opacity(0.04) : .clear)

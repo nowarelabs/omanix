@@ -223,8 +223,10 @@ struct InstalledPackageRow: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 12))
                 .foregroundColor(theme.success)
+                .frame(width: 16, height: 16)
 
             PackageIcon(name: package.name, source: package.source, size: UIConstants.iconChipSmall)
+                .frame(width: UIConstants.iconChipSmall, height: UIConstants.iconChipSmall)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(package.name)
@@ -258,6 +260,7 @@ struct InstalledPackageRow: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 7)
         .padding(.leading, 20)
+        .frame(minHeight: 44)
         .background(
             RoundedRectangle(cornerRadius: UIConstants.cornerRow)
                 .fill(isHovered ? Color.white.opacity(0.04) : .clear)

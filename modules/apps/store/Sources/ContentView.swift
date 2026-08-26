@@ -23,6 +23,19 @@ struct ContentView: View {
         } detail: {
             detail
         }
+        .navigationTitle("")
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                HStack(spacing: 6) {
+                    Image(systemName: "cube.transparent")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(theme.accent)
+                    Text("Omanix")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(theme.text)
+                }
+            }
+        }
         .background(theme.background)
     }
 
