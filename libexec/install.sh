@@ -195,17 +195,8 @@ install_build() {
   echo "  omanix update  — update to latest version"
 }
 
-# --- Full install sequence ---
-install_full() {
-  install_preflight
-  install_nix
-  install_clone
-  install_configure
-  install_build
-}
-
-# --- Reinstall (skip clone, reconfigure and rebuild) ---
-install_reinstall() {
+# --- Install (preflight, nix, configure, build — clone handled by caller) ---
+install() {
   install_preflight
   install_nix
   install_configure

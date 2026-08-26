@@ -52,8 +52,8 @@ bootstrap_install() {
   # Source the shared installer
   source "$FLAKE_DIR/libexec/install.sh"
 
-  # Run full install
-  install_full
+  # Run install (skip clone since we already did it)
+  install
 }
 
 # --- Update ---

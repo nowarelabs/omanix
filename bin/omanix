@@ -55,7 +55,7 @@ cmd="${1:-help}"
 case "$cmd" in
   install)
     source "$FLAKE_DIR/libexec/install.sh"
-    install_full
+    install
     ;;
   update)           exec "$FLAKE_DIR/libexec/omanix-update.sh" "$@" ;;
   upgrade)          exec "$FLAKE_DIR/libexec/omanix-upgrade.sh" "$@" ;;
