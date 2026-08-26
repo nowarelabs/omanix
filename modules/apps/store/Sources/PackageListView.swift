@@ -18,7 +18,21 @@ struct PackageListView: View {
                 sourceFilters
                 rebuildBanner
                 content
-                statusBar
+                StatusBarView(store: store, idleText: "\(store.packages.count) packages") {
+                    if store.brewIndexReady {
+                        Button(action: { Task { await store.refreshBrewIndex() } }) {
+                            HStack(spacing: 3) {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 9))
+                                Text("Update index")
+                            }
+                            .font(.system(size: 10, weight: .medium))
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundColor(theme.tertiaryText)
+                        .help("Re-download Homebrew package index")
+                    }
+                }
             }
 
             // Floating inspector panel
@@ -110,9 +124,9 @@ struct PackageListView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .background(theme.tertiarySurface)
-        .cornerRadius(8)
+        .cornerRadius(UIConstants.cornerInput)
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: UIConstants.cornerInput)
                 .stroke(searchText.isEmpty ? theme.border : theme.accent.opacity(0.35), lineWidth: 1)
         )
         .padding(.horizontal, 24)
@@ -185,7 +199,7 @@ struct PackageListView: View {
                         }
                         .frame(maxHeight: 160)
                         .background(Color.black.opacity(0.5))
-                        .cornerRadius(6)
+                        .cornerRadius(UIConstants.cornerRow)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
                         .onChange(of: store.rebuildLog.count) { _, _ in
@@ -219,7 +233,7 @@ struct PackageListView: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .background(theme.accent)
-                    .cornerRadius(6)
+                    .cornerRadius(UIConstants.cornerRow)
                 }
                 .buttonStyle(.plain)
             }
@@ -283,14 +297,14 @@ struct PackageListView: View {
     private var noResults: some View {
         VStack(spacing: 16) {
             Spacer()
-            Image(systemName: "questionmark")
+            Image(systemName: "magnifyingglass")
                 .font(.system(size: 32, weight: .light))
                 .foregroundColor(theme.tertiaryText.opacity(0.4))
             VStack(spacing: 4) {
-                Text("No packages found")
+                Text("No packages match")
                     .font(.system(size: 15, weight: .medium, design: .rounded))
                     .foregroundColor(theme.text)
-                Text("Try a different search term")
+                Text("'\(searchText)' — try a different search term")
                     .font(.system(size: 12))
                     .foregroundColor(theme.tertiaryText)
             }
@@ -327,79 +341,6 @@ struct PackageListView: View {
             .sorted { $0.source.rawValue < $1.source.rawValue }
     }
 
-    // MARK: - Status Bar
-
-    private var statusBar: some View {
-        HStack(spacing: 8) {
-            if store.isIndexingBrew {
-                ProgressView()
-                    .controlSize(.mini)
-                Text("Indexing Homebrew...")
-                    .font(.system(size: 11))
-                    .foregroundColor(theme.tertiaryText)
-            } else if let error = store.errorMessage {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 10))
-                    .foregroundColor(theme.error)
-                Text(error)
-                    .font(.system(size: 11))
-                    .foregroundColor(theme.error)
-                    .lineLimit(1)
-            } else if let success = store.successMessage {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 10))
-                    .foregroundColor(theme.success)
-                Text(success)
-                    .font(.system(size: 11))
-                    .foregroundColor(theme.success)
-            } else {
-                Circle()
-                    .fill(theme.tertiaryText.opacity(0.3))
-                    .frame(width: 4, height: 4)
-                Text("\(store.packages.count) packages")
-                    .font(.system(size: 11))
-                    .foregroundColor(theme.tertiaryText)
-            }
-
-            Spacer()
-
-            if store.brewIndexReady {
-                Button(action: { Task { await store.refreshBrewIndex() } }) {
-                    HStack(spacing: 3) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 9))
-                        Text("Update index")
-                    }
-                    .font(.system(size: 10, weight: .medium))
-                }
-                .buttonStyle(.plain)
-                .foregroundColor(theme.tertiaryText)
-                .help("Re-download Homebrew package index")
-            }
-
-            Button(action: { Task { await store.rebuild() } }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.system(size: 10))
-                    Text("Rebuild")
-                }
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 5)
-                .background(theme.accent)
-                .cornerRadius(6)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(theme.surface)
-        .overlay(alignment: .top) {
-            Divider().background(theme.divider)
-        }
-    }
-
     // MARK: - Helpers
 
     private func clearSearch() {
@@ -425,9 +366,9 @@ struct SourceCard: View {
                 Image(systemName: source.icon)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(source.badgeColor)
-                    .frame(width: 24, height: 24)
+                    .frame(width: UIConstants.iconChipMedium, height: UIConstants.iconChipMedium)
                     .background(source.badgeColor.opacity(0.12))
-                    .cornerRadius(6)
+                    .cornerRadius(UIConstants.cornerRow)
 
                 Text(source.sectionName)
                     .font(.system(size: 13, weight: .semibold))
@@ -441,7 +382,7 @@ struct SourceCard: View {
                     .padding(.horizontal, 7)
                     .padding(.vertical, 2)
                     .background(source.badgeColor.opacity(0.1))
-                    .cornerRadius(999)
+                    .cornerRadius(UIConstants.cornerPill)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -470,10 +411,10 @@ struct SourceCard: View {
             }
         }
         .background(theme.surface)
-        .cornerRadius(12)
+        .cornerRadius(UIConstants.cornerCard)
         .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 1)
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: UIConstants.cornerCard)
                 .stroke(theme.border, lineWidth: 1)
         )
     }
@@ -491,10 +432,8 @@ struct PackageRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Consistent icon container
-            PackageIcon(name: package.name, source: package.source, size: 28)
+            PackageIcon(name: package.name, source: package.source, size: UIConstants.iconChipLarge)
 
-            // Package info
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(package.name)
@@ -523,9 +462,9 @@ struct PackageRow: View {
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(package.source.badgeColor.opacity(0.08))
-                .cornerRadius(4)
+                .cornerRadius(UIConstants.cornerRow)
 
-            // Info button
+            // Info button (hover-only) — opens inspector
             Button(action: onSelect) {
                 Image(systemName: "info.circle")
                     .font(.system(size: 12))
@@ -542,11 +481,9 @@ struct PackageRow: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(
-            RoundedRectangle(cornerRadius: 6)
+            RoundedRectangle(cornerRadius: UIConstants.cornerRow)
                 .fill(isHovered ? Color.white.opacity(0.04) : .clear)
         )
-        .contentShape(Rectangle())
-        .onTapGesture { onSelect() }
     }
 
     @ViewBuilder
@@ -566,7 +503,7 @@ struct PackageRow: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
                 .background(theme.success.opacity(0.1))
-                .cornerRadius(6)
+                .cornerRadius(UIConstants.cornerRow)
             }
             .buttonStyle(.plain)
             .help("Click to uninstall")
@@ -582,7 +519,7 @@ struct PackageRow: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
                 .background(theme.accent)
-                .cornerRadius(6)
+                .cornerRadius(UIConstants.cornerRow)
             }
             .buttonStyle(.plain)
         }
@@ -626,7 +563,7 @@ struct InspectorPanel: View {
                         .foregroundColor(theme.tertiaryText)
                         .frame(width: 20, height: 20)
                         .background(Color.white.opacity(0.06))
-                        .cornerRadius(999)
+                        .cornerRadius(UIConstants.cornerPill)
                 }
                 .buttonStyle(.plain)
             }
@@ -653,10 +590,10 @@ struct InspectorPanel: View {
         }
         .frame(width: 280)
         .background(theme.floating)
-        .cornerRadius(12)
+        .cornerRadius(UIConstants.cornerCard)
         .shadow(color: .black.opacity(0.4), radius: 8, x: 0, y: 4)
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: UIConstants.cornerCard)
                 .stroke(theme.border, lineWidth: 1)
         )
     }
@@ -698,7 +635,7 @@ struct SourceFilterChip: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(source.badgeColor.opacity(0.06))
-        .cornerRadius(6)
+        .cornerRadius(UIConstants.cornerRow)
     }
 }
 

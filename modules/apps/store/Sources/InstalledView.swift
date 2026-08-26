@@ -16,7 +16,7 @@ struct InstalledView: View {
             } else {
                 content
             }
-            statusBar
+            StatusBarView(store: store, idleText: "All packages from configuration.nix") { EmptyView() }
         }
         .onAppear {
             if expandedSources.isEmpty {
@@ -110,59 +110,6 @@ struct InstalledView: View {
         }
     }
 
-    // MARK: - Status Bar
-
-    private var statusBar: some View {
-        HStack(spacing: 8) {
-            if let error = store.errorMessage {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 10))
-                    .foregroundColor(theme.error)
-                Text(error)
-                    .font(.system(size: 11))
-                    .foregroundColor(theme.error)
-                    .lineLimit(1)
-            } else if let success = store.successMessage {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 10))
-                    .foregroundColor(theme.success)
-                Text(success)
-                    .font(.system(size: 11))
-                    .foregroundColor(theme.success)
-            } else {
-                Circle()
-                    .fill(theme.success)
-                    .frame(width: 4, height: 4)
-                Text("All packages from configuration.nix")
-                    .font(.system(size: 11))
-                    .foregroundColor(theme.tertiaryText)
-            }
-
-            Spacer()
-
-            Button(action: { Task { await store.rebuild() } }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.system(size: 10))
-                    Text("Rebuild")
-                }
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 5)
-                .background(theme.accent)
-                .cornerRadius(6)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(theme.surface)
-        .overlay(alignment: .top) {
-            Divider().background(theme.divider)
-        }
-    }
-
     // MARK: - Helpers
 
     private var groupedPackages: [(source: PackageItem.PackageSource, packages: [PackageItem])] {
@@ -206,7 +153,6 @@ struct InstalledSourceCard: View {
             // Disclosure header
             Button(action: onToggle) {
                 HStack(spacing: 8) {
-                    // Rotating chevron
                     Image(systemName: "chevron.right")
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundColor(theme.tertiaryText)
@@ -215,9 +161,9 @@ struct InstalledSourceCard: View {
                     Image(systemName: source.icon)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(source.badgeColor)
-                        .frame(width: 24, height: 24)
+                        .frame(width: UIConstants.iconChipMedium, height: UIConstants.iconChipMedium)
                         .background(source.badgeColor.opacity(0.12))
-                        .cornerRadius(6)
+                        .cornerRadius(UIConstants.cornerRow)
 
                     Text(source.sectionName)
                         .font(.system(size: 13, weight: .semibold))
@@ -225,14 +171,13 @@ struct InstalledSourceCard: View {
 
                     Spacer()
 
-                    // Pill badge
                     Text("\(packages.count)")
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundColor(source.badgeColor)
                         .padding(.horizontal, 7)
                         .padding(.vertical, 2)
                         .background(source.badgeColor.opacity(0.1))
-                        .cornerRadius(999)
+                        .cornerRadius(UIConstants.cornerPill)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
@@ -254,10 +199,10 @@ struct InstalledSourceCard: View {
             }
         }
         .background(theme.surface)
-        .cornerRadius(12)
+        .cornerRadius(UIConstants.cornerCard)
         .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 1)
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: UIConstants.cornerCard)
                 .stroke(theme.border, lineWidth: 1)
         )
     }
@@ -275,15 +220,12 @@ struct InstalledPackageRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            // Checkmark
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 12))
                 .foregroundColor(theme.success)
 
-            // Consistent icon
-            PackageIcon(name: package.name, source: package.source, size: 22)
+            PackageIcon(name: package.name, source: package.source, size: UIConstants.iconChipSmall)
 
-            // Package info
             VStack(alignment: .leading, spacing: 1) {
                 Text(package.name)
                     .font(.system(size: 12, weight: .semibold, design: .monospaced))
@@ -317,7 +259,7 @@ struct InstalledPackageRow: View {
         .padding(.vertical, 7)
         .padding(.leading, 20)
         .background(
-            RoundedRectangle(cornerRadius: 6)
+            RoundedRectangle(cornerRadius: UIConstants.cornerRow)
                 .fill(isHovered ? Color.white.opacity(0.04) : .clear)
         )
         .onHover { hovering in

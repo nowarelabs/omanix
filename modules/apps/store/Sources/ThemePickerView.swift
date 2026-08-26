@@ -9,8 +9,12 @@ struct ThemePickerView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            content
-            statusBar
+            if store.themes.isEmpty {
+                emptyState
+            } else {
+                content
+            }
+            StatusBarView(store: store, idleText: "Select a theme, then rebuild to apply") { EmptyView() }
         }
     }
 
@@ -60,56 +64,23 @@ struct ThemePickerView: View {
         .background(theme.background)
     }
 
-    // MARK: - Status Bar
+    // MARK: - Empty State
 
-    private var statusBar: some View {
-        HStack(spacing: 8) {
-            if let error = store.errorMessage {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 10))
-                    .foregroundColor(theme.error)
-                Text(error)
-                    .font(.system(size: 11))
-                    .foregroundColor(theme.error)
-                    .lineLimit(1)
-            } else if let success = store.successMessage {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 10))
-                    .foregroundColor(theme.success)
-                Text(success)
-                    .font(.system(size: 11))
-                    .foregroundColor(theme.success)
-            } else {
-                Circle()
-                    .fill(theme.tertiaryText.opacity(0.3))
-                    .frame(width: 4, height: 4)
-                Text("Select a theme, then rebuild to apply")
-                    .font(.system(size: 11))
+    private var emptyState: some View {
+        VStack(spacing: 16) {
+            Spacer()
+            Image(systemName: "paintbrush")
+                .font(.system(size: 32, weight: .light))
+                .foregroundColor(theme.tertiaryText.opacity(0.4))
+            VStack(spacing: 4) {
+                Text("No themes available")
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .foregroundColor(theme.text)
+                Text("Themes will appear here once configured")
+                    .font(.system(size: 12))
                     .foregroundColor(theme.tertiaryText)
             }
-
             Spacer()
-
-            Button(action: { Task { await store.rebuild() } }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.system(size: 10))
-                    Text("Rebuild")
-                }
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 5)
-                .background(theme.accent)
-                .cornerRadius(6)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(theme.surface)
-        .overlay(alignment: .top) {
-            Divider().background(theme.divider)
         }
     }
 }
@@ -136,7 +107,7 @@ struct ThemeCard: View {
                     colorBlock(theme.colors[.text] ?? .gray, label: "Text")
                 }
                 .frame(height: cardHeight)
-                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 12, topTrailingRadius: 12))
+                .clipShape(UnevenRoundedRectangle(topLeadingRadius: UIConstants.cornerCard, topTrailingRadius: UIConstants.cornerCard))
 
                 // Info section
                 VStack(spacing: 8) {
@@ -161,7 +132,7 @@ struct ThemeCard: View {
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
                             .background(appTheme.success.opacity(0.08))
-                            .cornerRadius(4)
+                            .cornerRadius(UIConstants.cornerRow)
                         }
                     }
 
@@ -171,10 +142,10 @@ struct ThemeCard: View {
                 .padding(12)
             }
             .background(appTheme.surface)
-            .cornerRadius(12)
+            .cornerRadius(UIConstants.cornerCard)
             .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 1)
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: UIConstants.cornerCard)
                     .stroke(
                         isSelected
                             ? appTheme.accent
@@ -211,7 +182,7 @@ struct ThemeCard: View {
         }
         .frame(height: 20)
         .background(theme.colors[.background] ?? .black)
-        .cornerRadius(4)
+        .cornerRadius(UIConstants.cornerRow)
     }
 
     func colorBlock(_ color: Color, label: String) -> some View {

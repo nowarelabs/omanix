@@ -136,6 +136,18 @@ struct OmanixTheme {
     }
 }
 
+// MARK: - UI Constants
+
+enum UIConstants {
+    static let cornerCard: CGFloat = 12
+    static let cornerRow: CGFloat = 6
+    static let cornerPill: CGFloat = 999
+    static let cornerInput: CGFloat = 8
+    static let iconChipSmall: CGFloat = 22
+    static let iconChipMedium: CGFloat = 24
+    static let iconChipLarge: CGFloat = 28
+}
+
 // MARK: - Theme Environment Key
 
 private struct OmanixThemeKey: EnvironmentKey {

@@ -9,8 +9,12 @@ struct WidgetGalleryView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            content
-            statusBar
+            if store.widgets.isEmpty {
+                emptyState
+            } else {
+                content
+            }
+            StatusBarView(store: store, idleText: "Toggle widgets, then rebuild") { EmptyView() }
         }
     }
 
@@ -53,56 +57,23 @@ struct WidgetGalleryView: View {
         .background(theme.background)
     }
 
-    // MARK: - Status Bar
+    // MARK: - Empty State
 
-    private var statusBar: some View {
-        HStack(spacing: 8) {
-            if let error = store.errorMessage {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 10))
-                    .foregroundColor(theme.error)
-                Text(error)
-                    .font(.system(size: 11))
-                    .foregroundColor(theme.error)
-                    .lineLimit(1)
-            } else if let success = store.successMessage {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 10))
-                    .foregroundColor(theme.success)
-                Text(success)
-                    .font(.system(size: 11))
-                    .foregroundColor(theme.success)
-            } else {
-                Circle()
-                    .fill(theme.tertiaryText.opacity(0.3))
-                    .frame(width: 4, height: 4)
-                Text("Toggle widgets, then rebuild")
-                    .font(.system(size: 11))
+    private var emptyState: some View {
+        VStack(spacing: 16) {
+            Spacer()
+            Image(systemName: "rectangle.stack")
+                .font(.system(size: 32, weight: .light))
+                .foregroundColor(theme.tertiaryText.opacity(0.4))
+            VStack(spacing: 4) {
+                Text("No widgets available")
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .foregroundColor(theme.text)
+                Text("Widgets will appear here once configured")
+                    .font(.system(size: 12))
                     .foregroundColor(theme.tertiaryText)
             }
-
             Spacer()
-
-            Button(action: { Task { await store.rebuild() } }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.system(size: 10))
-                    Text("Rebuild")
-                }
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 5)
-                .background(theme.accent)
-                .cornerRadius(6)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(theme.surface)
-        .overlay(alignment: .top) {
-            Divider().background(theme.divider)
         }
     }
 }
@@ -119,7 +90,7 @@ struct WidgetCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: UIConstants.cornerInput)
                         .fill(widget.isEnabled ? theme.accent.opacity(0.1) : Color.white.opacity(0.04))
                         .frame(width: 36, height: 36)
                     Image(systemName: widget.icon)
@@ -160,10 +131,10 @@ struct WidgetCard: View {
         }
         .padding(14)
         .background(theme.surface)
-        .cornerRadius(12)
+        .cornerRadius(UIConstants.cornerCard)
         .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 1)
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: UIConstants.cornerCard)
                 .stroke(
                     widget.isEnabled
                         ? theme.accent.opacity(isHovered ? 0.4 : 0.2)

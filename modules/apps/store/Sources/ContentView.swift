@@ -23,7 +23,6 @@ struct ContentView: View {
         } detail: {
             detail
         }
-        .searchable(text: $searchText, prompt: "Search packages...")
         .background(theme.background)
     }
 
@@ -48,12 +47,14 @@ struct ContentView: View {
             Divider()
                 .background(theme.divider)
 
-            // Navigation
-            List(SidebarTab.allCases, id: \.self, selection: $selectedTab) { tab in
-                sidebarRow(tab)
+            // Navigation — VStack with Buttons for full control
+            VStack(spacing: 2) {
+                ForEach(SidebarTab.allCases, id: \.self) { tab in
+                    sidebarRow(tab)
+                }
             }
-            .listStyle(.sidebar)
-            .scrollContentBackground(.hidden)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 8)
 
             Spacer(minLength: 0)
 
@@ -81,30 +82,41 @@ struct ContentView: View {
     }
 
     private func sidebarRow(_ tab: SidebarTab) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: iconName(for: tab))
-                .font(.system(size: 14, weight: selectedTab == tab ? .semibold : .regular))
-                .foregroundColor(selectedTab == tab ? theme.accent : theme.tertiaryText)
-                .frame(width: 20)
+        let isSelected = selectedTab == tab
+        return Button(action: { selectedTab = tab }) {
+            HStack(spacing: 8) {
+                // Icon chip — tinted background when selected
+                Image(systemName: iconName(for: tab))
+                    .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                    .foregroundColor(isSelected ? theme.accent : theme.tertiaryText)
+                    .frame(width: UIConstants.iconChipSmall, height: UIConstants.iconChipSmall)
+                    .background(isSelected ? theme.accent.opacity(0.12) : Color.clear)
+                    .cornerRadius(UIConstants.cornerRow)
 
-            Text(tab.rawValue)
-                .font(.system(size: 13, weight: selectedTab == tab ? .medium : .regular))
-                .foregroundColor(selectedTab == tab ? theme.text : theme.secondaryText)
+                Text(tab.rawValue)
+                    .font(.system(size: 13, weight: isSelected ? .medium : .regular))
+                    .foregroundColor(isSelected ? theme.text : theme.secondaryText)
 
-            Spacer()
+                Spacer()
 
-            if let badge = badgeText(for: tab) {
-                Text(badge)
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .foregroundColor(theme.accent)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(theme.accent.opacity(0.1))
-                    .cornerRadius(4)
+                if let badge = badgeText(for: tab) {
+                    Text(badge)
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundColor(theme.accent)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(theme.accent.opacity(0.1))
+                        .cornerRadius(UIConstants.cornerRow)
+                }
             }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: UIConstants.cornerRow)
+                    .fill(isSelected ? Color.white.opacity(0.06) : .clear)
+            )
         }
-        .padding(.vertical, 4)
-        .listRowSeparator(.hidden)
+        .buttonStyle(.plain)
     }
 
     // MARK: - Detail

@@ -14,7 +14,7 @@ struct SettingsView: View {
         VStack(spacing: 0) {
             header
             content
-            statusBar
+            StatusBarView(store: store, idleText: "") { EmptyView() }
         }
         .onAppear { loadSettings() }
     }
@@ -99,10 +99,10 @@ struct SettingsView: View {
                 .padding(.vertical, 10)
             }
             .background(theme.surface)
-            .cornerRadius(12)
+            .cornerRadius(UIConstants.cornerCard)
             .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 1)
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: UIConstants.cornerCard)
                     .stroke(theme.border, lineWidth: 1)
             )
         }
@@ -143,10 +143,10 @@ struct SettingsView: View {
                 }
             }
             .background(theme.surface)
-            .cornerRadius(12)
+            .cornerRadius(UIConstants.cornerCard)
             .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 1)
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: UIConstants.cornerCard)
                     .stroke(theme.border, lineWidth: 1)
             )
         }
@@ -203,10 +203,10 @@ struct SettingsView: View {
                 }
             }
             .background(theme.surface)
-            .cornerRadius(12)
+            .cornerRadius(UIConstants.cornerCard)
             .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 1)
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: UIConstants.cornerCard)
                     .stroke(theme.border, lineWidth: 1)
             )
         }
@@ -276,36 +276,6 @@ struct SettingsView: View {
             .padding(.vertical, 10)
         }
         .buttonStyle(.plain)
-    }
-
-    // MARK: - Status Bar
-
-    private var statusBar: some View {
-        HStack(spacing: 8) {
-            if let error = store.errorMessage {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 10))
-                    .foregroundColor(theme.error)
-                Text(error)
-                    .font(.system(size: 11))
-                    .foregroundColor(theme.error)
-                    .lineLimit(1)
-            } else if let success = store.successMessage {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 10))
-                    .foregroundColor(theme.success)
-                Text(success)
-                    .font(.system(size: 11))
-                    .foregroundColor(theme.success)
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(theme.surface)
-        .overlay(alignment: .top) {
-            Divider().background(theme.divider)
-        }
     }
 
     // MARK: - Helpers
