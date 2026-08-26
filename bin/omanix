@@ -25,11 +25,17 @@ Usage: omanix <command> [options]
 
 Commands:
   install              Install Omanix on this Mac (clones flake, prompts host/user)
+  update               Update Omanix to latest version (smart merge, preserves config)
+  update --version X   Pin to specific version tag
+  update --commit X    Pin to specific commit
+  upgrade              Update flake inputs (nix flake update + rebuild)
   rebuild              Rebuild system (darwin-rebuild switch)
   rebuild --rollback   Undo last build
   rebuild --preview    Build impure overlay preview (no generation)
   generations          List previous system generations
-  update               nix flake update + rebuild
+  clean                Clean old nix generations (keeps last ${OMANIX_KEEP_GENERATIONS:-5})
+  clean --dry-run      Preview what would be deleted
+  clean --aggressive   Thorough cleaning (GC store + optimise)
   add <pkg>            Add package (routes nixpkgs → brew)
   remove <pkg>         Remove package
   search <pkg>         Search nixpkgs + brew
@@ -234,11 +240,21 @@ case "${1:-help}" in
     ;;
 
   update)
-    log_info "update" "updating flake inputs"
+    log_info "update" "updating Omanix"
+    "$FLAKE_DIR/lib/omanix-update.sh" "$@"
+    ;;
+
+  upgrade)
+    log_info "upgrade" "upgrading flake inputs"
     echo "Updating flake inputs..."
     nix flake update "$FLAKE_DIR"
-    log_info "update" "flake updated, rebuilding"
+    log_info "upgrade" "flake updated, rebuilding"
     omanix rebuild
+    ;;
+
+  clean)
+    log_info "clean" "cleaning nix generations"
+    "$FLAKE_DIR/lib/omanix-clean.sh" "$@"
     ;;
 
   add)

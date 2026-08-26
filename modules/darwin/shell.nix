@@ -14,8 +14,9 @@
         # Omanix aliases
         alias osrebuild='sudo darwin-rebuild switch --flake ~/.omanix'
         alias osconfig='code ~/.omanix'
-        alias osclear='nix-collect-garbage -d'
-        alias osupgrade='sudo -i nix upgrade-nix'
+        alias osclean='omanix clean'
+        alias osupdate='omanix update'
+        alias osupgrade='omanix upgrade'
 
         # direnv
         alias allow='direnv allow'

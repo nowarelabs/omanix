@@ -28,6 +28,27 @@
     example = "none";
   };
 
+  # --- Maintenance options ---
+
+  options.omanix.keepGenerations = lib.mkOption {
+    type = lib.types.ints.positive;
+    default = 5;
+    description = "Number of system generations to keep when running 'omanix clean'. Older generations are deleted to free disk space.";
+    example = 10;
+  };
+
+  options.omanix.autoClean = lib.mkOption {
+    type = lib.types.bool;
+    default = false;
+    description = "Automatically clean old generations after each rebuild. Uses omanix.keepGenerations to determine how many to keep.";
+  };
+
+  options.omanix.keepLogsDays = lib.mkOption {
+    type = lib.types.ints.positive;
+    default = 30;
+    description = "Number of days to keep log files in ~/.omanix/logs/. Older logs are deleted during 'omanix clean'.";
+  };
+
   config.assertions = [
     {
       assertion = config.omanix.host != "";
