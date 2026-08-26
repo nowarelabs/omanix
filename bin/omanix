@@ -11,6 +11,12 @@ if [[ -f "$FLAKE_DIR/lib/log.sh" ]]; then
   source "$FLAKE_DIR/lib/log.sh"
   mkdir -p "$FLAKE_DIR/logs"
   log_rotate
+else
+  # Stubs when log library is not yet available
+  log_debug() { :; }
+  log_info()  { :; }
+  log_warn()  { :; }
+  log_error() { :; }
 fi
 
 usage() {

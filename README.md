@@ -44,7 +44,7 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
   nix run github:nowarelabs/omanix#install
 ```
 
-5–15 minutes, then reboot into Omanix. The installer clones the Omanix flake to `~/.config/omanix`, asks for your Mac username and hostname, and builds your desktop.
+5–15 minutes, then reboot into Omanix. The installer clones the Omanix flake to `~/.omanix`, asks for your Mac username and hostname, and builds your desktop.
 
 *Already have Nix? The installer skips it. Need it for a team? Fork `nowarelabs/omanix` and run `nix run github:nowarelabs/omanix#install -- --repo your-org/omanix`.*
 
@@ -74,7 +74,7 @@ Remove it the same way: toggle off or `omanix remove pomodoro` → rebuild. `oma
 ## Features
 
 - **One command, any Mac** — Apple Silicon (M1/M2/M3/M4) or Intel, macOS 12+. Same `flake.lock` on your Mac and your teammate's.
-- **One file, one lock** — `~/.config/omanix/configuration.nix` (`omanix.host`, `omanix.user`, `omanix.theme`, `omanix.widgets.*`) is your machine. `flake.lock` pins every package.
+- **One file, one lock** — `~/.omanix/configuration.nix` (`omanix.host`, `omanix.user`, `omanix.theme`, `omanix.widgets.*`) is your machine. `flake.lock` pins every package.
 - **Store GUI, enabled by default** — Browse `nixpkgs` + Homebrew, toggle widgets and themes, tweak system settings with sliders. The Store is itself a widget you can disable.
 - **Widgets as apps** — Clock, workspaces, battery and community widgets like pomodoro are `launchd`/`Swift` derivations (`omanix.widgets.pomodoro.enable` via `lib/mkWidget`/`lib/mkApp`, SDK + auto-wrap). They appear as Mac apps and vanish on removal.
 - **AI, local and frontier** — `omanix ask --local "make it darker"` runs Qwen 3–7B offline via Ollama (no API key, <2s, `skills/omanix/mini-SKILL.md`). *“Make a pomodoro app”* via Claude/OpenCode uses the full skill, builds a Swift app in `overlays/`, previews instantly (`omanix rebuild --preview` → hot-reload), then commits to your flake.
@@ -106,7 +106,7 @@ omanix update               # nix flake update + rebuild
 ### Your config — simple for green users, scales for many machines
 
 ```nix
-# ~/.config/omanix/configuration.nix — the file you edit
+# ~/.omanix/configuration.nix — the file you edit
 { pkgs, ... }: {
   omanix.host = "my-mac";
   omanix.user = "yourname";
@@ -137,7 +137,7 @@ omanix rebuild --preview                     # see the AI's draft without a new 
 
 ```bash
 /nix/nix-installer uninstall
-rm -rf ~/.config/omanix
+rm -rf ~/.omanix
 sudo rm /Library/LaunchDaemons/org.nixos.* 2>/dev/null || true
 # Homebrew casks added by Omanix are removed automatically (onActivation.cleanup = "uninstall")
 sudo reboot

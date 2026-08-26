@@ -10,6 +10,11 @@ NAME="${1:?Usage: omanix remove <package>}"
 # Source logging
 if [[ -f "$FLAKE_DIR/lib/log.sh" ]]; then
   source "$FLAKE_DIR/lib/log.sh"
+else
+  log_debug() { :; }
+  log_info()  { :; }
+  log_warn()  { :; }
+  log_error() { :; }
 fi
 
 if [[ ! -f "$CONFIG" ]]; then

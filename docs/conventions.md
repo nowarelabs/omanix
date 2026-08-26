@@ -9,7 +9,7 @@ Conventions are the agreements that let principles and philosophies turn into co
 This is the **approved** tree. Beginner sees `configuration.nix`; complexity scales via `hosts/` and `modules/`; Linux is a future `system = "x86_64-linux"` branch already stubbed.
 
 ```
-omanix/                              # flake root — cloned to ~/.config/omanix (beginner: you edit configuration.nix)
+omanix/                              # flake root — cloned to ~/.omanix (beginner: you edit configuration.nix)
 ├── flake.nix                        # ~30 lines, commented: pinned inputs + mkSystem helper → darwinConfigurations + future nixosConfigurations
 ├── flake.lock
 ├── configuration.nix                # ⭐ THE file you edit: omanix.host, omanix.user, omanix.theme, omanix.widgets.*, packages, casks — typed, no raw .toml
@@ -76,7 +76,7 @@ omanix/                              # flake root — cloned to ~/.config/omanix
 
 ```nix
 {
-  # ~/.config/omanix/flake.nix — the only file you edit
+  # ~/.omanix/flake.nix — the only file you edit
   omanix.theme = "tokyo-night";                 # not themes/tokyo-night/colors.toml
   desktop.aerospace.gaps.inner = 8;              # not aerospace.toml
   desktop.sketchybar.position = "top";           # not sketchybarrc
@@ -90,7 +90,7 @@ No `xdg.configFile."aerospace/aerospace.toml".text` raw escape hatch in normal u
 Installer (`nix run github:nowarelabs/omanix#install`):
 
 1. `curl determinate Nix` if `which nix` fails
-2. `git clone` → `~/.config/omanix`
+2. `git clone` → `~/.omanix`
 3. Prompt `hostname`/`username` and `sed` into `darwinConfigurations."<hostname>"` + `system.primaryUser`/`users.users`
 4. `darwin-rebuild switch --flake .#<hostname>`
 
@@ -99,9 +99,9 @@ Installer (`nix run github:nowarelabs/omanix#install`):
 ```bash
 #!/bin/bash
 case "$1" in
-  rebuild) shift; [[ "$1" == --rollback ]] && exec sudo darwin-rebuild --rollback || exec sudo darwin-rebuild switch --flake ~/.config/omanix#$(scutil --get LocalHostName) "$@" ;;
+  rebuild) shift; [[ "$1" == --rollback ]] && exec sudo darwin-rebuild --rollback || exec sudo darwin-rebuild switch --flake ~/.omanix#$(scutil --get LocalHostName) "$@" ;;
   generations) darwin-rebuild --list-generations ;;
-  update) nix flake update ~/.config/omanix && omanix rebuild ;;
+  update) nix flake update ~/.omanix && omanix rebuild ;;
   add) shift; ./lib/omanix-add.sh "$@" ;;      # routes via search.nixos/brew (see 6)
   remove) shift; ./lib/omanix-remove.sh "$@" ;;
   search) shift; nix search nixpkgs "$1"; brew search "$1" ;;
@@ -212,7 +212,7 @@ Implementation: `bin/lib/omanix-add.sh`:
 
 ```bash
 /nix/nix-installer uninstall
-rm -rf ~/.config/omanix
+rm -rf ~/.omanix
 # launchd plists from launchd.user.agents / launchd.daemons are removed by nix-darwin uninstall
 # /Applications/Pomodoro.app symlinks from mkOmanixApp are removed by activation's cleanup
 brew uninstall --cask google-chrome  # if user wants to drop brew casks Omanix added — or use `omanix uninstall --with-brew`
@@ -301,7 +301,7 @@ The Store is `modules/apps/store/` → `lib/mkApp` SwiftUI (mac, `mkApp` GTK on 
 - **OS settings:** Sliders for `system.defaults.dock`, `desktop.aerospace.gaps`, Touch ID toggle — all `omanix.*` options, never raw `defaults write`.
 - **Entry points:** `Super → Omanix Store`, `open -a "Omanix Store"`, `omanix store` CLI. Green user never types `omanix add`.
 
-**Contributor rule:** Store edits `configuration.nix` via structured helpers (`nix edit`-like `yq` for Nix), not `echo` or `sed`. All Store-initiated changes must be `omanix rebuild --rollback`able in 30s and appear as a `git diff` in `~/.config/omanix`.
+**Contributor rule:** Store edits `configuration.nix` via structured helpers (`nix edit`-like `yq` for Nix), not `echo` or `sed`. All Store-initiated changes must be `omanix rebuild --rollback`able in 30s and appear as a `git diff` in `~/.omanix`.
 
 ---
 
@@ -310,12 +310,12 @@ The Store is `modules/apps/store/` → `lib/mkApp` SwiftUI (mac, `mkApp` GTK on 
 Omanix is ready for `Claude Code`/`OpenCode` to drop a pomodoro that *just appears*, without the agent writing bash to `~/.config` or `/nix/store`.
 
 **Skill — `skills/omanix/SKILL.md` (auto-installed, linters ready):**
-- Installed by `home.file."~/.config/omanix/skills/omanix/SKILL.md"` and symlinked to `~/.claude/skills/omanix/SKILL.md` + `~/.opencode/skills/omanix/SKILL.md` on activation. **Approved:** `bin/omanix install` auto-installs `statix` + `nixfmt` + `nixd` into agent PATH ( `nix develop` also provides them) — agents lint without manual setup.
+- Installed by `home.file."~/.omanix/skills/omanix/SKILL.md"` and symlinked to `~/.claude/skills/omanix/SKILL.md` + `~/.opencode/skills/omanix/SKILL.md` on activation. **Approved:** `bin/omanix install` auto-installs `statix` + `nixfmt` + `nixd` into agent PATH ( `nix develop` also provides them) — agents lint without manual setup.
 - Contains: typed contract `lib/mkWidget { name, sketchybarConfig|hyprlandConfig, launchdOrSystemd, swiftOrGtkSrc, dependencies, theme }` + `lib/mkApp`, theme tokens `config.lib.omanixTheme.colors.*`, `omanix.widgets.*` examples (pomodoro `Sources/ContentView.swift` on mac, `widget.qml` on linux), lint commands (`statix check`, `nix fmt`, `nix-instantiate --parse`), and the two-phase flow.
 - Agents must run `statix` + `nix fmt` + `nix-instantiate --parse overlays/<name>/default.nix` before any `omanix rebuild`.
 
 **Two-phase build — same delight as friend's map, mac-native, now with permanent impure allowed:**
-1. **Draft (no build):** Agent writes `~/.config/omanix/overlays/pomodoro/{default.nix, Sources/ContentView.swift}` (or `widget.qml` on linux) — `overlays/` is `git-ignored` by default, impure, not in `flake.lock`.
+1. **Draft (no build):** Agent writes `~/.omanix/overlays/pomodoro/{default.nix, Sources/ContentView.swift}` (or `widget.qml` on linux) — `overlays/` is `git-ignored` by default, impure, not in `flake.lock`.
 2. **Preview (impure, instant, no generation):** `omanix rebuild --preview` — `configuration.nix` imports `overlays/*/default.nix` via `builtins.readDir ../overlays` (impure, `lib/mkSystem` handles branch), builds `/nix/store/...-pomodoro`, hot-reloads `sketchybar --reload` + `launchctl load` (mac) / `quickshell ipc` + `systemctl --user daemon-reload` (linux) via IPC. Widget appears, theme-injected, no generation bump.
 3. **Commit OR keep impure (user chooses, approved: allow permanent impure):**
    - **Pure commit (default, tracked, Store-visible):** `omanix add pomodoro --from-overlay overlays/pomodoro` moves overlay to `inputs.pomodoro` + `omanix.widgets.pomodoro.enable` in `configuration.nix`, `nix flake lock --update-input`, `nix flake check`, `omanix rebuild` (pure, new generation). `overlays/` cleared. Green user sees toggle in Store.
@@ -334,7 +334,7 @@ Frontier handles heavy (full Swift `mkApp`); local `qwen2.5:7b`/`qwen3:8b` via `
 
 **Model:** `ollama` daemon from `config/ollama.plist` + `config/nix/ollama.plist` (already in daily driver). **Approved: opt-in only** — `omanix setup local-ai` does `ollama pull qwen2.5:7b` (default) or `qwen3:8b` if RAM ≥16GB only when user runs it; installer does not prompt or pull by default. Model lives in `~/.ollama` (outside `/nix`, pruned by `omanix uninstall --with-ollama` only if user opts). `ollama` is `launchd.user.agents.ollama` on mac, `systemd --user` on linux — same `modules/services/ollama.nix`.
 
-**Mini skill — `skills/omanix/mini-SKILL.md`:** Installed alongside full `SKILL.md` to `~/.config/omanix/skills/omanix/mini-SKILL.md` and `~/.claude/skills/omanix/` for visibility, but frontier agents ignore it. It is ~2KB JSON schema:
+**Mini skill — `skills/omanix/mini-SKILL.md`:** Installed alongside full `SKILL.md` to `~/.omanix/skills/omanix/mini-SKILL.md` and `~/.claude/skills/omanix/` for visibility, but frontier agents ignore it. It is ~2KB JSON schema:
 
 ```json
 { "type": "object", "properties": { "action": {"enum": ["setTheme","toggleWidget","addPackage","mkWidget"]}, "theme": {"enum": ["tokyo-night","catppuccin"]}, "widget": {"type": "string"}, "package": {"type": "string"} } }

@@ -65,7 +65,7 @@ Why **Build-time (Nix-pure)** for themes and widgets?
 On Arch, `omarchy-theme-set` writes `~/.config` and you see it now. On Nix, the next `darwin-rebuild` would revert it and you'd file a bug. Build-time is honest:
 
 ```nix
-# ~/.config/omanix/flake.nix — the only place you edit
+# ~/.omanix/flake.nix — the only place you edit
 omanix.theme = "tokyo-night";           # rebuild to change, rolls back with generations
 omanix.widgets.pomodoro.enable = true; # not `omarchy-plugin-add pomodoro` at runtime
 ```
@@ -121,7 +121,7 @@ Philosophy: **If it looks like a Mac app, it should be built like a Nix derivati
 
 ## 9. Your Flake Is Your Dotfiles, Versioned — Until You Leave
 
-`config/home.nix` is 138 lines of `programs.zsh.initContent` and aliases like `osrebuild`. Omanix makes that history first-class: `~/.config/omanix` is a git repo, `system.configurationRevision = self.rev` stamps every generation.
+`config/home.nix` is 138 lines of `programs.zsh.initContent` and aliases like `osrebuild`. Omanix makes that history first-class: `~/.omanix` is a git repo, `system.configurationRevision = self.rev` stamps every generation.
 
 And leaving is pristine: uninstall removes `/nix`, the `LaunchAgents` that were Nix-managed, the `/Applications` symlinks for Nix-built apps, and the Homebrew casks (with `cleanup = "uninstall"`). No `~/Library/LaunchAgents/org.foo.plist` hand-written by a bash plugin survives, because no plugin was ever allowed to write there — only `launchd.user.agents` did.
 

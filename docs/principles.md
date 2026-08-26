@@ -6,7 +6,7 @@ These are invariants. If a change violates a principle, the change is wrong, not
 
 ## 1. Distro, Not Library
 
-Omanix is the user's flake. The one-command installer clones `github:nowarelabs/omanix` to `~/.config/omanix` and the user edits that flake in place. `omanix rebuild` is `darwin-rebuild switch --flake ~/.config/omanix#<hostname>`.
+Omanix is the user's flake. The one-command installer clones `github:nowarelabs/omanix` to `~/.omanix` and the user edits that flake in place. `omanix rebuild` is `darwin-rebuild switch --flake ~/.omanix#<hostname>`.
 
 We do **not** ship as `inputs.omanix.lib.mkDarwinSystem` library. The Approved decision (Distro — clone & edit) exists because Omarchy's power is a file you edit and reload. Nix purity is preserved via `flake.lock`; composability is preserved via `inputs` the _user_ adds inside their distro flake.
 
@@ -62,7 +62,7 @@ This mirrors the daily driver. `omarchy-pkg-*` is deleted; the replacement is `n
 
 ## 6. One Lock File, One Truth
 
-`flake.lock` pins `nixpkgs`, `nix-darwin`, `home-manager`, and every plugin/app input. `917fec99094...` pins as in `config/flake.nix:5`. `nix flake update` is the only updater; `omarchy-update*` is replaced by `omanix update` → `nix flake update ~/.config/omanix && omanix rebuild`.
+`flake.lock` pins `nixpkgs`, `nix-darwin`, `home-manager`, and every plugin/app input. `917fec99094...` pins as in `config/flake.nix:5`. `nix flake update` is the only updater; `omarchy-update*` is replaced by `omanix update` → `nix flake update ~/.omanix && omanix rebuild`.
 
 ---
 
@@ -111,11 +111,11 @@ This gives macOS what you wanted: "on Mac I would have had to install a Mac app 
 
 ## 12. Pristine Mac Guarantee — Full Pristine — Uninstall Leaves No Trace
 
-**Approved: Full pristine. If the user stops using Omanix, their Mac is pristine — including casks Omanix added.** All system state lives in `/nix/store`, `/nix/var/nix/profiles`, the flake repo at `~/.config/omanix`, and (for casks) `/Applications` symlinks managed by Homebrew. Uninstall is:
+**Approved: Full pristine. If the user stops using Omanix, their Mac is pristine — including casks Omanix added.** All system state lives in `/nix/store`, `/nix/var/nix/profiles`, the flake repo at `~/.omanix`, and (for casks) `/Applications` symlinks managed by Homebrew. Uninstall is:
 
 ```bash
 /nix/nix-installer uninstall
-rm -rf ~/.config/omanix
+rm -rf ~/.omanix
 sudo rm /Library/LaunchDaemons/org.nixos.* 2>/dev/null; true
 # All homebrew casks/brews added via homebrew.casks/brews are removed because onActivation.cleanup = "uninstall"
 ```
@@ -160,9 +160,9 @@ Friend's substrate we adapt:
 
 | Friend (Linux)                                                                                                              | Omanix (macOS now, Linux future — same `omanix.widgets`)                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `~/.config/omanix/plugins/pomodoro/{default.nix, widget.qml}` (Home Manager `--impure` scan)                                | `~/.config/omanix/overlays/pomodoro/{default.nix, Sources/*.swift}` **preview** overlay (impure, git-ignored) **plus** committed `configuration.nix` `omanix.widgets.*` / `inputs.*` (pure). No `--impure` in final build.                                                                                                                                                                                                                                                   |
+| `~/.omanix/plugins/pomodoro/{default.nix, widget.qml}` (Home Manager `--impure` scan)                                | `~/.omanix/overlays/pomodoro/{default.nix, Sources/*.swift}` **preview** overlay (impure, git-ignored) **plus** committed `configuration.nix` `omanix.widgets.*` / `inputs.*` (pure). No `--impure` in final build.                                                                                                                                                                                                                                                   |
 | `lib.mkPlugin { name, type = "bar-widget", source = ./widget.qml, style = "${theme.colors.base01}", dependencies = [mpv] }` | `lib/mkWidget { name = "pomodoro", sketchybarConfig                                                                                                                                                                                                                                                                                                                                                                                                                          | hyprlandConfig, launchdOrSystemd, swiftOrGtkSrc, style = "${config.lib.omanixTheme.colors.accent}", dependencies = [pkgs.libnotify pkgs.mpv] }`—`theme`comes from`lib/themed.nix`, not `stylix`, and `pkgs` paths are Nix-resolved. |
-| `SKILL.md` at `~/.claude/skills/omanix.md` + `statix`/`nixpkgs-fmt` in PATH                                                 | Same, but Omanix ships it: `skills/omanix/SKILL.md` (machine-readable schema + `mkWidget`/`mkApp` examples for both mac and Linux) installed to `~/.config/omanix/skills/` and symlinked to `~/.claude/skills/omanix/` / `~/.opencode/skills/omanix/` by `home.file`. Agents run `nix fmt` + `statix check` + `nix-instantiate --parse` before `omanix rebuild`.                                                                                                             |
+| `SKILL.md` at `~/.claude/skills/omanix.md` + `statix`/`nixpkgs-fmt` in PATH                                                 | Same, but Omanix ships it: `skills/omanix/SKILL.md` (machine-readable schema + `mkWidget`/`mkApp` examples for both mac and Linux) installed to `~/.omanix/skills/` and symlinked to `~/.claude/skills/omanix/` / `~/.opencode/skills/omanix/` by `home.file`. Agents run `nix fmt` + `statix check` + `nix-instantiate --parse` before `omanix rebuild`.                                                                                                             |
 | Quickshell `Qt.createComponent()` + D-Bus IPC to reload                                                                     | **Mac:** `sketchybar --reload` + `launchctl load ~/Library/LaunchAgents/org.omanix.*.plist` (generated) + `/Applications/*.app` symlink swap. **Future Linux:** `quickshell ipc call` + `systemctl --user daemon-reload`. Same `omanix rebuild` triggers the right IPC branch via `pkgs.stdenv.isDarwin`.                                                                                                                                                                    |
 | `omanix-rebuild` = `home-manager switch --flake` (`--impure` for drop-ins)                                                  | **Omanix two-phase:** `omanix rebuild --preview` — evaluates `overlays/*/default.nix` impurely (no `flake.lock` update, no generation, hot-reload via IPC, instant feedback, not tracked) ; `omanix add` — promotes the overlay to `configuration.nix` `inputs.*` + `omanix.widgets.*.enable`, runs `nix flake lock --update-input`, `nix flake check`, `omanix rebuild` (pure, generation, rollbackable). AI is instructed to always `preview` then ask "keep?" then `add`. |
 
@@ -185,7 +185,7 @@ Why this beats friend's _only_ `--impure` forever: we keep preview speed but mak
 **Beginner edits one file. Complexity scales, not starts complex.**
 
 ```
-omanix/                          # distro flake — cloned to ~/.config/omanix (or ~/.local/share/omanix)
+omanix/                          # distro flake — cloned to ~/.omanix (or ~/.local/share/omanix)
 ├── flake.nix                    # 30 lines you can read: pinned inputs + mkSystem helper → darwinConfigurations + future nixosConfigurations
 ├── flake.lock
 ├── configuration.nix            # ⭐ THE file you edit: omanix.host, omanix.user, omanix.theme, omanix.widgets.*, packages, casks — commented for green users

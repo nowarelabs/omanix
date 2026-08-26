@@ -95,11 +95,17 @@ fi
       text = ''
 #!/bin/bash
 STORE_DIR="$HOME/.omanix"
-mkdir -p "$STORE_DIR"
+LOG_DIR="$STORE_DIR/logs"
+mkdir -p "$STORE_DIR" "$LOG_DIR"
+LOG_FILE="$LOG_DIR/$(date +%Y-%m-%d).log"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$1] [build-omanix] $2" >> "$LOG_FILE"; echo "[$1] [build-omanix] $2"; }
+
+log "INFO" "starting manual build"
 
 CONFIG_DIR="$HOME/.omanix"
 if [ -d "$CONFIG_DIR/modules/apps/store/Sources" ]; then
   cp -R "$CONFIG_DIR/modules/apps/store/Sources" "$STORE_DIR/"
+  log "INFO" "copied sources from config to store"
 fi
 
 # Fix ownership if needed (darwin-rebuild creates with root)
@@ -107,11 +113,13 @@ if [ -O "/Applications/Omanix.app/Contents/MacOS" ]; then
   : # already owned by us
 else
   sudo chown -R "$(whoami):admin" "/Applications/Omanix.app"
+  log "INFO" "fixed ownership of /Applications/Omanix.app"
 fi
 
 mkdir -p "/Applications/Omanix.app/Contents/MacOS"
 mkdir -p "/Applications/Omanix.app/Contents/Resources"
 
+log "INFO" "compiling swift sources"
 xcrun swiftc \
   -framework SwiftUI \
   -framework Foundation \
@@ -123,6 +131,7 @@ if [ -f "$CONFIG_DIR/assets/icon.png" ]; then
   cp "$CONFIG_DIR/assets/icon.png" "/Applications/Omanix.app/Contents/Resources/AppIcon.icns"
 fi
 
+log "INFO" "build completed successfully"
 echo "Omanix rebuilt successfully"
       '';
       executable = true;

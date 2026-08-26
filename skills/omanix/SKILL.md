@@ -1,5 +1,5 @@
 # Omanix SKILL.md — machine-readable schema for AI agents (frontier Claude/OpenCode)
-# Auto-installed to ~/.config/omanix/skills/omanix/SKILL.md
+# Auto-installed to ~/.omanix/skills/omanix/SKILL.md
 # Symlinked to ~/.claude/skills/omanix/SKILL.md and ~/.opencode/skills/omanix/SKILL.md
 # See conventions.md:15 and principles.md:15
 
