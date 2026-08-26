@@ -135,7 +135,52 @@ struct PackageListView: View {
 
     @ViewBuilder
     private var rebuildBanner: some View {
-        if store.needsRebuild {
+        if store.isLoading && store.needsRebuild {
+            // Rebuild in progress
+            VStack(spacing: 0) {
+                HStack(spacing: 10) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Rebuilding system...")
+                        .font(.system(.subheadline, weight: .semibold))
+                        .foregroundColor(theme.text)
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(theme.accent.opacity(0.08))
+                .overlay(alignment: .bottom) {
+                    Divider().background(theme.border)
+                }
+
+                if !store.rebuildLog.isEmpty {
+                    ScrollViewReader { proxy in
+                        ScrollView(.vertical, showsIndicators: false) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                ForEach(Array(store.rebuildLog.enumerated()), id: \.offset) { _, line in
+                                    Text(line)
+                                        .font(.system(.caption, design: .monospaced))
+                                        .foregroundColor(line.contains("error") || line.contains("ERROR")
+                                            ? theme.error : theme.tertiaryText)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .id(store.rebuildLog.firstIndex(of: line))
+                                }
+                            }
+                            .padding(12)
+                        }
+                        .frame(maxHeight: 160)
+                        .background(Color.black.opacity(0.3))
+                        .cornerRadius(8)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .onChange(of: store.rebuildLog.count) { _, _ in
+                            withAnimation { proxy.scrollTo(store.rebuildLog.count - 1, anchor: .bottom) }
+                        }
+                    }
+                }
+            }
+        } else if store.needsRebuild {
+            // Rebuild pending
             HStack(spacing: 10) {
                 Image(systemName: "arrow.triangle.2.circlepath")
                     .font(.system(size: 14, weight: .semibold))

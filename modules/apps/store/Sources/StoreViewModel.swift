@@ -17,6 +17,7 @@ class StoreViewModel: ObservableObject {
     @Published var isIndexingBrew = false
     @Published var brewIndexReady = false
     @Published var needsRebuild = false
+    @Published var rebuildLog: [String] = []
 
     private let omanixDir: String
     private var searchTask: Task<Void, Never>?
@@ -354,13 +355,90 @@ class StoreViewModel: ObservableObject {
     func rebuild() async {
         isLoading = true
         clearMessages()
+        rebuildLog = ["Starting rebuild..."]
 
         do {
-            _ = try await runCommand("omanix", ["rebuild"])
-            showMessage("System rebuilt successfully", type: .success)
-            needsRebuild = false
+            let flakeDir = omanixDir
+            // Get LocalHostName to match configuration.nix (e.g. "Vances-MacBook-Pro")
+            let host: String = {
+                let task = Process()
+                let pipe = Pipe()
+                task.executableURL = URL(fileURLWithPath: "/usr/sbin/scutil")
+                task.arguments = ["--get", "LocalHostName"]
+                task.standardOutput = pipe
+                task.standardError = FileHandle.nullDevice
+                try? task.run()
+                task.waitUntilExit()
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "my-mac"
+            }()
+
+            // Run darwin-rebuild via osascript with admin privileges (shows password dialog)
+            let rebuildCmd = "/run/current-system/sw/bin/darwin-rebuild switch --flake \(flakeDir)#\(host) --show-trace"
+            let osaScript = "do shell script \"cd \(flakeDir) && \(rebuildCmd) 2>&1\" with administrator privileges"
+
+            let process = Process()
+            let stdoutPipe = Pipe()
+            let stderrPipe = Pipe()
+
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+            process.arguments = ["-e", osaScript]
+            process.standardOutput = stdoutPipe
+            process.standardError = stderrPipe
+
+            let stdoutTask = Task.detached { stdoutPipe.fileHandleForReading.readDataToEndOfFile() }
+            let stderrTask = Task.detached { stderrPipe.fileHandleForReading.readDataToEndOfFile() }
+
+            try process.run()
+
+            // Read output line by line for live progress
+            var buffer = Data()
+            let handle = stdoutPipe.fileHandleForReading
+
+            while process.isRunning {
+                let available = handle.availableData
+                if !available.isEmpty {
+                    buffer.append(available)
+                    // Process complete lines
+                    while let range = buffer.range(of: Data("\n".utf8)) {
+                        let lineData = buffer.subdata(in: buffer.startIndex..<range.lowerBound)
+                        buffer.removeSubrange(buffer.startIndex...range.lowerBound)
+                        if let line = String(data: lineData, encoding: .utf8), !line.isEmpty {
+                            await MainActor.run {
+                                self.rebuildLog.append(line)
+                            }
+                        }
+                    }
+                }
+                try await Task.sleep(nanoseconds: 100_000_000)
+            }
+
+            // Drain remaining buffer
+            if !buffer.isEmpty, let line = String(data: buffer, encoding: .utf8), !line.isEmpty {
+                rebuildLog.append(line)
+            }
+
+            // Check stderr
+            let stderrData = await stderrTask.value
+            if let stderr = String(data: stderrData, encoding: .utf8), !stderr.isEmpty {
+                for line in stderr.components(separatedBy: "\n") where !line.isEmpty {
+                    rebuildLog.append(line)
+                }
+            }
+
+            if process.terminationStatus == 0 {
+                showMessage("System rebuilt successfully", type: .success)
+                needsRebuild = false
+            } else {
+                let lastLines = rebuildLog.suffix(3).joined(separator: "\n")
+                showMessage("Rebuild failed (exit \(process.terminationStatus))", type: .error)
+                if !lastLines.isEmpty {
+                    rebuildLog.append("ERROR: \(lastLines)")
+                }
+            }
         } catch {
             showMessage("Rebuild failed: \(error.localizedDescription)", type: .error)
+            rebuildLog.append("Error: \(error.localizedDescription)")
         }
 
         isLoading = false
