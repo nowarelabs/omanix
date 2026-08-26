@@ -17,9 +17,7 @@
 
     # Install Omanix skills for AI agents + omanix CLI
     home.file = {
-      # Skills
-      ".config/omanix/skills/omanix/SKILL.md".source = ../../skills/omanix/SKILL.md;
-      ".config/omanix/skills/omanix/mini-SKILL.md".source = ../../skills/omanix/mini-SKILL.md;
+      # Skills — link to AI agent directories (source files live in the flake, not here)
       ".claude/skills/omanix/SKILL.md".source = ../../skills/omanix/SKILL.md;
       ".opencode/skills/omanix/SKILL.md".source = ../../skills/omanix/SKILL.md;
 
