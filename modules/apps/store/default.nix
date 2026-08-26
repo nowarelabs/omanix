@@ -68,6 +68,9 @@ if [ -x "$XCRUN" ] || command -v xcrun >/dev/null 2>&1; then
   cp ${../../../assets/icon.png} "$HOME/.omanix-store/icon.png"
   cp ${../../../assets/icon.png} "/Applications/Omanix.app/Contents/Resources/AppIcon.icns"
 
+  # Fix ownership so build-omanix can overwrite later
+  chown -R ${user}:admin /Applications/Omanix.app
+
   echo "Omanix built successfully"
 
   # Add to Login Items for auto-launch (if not already added)
@@ -90,6 +93,13 @@ mkdir -p "$STORE_DIR"
 CONFIG_DIR="$HOME/.config/omanix"
 if [ -d "$CONFIG_DIR/modules/apps/store/Sources" ]; then
   cp -R "$CONFIG_DIR/modules/apps/store/Sources" "$STORE_DIR/"
+fi
+
+# Fix ownership if needed (darwin-rebuild creates with root)
+if [ -O "/Applications/Omanix.app/Contents/MacOS" ]; then
+  : # already owned by us
+else
+  sudo chown -R "$(whoami):admin" "/Applications/Omanix.app"
 fi
 
 mkdir -p "/Applications/Omanix.app/Contents/MacOS"

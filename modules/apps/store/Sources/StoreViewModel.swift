@@ -511,11 +511,21 @@ class StoreViewModel: ObservableObject {
     func loadDeclaredPackages() {
         Task {
             do {
+                print("[omanix] loadDeclaredPackages: calling omanix list-packages")
                 let output = try await runCommand("omanix", ["list-packages"])
-                guard let data = output.data(using: .utf8),
-                      let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+                print("[omanix] loadDeclaredPackages: got \(output.count) chars, first 200: \(String(output.prefix(200)))")
+
+                guard let data = output.data(using: .utf8) else {
+                    print("[omanix] loadDeclaredPackages: FAILED to convert output to UTF8 data")
                     return
                 }
+
+                guard let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+                    print("[omanix] loadDeclaredPackages: FAILED to parse JSON. Raw: \(String(output.prefix(500)))")
+                    return
+                }
+
+                print("[omanix] loadDeclaredPackages: parsed \(json.count) entries")
 
                 var items: [PackageItem] = []
                 var names: Set<String> = []
@@ -552,10 +562,11 @@ class StoreViewModel: ObservableObject {
                     return a.name < b.name
                 }
 
+                print("[omanix] loadDeclaredPackages: setting \(items.count) declaredPackages, \(names.count) installedPackages")
                 declaredPackages = items
                 installedPackages = names
             } catch {
-                print("Failed to load declared packages: \(error.localizedDescription)")
+                print("[omanix] loadDeclaredPackages FAILED: \(error.localizedDescription)")
             }
         }
     }
@@ -587,11 +598,15 @@ class StoreViewModel: ObservableObject {
 
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = [command] + arguments
-        process.environment = ProcessInfo.processInfo.environment.merging(
+        let env = ProcessInfo.processInfo.environment.merging(
             ["PATH": processPATH]
         ) { _, new in new }
+        process.environment = env
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
+
+        print("[omanix] runCommand: \(command) \(arguments.joined(separator: " "))")
+        print("[omanix] runCommand: PATH=\(env["PATH"] ?? "nil")")
 
         // Read pipe data concurrently to prevent deadlocks on large output
         let stdoutData = Task.detached { stdoutPipe.fileHandleForReading.readDataToEndOfFile() }
@@ -604,13 +619,19 @@ class StoreViewModel: ObservableObject {
         }
 
         let data = await stdoutData.value
+        let errData = await stderrData.value
+        let errStr = String(data: errData, encoding: .utf8) ?? ""
         guard let output = String(data: data, encoding: .utf8) else {
+            print("[omanix] runCommand: FAILED to convert stdout to string (\(data.count) bytes)")
             throw StoreError.invalidOutput
         }
 
+        print("[omanix] runCommand: exit=\(process.terminationStatus), stdout=\(output.count) bytes, stderr=\(errStr.count) bytes")
+        if !errStr.isEmpty {
+            print("[omanix] runCommand: stderr=\(String(errStr.prefix(300)))")
+        }
+
         guard process.terminationStatus == 0 else {
-            let errData = await stderrData.value
-            let errStr = String(data: errData, encoding: .utf8) ?? ""
             throw StoreError.commandFailed(errStr.isEmpty ? output : errStr)
         }
 
