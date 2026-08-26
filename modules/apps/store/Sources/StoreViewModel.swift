@@ -386,7 +386,6 @@ class StoreViewModel: ObservableObject {
             process.standardOutput = stdoutPipe
             process.standardError = stderrPipe
 
-            let stdoutTask = Task.detached { stdoutPipe.fileHandleForReading.readDataToEndOfFile() }
             let stderrTask = Task.detached { stderrPipe.fileHandleForReading.readDataToEndOfFile() }
 
             try process.run()
