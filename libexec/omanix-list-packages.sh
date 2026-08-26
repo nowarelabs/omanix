@@ -25,8 +25,6 @@ require_installed
 require_command nix "querying packages"
 require_command jq "formatting JSON"
 
-header "Packages"
-
 cd "$FLAKE_DIR"
 FLAKE_REF=".#darwinConfigurations.$HOST"
 TMPDIR_LIST=$(mktemp -d)

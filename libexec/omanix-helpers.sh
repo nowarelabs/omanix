@@ -5,7 +5,7 @@
 # --- Logging ---
 _log() {
   local level="$1" ctx="$2" msg="$3"
-  echo "[$level] [$ctx] $msg"
+  echo "[$level] [$ctx] $msg" >&2
   [[ -f "$_LOG_FILE" ]] && echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$level] [$ctx] $msg" >> "$_LOG_FILE"
 }
 
