@@ -36,10 +36,10 @@ let
 </dict>
 </plist>'';
 
-  # App icon - copy to nix store
-  appIcon = pkgs.runCommand "omanix-icon" {} ''
+  # App icon - convert PNG to proper .icns
+  appIcon = pkgs.runCommand "omanix-icon" { nativeBuildInputs = [ pkgs.iconutil ]; } ''
     mkdir -p $out
-    cp ${../../../assets/icon.png} $out/AppIcon.icns
+    cp ${../../../assets/Omanix.icns} $out/AppIcon.icns
   '';
 
 in {
@@ -71,8 +71,8 @@ if [ -x "$XCRUN" ] || command -v xcrun >/dev/null 2>&1; then
     "$STORE_DIR/Sources/"*.swift
 
   cp ${infoPlist} "/Applications/Omanix.app/Contents/Info.plist"
-  cp ${../../../assets/icon.png} "$HOME/.omanix/icon.png"
-  cp ${../../../assets/icon.png} "/Applications/Omanix.app/Contents/Resources/AppIcon.icns"
+  cp ${../../../assets/Omanix.icns} "$HOME/.omanix/icon.icns"
+  cp ${../../../assets/Omanix.icns} "/Applications/Omanix.app/Contents/Resources/AppIcon.icns"
 
   # Fix ownership so build-omanix can overwrite later
   chown -R ${user}:admin /Applications/Omanix.app
@@ -127,7 +127,10 @@ xcrun swiftc \
   "$STORE_DIR/Sources/"*.swift
 
 # Copy icon from config directory if it exists
-if [ -f "$CONFIG_DIR/assets/icon.png" ]; then
+if [ -f "$CONFIG_DIR/assets/Omanix.icns" ]; then
+  cp "$CONFIG_DIR/assets/Omanix.icns" "/Applications/Omanix.app/Contents/Resources/AppIcon.icns"
+elif [ -f "$CONFIG_DIR/assets/icon.png" ]; then
+  # Fallback: copy PNG (may not display correctly in Finder)
   cp "$CONFIG_DIR/assets/icon.png" "/Applications/Omanix.app/Contents/Resources/AppIcon.icns"
 fi
 
