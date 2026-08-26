@@ -225,7 +225,7 @@ case "${1:-help}" in
       echo "Usage: omanix add <package>" >&2
       exit 1
     fi
-    "$(dirname "$0")/../lib/omanix-add.sh" "$@"
+    "$FLAKE_DIR/lib/omanix-add.sh" "$@"
     ;;
 
   remove)
@@ -234,7 +234,7 @@ case "${1:-help}" in
       echo "Usage: omanix remove <package>" >&2
       exit 1
     fi
-    "$(dirname "$0")/../lib/omanix-remove.sh" "$@"
+    "$FLAKE_DIR/lib/omanix-remove.sh" "$@"
     ;;
 
   search)
@@ -450,7 +450,7 @@ case "${1:-help}" in
     ;;
 
   version)
-    echo "Omanix $(cat "$(dirname "$0")/../version" 2>/dev/null || echo "dev")"
+    echo "Omanix $(cat "$FLAKE_DIR/version" 2>/dev/null || echo "dev")"
     echo "nixpkgs: 917fec990948658ef1ccd07cef2a1ef060786846"
     ;;
 
