@@ -1,7 +1,7 @@
 #!/bin/bash
 # lib/omanix-add.sh — add a package declaratively
 # Routes: nixpkgs → homebrew cask → error
-# Edits configuration.nix, runs nix flake check dry, then rebuilds
+# Edits configuration.nix, then user runs omanix rebuild
 set -e
 
 FLAKE_DIR="${FLAKE_DIR:-$HOME/.config/omanix}"
@@ -13,8 +13,8 @@ if [[ ! -f "$CONFIG" ]]; then
   exit 1
 fi
 
-# Check if already installed
-if grep -q "pkgs\.$NAME\b" "$CONFIG" 2>/dev/null || grep -q "\"$NAME\"" "$CONFIG" 2>/dev/null; then
+# Check if already installed (match only uncommented lines)
+if grep -qE "^[^#]*pkgs\.$NAME\b" "$CONFIG" 2>/dev/null || grep -qE "^[^#]*\"$NAME\"" "$CONFIG" 2>/dev/null; then
   echo "$NAME is already in configuration.nix"
   exit 0
 fi
@@ -23,16 +23,17 @@ fi
 echo "Searching nixpkgs for $NAME..."
 if nix search --json nixpkgs "^${NAME}$" 2>/dev/null | jq -e 'keys | length > 0' > /dev/null 2>&1; then
   echo "Found in nixpkgs — adding to environment.systemPackages"
-  # Insert into environment.systemPackages
-  if grep -q "environment.systemPackages" "$CONFIG"; then
-    # Add to existing list
-    sed -i '' "s|environment.systemPackages = with pkgs; \[|environment.systemPackages = with pkgs; [ pkgs.$NAME|" "$CONFIG"
+
+  if grep -qE "^[^#]*environment\.systemPackages" "$CONFIG"; then
+    # Uncommented systemPackages line exists — append to it
+    sed -i '' "/^[^#]*environment\.systemPackages/{/pkgs\.$NAME/!s|\]| pkgs.$NAME ]|;}" "$CONFIG"
   else
-    # Add new section
+    # No uncommented line — add one before closing }
     sed -i '' "/^}/i\\
-  environment.systemPackages = with pkgs; [ pkgs.$NAME ];\
+  environment.systemPackages = with pkgs; [ pkgs.$NAME ];\\
 " "$CONFIG"
   fi
+
   echo "Added pkgs.$NAME to configuration.nix"
   echo "Run 'omanix rebuild' to install"
   exit 0
@@ -42,13 +43,15 @@ fi
 echo "Searching homebrew for $NAME..."
 if brew search --cask "$NAME" 2>/dev/null | grep -q "^${NAME}$"; then
   echo "Found as homebrew cask — adding to homebrew.casks"
-  if grep -q "homebrew.casks" "$CONFIG"; then
-    sed -i '' "s|homebrew.casks = \[|homebrew.casks = [ \"$NAME\"|" "$CONFIG"
+
+  if grep -qE "^[^#]*homebrew\.casks" "$CONFIG"; then
+    sed -i '' "/^[^#]*homebrew\.casks/{/\"$NAME\"/!s|\]| \"$NAME\" ]|;}" "$CONFIG"
   else
     sed -i '' "/^}/i\\
-  homebrew.casks = [ \"$NAME\" ];\
+  homebrew.casks = [ \"$NAME\" ];\\
 " "$CONFIG"
   fi
+
   echo "Added \"$NAME\" to configuration.nix"
   echo "Run 'omanix rebuild' to install"
   exit 0

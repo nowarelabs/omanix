@@ -16,6 +16,7 @@ class StoreViewModel: ObservableObject {
     @Published var currentTheme: String = "tokyo-night"
     @Published var isIndexingBrew = false
     @Published var brewIndexReady = false
+    @Published var needsRebuild = false
 
     private let omanixDir: String
     private var searchTask: Task<Void, Never>?
@@ -308,12 +309,13 @@ class StoreViewModel: ObservableObject {
             }
 
             _ = try await runCommand(command[0], Array(command.dropFirst()))
-            showMessage("Installed \(package.name)", type: .success)
+            showMessage("Added \(package.name) to configuration", type: .success)
 
             installedPackages.insert(package.name)
             if let index = packages.firstIndex(where: { $0.id == package.id }) {
                 packages[index].isInstalled = true
             }
+            needsRebuild = true
         } catch {
             showMessage("Failed to install \(package.name): \(error.localizedDescription)", type: .error)
         }
@@ -356,6 +358,7 @@ class StoreViewModel: ObservableObject {
         do {
             _ = try await runCommand("omanix", ["rebuild"])
             showMessage("System rebuilt successfully", type: .success)
+            needsRebuild = false
         } catch {
             showMessage("Rebuild failed: \(error.localizedDescription)", type: .error)
         }

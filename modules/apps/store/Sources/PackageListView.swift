@@ -14,6 +14,7 @@ struct PackageListView: View {
             header
             searchBar
             sourceFilters
+            rebuildBanner
             content
             statusBar
         }
@@ -127,6 +128,47 @@ struct PackageListView: View {
     private var activeSources: [PackageItem.PackageSource] {
         PackageItem.PackageSource.allCases.filter { source in
             store.packages.contains { $0.source == source }
+        }
+    }
+
+    // MARK: - Rebuild Banner
+
+    @ViewBuilder
+    private var rebuildBanner: some View {
+        if store.needsRebuild {
+            HStack(spacing: 10) {
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(theme.warning)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Rebuild required")
+                        .font(.system(.subheadline, weight: .semibold))
+                        .foregroundColor(theme.text)
+                    Text("Packages added — rebuild to apply changes")
+                        .font(.caption)
+                        .foregroundColor(theme.secondaryText)
+                }
+                Spacer()
+                Button(action: { Task { await store.rebuild() } }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 11))
+                        Text("Rebuild now")
+                    }
+                    .font(.system(.caption, weight: .semibold))
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .tint(theme.accent)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(theme.warning.opacity(0.08))
+            .overlay(alignment: .bottom) {
+                Divider().background(theme.border)
+            }
+            .transition(.move(edge: .top).combined(with: .opacity))
+            .animation(.easeInOut(duration: 0.25), value: store.needsRebuild)
         }
     }
 
