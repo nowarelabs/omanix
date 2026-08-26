@@ -67,12 +67,15 @@ confirm() {
 
 require_sudo() {
   if ! sudo -n true 2>/dev/null; then
-    log_info "$_CMD" "sudo access required"
-    sudo echo "" || {
-      log_error "$_CMD" "sudo access denied"
-      echo "Omanix requires sudo for system configuration" >&2
+    # darwin-rebuild exits 1 on usage error (no args) — that still means sudo works
+    local sudo_output
+    sudo_output=$(sudo -n darwin-rebuild 2>&1) || true
+    if echo "$sudo_output" | grep -qi "not allowed\|permission denied\|not in the sudoers"; then
+      log_error "$_CMD" "sudo access for darwin-rebuild not available"
+      echo "Configure passwordless sudo for darwin-rebuild:" >&2
+      echo "  sudo visudo -f /etc/sudoers.d/omanix" >&2
       exit 1
-    }
+    fi
   fi
 }
 
@@ -101,6 +104,7 @@ summary() {
 _omanix_init() {
   _CMD="${1:-unknown}"
   FLAKE_DIR="${FLAKE_DIR:-$HOME/.omanix}"
+  HOST="${HOST:-$(scutil --get LocalHostName 2>/dev/null || echo "")}"
   _LOG_DIR="$FLAKE_DIR/logs"
   _LOG_FILE="$_LOG_DIR/$(date '+%Y-%m-%d').log"
   mkdir -p "$_LOG_DIR" 2>/dev/null || true
