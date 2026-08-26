@@ -37,6 +37,8 @@ class StoreViewModel: ObservableObject {
         self.omanixDir = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".omanix").path
 
+        FileLogger.shared.rotate()
+        FileLogger.shared.info("store", "app launched, loading data")
         loadDeclaredPackages()
         loadWidgets()
         loadThemes()
@@ -302,6 +304,7 @@ class StoreViewModel: ObservableObject {
     func installPackage(_ package: PackageItem) async {
         isLoading = true
         clearMessages()
+        FileLogger.shared.info("store", "installing \(package.name) (source: \(package.source.rawValue))")
 
         do {
             let command: [String]
@@ -313,6 +316,7 @@ class StoreViewModel: ObservableObject {
             }
 
             _ = try await runCommand(command[0], Array(command.dropFirst()))
+            FileLogger.shared.info("store", "installed \(package.name)")
             showMessage("Added \(package.name) to configuration", type: .success)
 
             installedPackages.insert(package.name)
@@ -321,6 +325,7 @@ class StoreViewModel: ObservableObject {
             }
             needsRebuild = true
         } catch {
+            FileLogger.shared.error("store", "install \(package.name) failed: \(error.localizedDescription)")
             showMessage("Failed to install \(package.name): \(error.localizedDescription)", type: .error)
         }
 
@@ -330,6 +335,7 @@ class StoreViewModel: ObservableObject {
     func uninstallPackage(_ package: PackageItem) async {
         isLoading = true
         clearMessages()
+        FileLogger.shared.info("store", "uninstalling \(package.name)")
 
         do {
             let command: [String]
@@ -359,6 +365,7 @@ class StoreViewModel: ObservableObject {
         isLoading = true
         clearMessages()
         rebuildLog = ["Starting rebuild..."]
+        FileLogger.shared.info("store", "rebuild started")
 
         do {
             let result = try await runCommand("omanix", ["rebuild"])
@@ -368,6 +375,7 @@ class StoreViewModel: ObservableObject {
                 rebuildLog.append(line)
             }
 
+            FileLogger.shared.info("store", "rebuild completed successfully")
             showMessage("System rebuilt successfully", type: .success)
             needsRebuild = false
         } catch {
@@ -375,6 +383,7 @@ class StoreViewModel: ObservableObject {
             for line in errorOutput.components(separatedBy: "\n") where !line.isEmpty {
                 rebuildLog.append(line)
             }
+            FileLogger.shared.error("store", "rebuild failed: \(error.localizedDescription)")
             showMessage("Rebuild failed", type: .error)
         }
 

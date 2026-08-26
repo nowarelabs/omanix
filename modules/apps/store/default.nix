@@ -46,10 +46,16 @@ in {
   config = lib.mkIf enabled {
     system.activationScripts.postActivation.text = ''
 STORE_DIR="$HOME/.omanix"
-mkdir -p "$STORE_DIR"
+LOG_DIR="$STORE_DIR/logs"
+mkdir -p "$STORE_DIR" "$LOG_DIR"
+LOG_FILE="$LOG_DIR/$(date +%Y-%m-%d).log"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$1] [build] $2" >> "$LOG_FILE"; echo "[$1] [build] $2"; }
+
+log "INFO" "starting Omanix build"
 
 # Copy source files
 cp -R ${store-src}/Sources "$STORE_DIR/"
+log "INFO" "copied sources to $STORE_DIR/Sources"
 
 # Build with system Swift
 XCRUN="/usr/bin/xcrun"
@@ -71,6 +77,7 @@ if [ -x "$XCRUN" ] || command -v xcrun >/dev/null 2>&1; then
   # Fix ownership so build-omanix can overwrite later
   chown -R ${user}:admin /Applications/Omanix.app
 
+  log "INFO" "Omanix built successfully"
   echo "Omanix built successfully"
 
   # Add to Login Items for auto-launch (if not already added)
