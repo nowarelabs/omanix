@@ -11,10 +11,12 @@
 
   # Auto-clean old generations after rebuild if enabled
   system.activationScripts.postActivation.text = lib.mkAfter ''
-    if [[ "${lib.boolToString config.omanix.autoClean}" == "true" ]]; then
-      echo "Auto-clean enabled: keeping last ${toString config.omanix.keepGenerations} generations"
-      OMANIX_KEEP_GENERATIONS="${toString config.omanix.keepGenerations}" \
-        "/Users/${config.omanix.user}/.omanix/lib/omanix-clean.sh" --keep "${toString config.omanix.keepGenerations}" 2>&1 || true
+    AUTO_CLEAN="${lib.boolToString config.omanix.autoClean}"
+    KEEP_GENS="${toString config.omanix.keepGenerations}"
+    if [[ "$AUTO_CLEAN" == "true" ]]; then
+      echo "Auto-clean enabled: keeping last $KEEP_GENS generations"
+      OMANIX_KEEP_GENERATIONS="$KEEP_GENS" \
+        "/Users/${config.omanix.user}/.omanix/lib/omanix-clean.sh" --keep "$KEEP_GENS" 2>&1 || true
     fi
   '';
 }
