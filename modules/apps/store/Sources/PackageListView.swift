@@ -301,7 +301,7 @@ struct PackageListView: View {
     private var packageList: some View {
         ScrollView {
             VStack(spacing: 12) {
-                ForEach(groupedBySource) { group in
+                ForEach(groupedBySource, id: \.source) { group in
                     SourceCard(
                         source: group.source,
                         packages: group.packages,

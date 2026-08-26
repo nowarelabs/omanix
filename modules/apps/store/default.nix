@@ -53,9 +53,15 @@ log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$1] [build] $2" >> "$LOG_FILE"; ec
 
 log "INFO" "starting Omanix build"
 
-# Copy source files
-cp -R ${store-src}/Sources "$STORE_DIR/"
-log "INFO" "copied sources to $STORE_DIR/Sources"
+# Copy source files from config directory (not nix store, which is cached)
+CONFIG_DIR="/Users/${user}/.omanix"
+if [ -d "$CONFIG_DIR/modules/apps/store/Sources" ]; then
+  cp -R "$CONFIG_DIR/modules/apps/store/Sources" "$STORE_DIR/"
+  log "INFO" "copied sources from config directory"
+else
+  cp -R ${store-src}/Sources "$STORE_DIR/"
+  log "INFO" "copied sources from nix store"
+fi
 
 # Build with system Swift
 XCRUN="/usr/bin/xcrun"
