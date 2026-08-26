@@ -21,7 +21,7 @@ fi
 
 # 1. Try nixpkgs
 echo "Searching nixpkgs for $NAME..."
-if nix search --json nixpkgs "^${NAME}$" 2>/dev/null | jq -e '.[0]' > /dev/null 2>&1; then
+if nix search --json nixpkgs "^${NAME}$" 2>/dev/null | jq -e 'keys | length > 0' > /dev/null 2>&1; then
   echo "Found in nixpkgs — adding to environment.systemPackages"
   # Insert into environment.systemPackages
   if grep -q "environment.systemPackages" "$CONFIG"; then
