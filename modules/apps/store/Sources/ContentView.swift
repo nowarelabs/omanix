@@ -130,7 +130,7 @@ struct ContentView: View {
 
     private var versionString: String {
         (try? String(contentsOfFile: FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/omanix/version").path, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "0.1.0"
+            .appendingPathComponent(".omanix/version").path, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "0.1.0"
     }
 
     func iconName(for tab: SidebarTab) -> String {

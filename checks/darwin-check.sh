@@ -3,7 +3,7 @@
 set -e
 
 # Read hostname from configuration.nix (single source of truth)
-HOSTNAME=$(grep -oE 'omanix\.host\s*=\s*"[^"]+"' "$HOME/.config/omanix/configuration.nix" | head -1 | sed 's/.*"\(.*\)"/\1/')
+HOSTNAME=$(grep -oE 'omanix\.host\s*=\s*"[^"]+"' "$HOME/.omanix/configuration.nix" | head -1 | sed 's/.*"\(.*\)"/\1/')
 if [[ -z "$HOSTNAME" ]]; then
   echo "Error: Could not read hostname from configuration.nix" >&2
   exit 1

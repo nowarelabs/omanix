@@ -45,7 +45,7 @@ let
 in {
   config = lib.mkIf enabled {
     system.activationScripts.postActivation.text = ''
-STORE_DIR="$HOME/.omanix-store"
+STORE_DIR="$HOME/.omanix"
 mkdir -p "$STORE_DIR"
 
 # Copy source files
@@ -65,7 +65,7 @@ if [ -x "$XCRUN" ] || command -v xcrun >/dev/null 2>&1; then
     "$STORE_DIR/Sources/"*.swift
 
   cp ${infoPlist} "/Applications/Omanix.app/Contents/Info.plist"
-  cp ${../../../assets/icon.png} "$HOME/.omanix-store/icon.png"
+  cp ${../../../assets/icon.png} "$HOME/.omanix/icon.png"
   cp ${../../../assets/icon.png} "/Applications/Omanix.app/Contents/Resources/AppIcon.icns"
 
   # Fix ownership so build-omanix can overwrite later
@@ -87,10 +87,10 @@ fi
     home-manager.users.${user}.home.file.".local/bin/build-omanix" = {
       text = ''
 #!/bin/bash
-STORE_DIR="$HOME/.omanix-store"
+STORE_DIR="$HOME/.omanix"
 mkdir -p "$STORE_DIR"
 
-CONFIG_DIR="$HOME/.config/omanix"
+CONFIG_DIR="$HOME/.omanix"
 if [ -d "$CONFIG_DIR/modules/apps/store/Sources" ]; then
   cp -R "$CONFIG_DIR/modules/apps/store/Sources" "$STORE_DIR/"
 fi

@@ -3,8 +3,15 @@
 # install | rebuild | rebuild --preview | generations | add | remove | search | store | ask
 set -e
 
-FLAKE_DIR="${FLAKE_DIR:-$HOME/.config/omanix}"
+FLAKE_DIR="${FLAKE_DIR:-$HOME/.omanix}"
 HOST="${HOST:-$(scutil --get LocalHostName 2>/dev/null || echo "Vances-MacBook-Pro")}"
+
+# Source logging library
+if [[ -f "$FLAKE_DIR/lib/log.sh" ]]; then
+  source "$FLAKE_DIR/lib/log.sh"
+  mkdir -p "$FLAKE_DIR/logs"
+  log_rotate
+fi
 
 usage() {
   cat <<EOF
@@ -33,6 +40,7 @@ EOF
 
 case "${1:-help}" in
   install)
+    log_info "install" "starting installation"
     echo "Omanix Installer"
     echo "================"
     echo ""
@@ -159,8 +167,8 @@ case "${1:-help}" in
     fi
 
     echo ""
-    # Clone flake to ~/.config/omanix
-    TARGET="$HOME/.config/omanix"
+    # Clone flake to ~/.omanix
+    TARGET="$HOME/.omanix"
     if [[ -d "$TARGET" ]]; then
       echo "Omanix already installed at $TARGET"
       echo "Run 'omanix rebuild' to apply changes"
@@ -192,17 +200,23 @@ case "${1:-help}" in
   rebuild)
     shift
     if [[ "${1:-}" == "--rollback" ]]; then
+      log_info "rebuild" "rolling back to previous generation"
       echo "Rolling back to previous generation..."
       sudo darwin-rebuild --rollback
+      log_info "rebuild" "rollback complete"
     elif [[ "${1:-}" == "--preview" ]]; then
+      log_info "rebuild" "building impure overlay preview"
       echo "Building impure overlay preview..."
       sudo darwin-rebuild switch --flake "$FLAKE_DIR#$HOST" --impure --show-trace
+      log_info "rebuild" "preview build complete"
       # Hot-reload IPC
       sketchybar --reload 2>/dev/null || true
       aerospace reload-config 2>/dev/null || true
     else
+      log_info "rebuild" "switching to flake $FLAKE_DIR#$HOST"
       echo "Rebuilding system..."
       sudo darwin-rebuild switch --flake "$FLAKE_DIR#$HOST" --show-trace
+      log_info "rebuild" "switch complete"
       # Hot-reload IPC
       sketchybar --reload 2>/dev/null || true
       aerospace reload-config 2>/dev/null || true
@@ -214,8 +228,10 @@ case "${1:-help}" in
     ;;
 
   update)
+    log_info "update" "updating flake inputs"
     echo "Updating flake inputs..."
     nix flake update "$FLAKE_DIR"
+    log_info "update" "flake updated, rebuilding"
     omanix rebuild
     ;;
 
@@ -225,6 +241,7 @@ case "${1:-help}" in
       echo "Usage: omanix add <package>" >&2
       exit 1
     fi
+    log_info "add" "adding package: $1"
     "$FLAKE_DIR/lib/omanix-add.sh" "$@"
     ;;
 
@@ -234,6 +251,7 @@ case "${1:-help}" in
       echo "Usage: omanix remove <package>" >&2
       exit 1
     fi
+    log_info "remove" "removing package: $1"
     "$FLAKE_DIR/lib/omanix-remove.sh" "$@"
     ;;
 
@@ -243,6 +261,7 @@ case "${1:-help}" in
       echo "Usage: omanix search <package>" >&2
       exit 1
     fi
+    log_debug "search" "query: $1"
     echo "=== nixpkgs ==="
     nix search nixpkgs "$1" 2>/dev/null || echo "(no results)"
     echo ""
@@ -308,6 +327,8 @@ case "${1:-help}" in
     TMPDIR_LIST=$(mktemp -d)
     # Suppress "warning: Git tree is dirty" on stdout which corrupts JSON
     export NIX_CONFIG="warn-dirty = false"
+
+    log_debug "list-packages" "querying nix eval for $HOST"
 
     # Query each source separately into temp files
     nix eval --json "$FLAKE_REF.config.environment.systemPackages" \

@@ -294,7 +294,7 @@ struct SettingsView: View {
     private func loadSettings() {
         userName = NSUserName()
         let configPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/omanix/configuration.nix").path
+            .appendingPathComponent(".omanix/configuration.nix").path
         if let config = try? String(contentsOfFile: configPath, encoding: .utf8) {
             if let range = config.range(of: "omanix.host = \"") {
                 let start = range.upperBound
@@ -318,7 +318,7 @@ struct SettingsView: View {
 
     private func resetConfig() {
         let configPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/omanix/configuration.nix").path
+            .appendingPathComponent(".omanix/configuration.nix").path
         let backupPath = configPath + ".backup"
         try? FileManager.default.copyItem(atPath: configPath, toPath: backupPath)
 
@@ -346,9 +346,9 @@ struct SettingsView: View {
         ])
         try? FileManager.default.removeItem(atPath: "/Applications/Omanix.app")
         try? FileManager.default.removeItem(
-            atPath: NSHomeDirectory() + "/.omanix-store"
+            atPath: NSHomeDirectory() + "/.omanix"
         )
-        store.successMessage = "Omanix removed. Config preserved at ~/.config/omanix"
+        store.successMessage = "Omanix removed. Config preserved at ~/.omanix"
     }
 }
 

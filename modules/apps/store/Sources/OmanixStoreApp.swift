@@ -26,7 +26,7 @@ struct OmanixStoreApp: App {
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let possiblePaths = [
-            NSHomeDirectory() + "/.omanix-store/icon.png",
+            NSHomeDirectory() + "/.omanix/icon.png",
             Bundle.main.bundlePath + "/Contents/Resources/AppIcon.icns",
             "/Applications/Omanix.app/Contents/Resources/AppIcon.icns"
         ]
@@ -87,7 +87,7 @@ struct OmanixTheme {
 
     static func load() -> OmanixTheme {
         let configPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/omanix/configuration.nix").path
+            .appendingPathComponent(".omanix/configuration.nix").path
         if let config = try? String(contentsOfFile: configPath, encoding: .utf8) {
             // Match only the omanix.theme assignment, not comments or package names
             let pattern = #"omanix\.theme\s*=\s*"(catppuccin)""#
