@@ -43,49 +43,84 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 // MARK: - Theme System
 
 struct OmanixTheme {
-    let background: Color
-    let surface: Color
-    let tertiarySurface: Color
-    let accent: Color
+    // Depth layers (z-order: back to front)
+    let background: Color       // #0D0E14 — page
+    let surface: Color          // #1A1B23 — cards, sidebar, panels
+    let hover: Color            // #22232D — row hover, elevated surface
+    let floating: Color         // #2A2A2A — inspector, popovers (lightest)
+    let tertiarySurface: Color  // #15161E — search bar, inputs
+
+    // Accent
+    let accent: Color           // #3B82F6 — selection, active states only
     let accentHover: Color
-    let text: Color
-    let secondaryText: Color
-    let tertiaryText: Color
-    let border: Color
-    let success: Color
-    let warning: Color
-    let error: Color
+
+    // Text hierarchy
+    let text: Color             // #F0F0F5 — primary (package names, headings)
+    let secondaryText: Color    // #8A8A94 — descriptions, secondary
+    let tertiaryText: Color     // #55555E — hints, badges, placeholders
+
+    // Borders & dividers
+    let border: Color           // rgba(255,255,255,0.06) — card borders
+    let divider: Color          // rgba(255,255,255,0.04) — row separators
+
+    // Semantic
+    let success: Color          // green — installed
+    let warning: Color          // amber — rebuild needed
+    let error: Color            // red — destructive
+
+    // Source brand colors
+    let nixpkgs: Color          // blue
+    let nix: Color              // cyan
+    let homebrewBrew: Color     // orange
+    let homebrewCask: Color     // amber-orange
+    let custom: Color           // purple
 
     // Space-like minimal dark theme
     static let tokyoNight = OmanixTheme(
-        background: Color(red: 0.055, green: 0.055, blue: 0.067),
-        surface: Color(red: 0.102, green: 0.102, blue: 0.118),
-        tertiarySurface: Color(red: 0.137, green: 0.137, blue: 0.157),
-        accent: Color(red: 0.400, green: 0.520, blue: 0.940),
-        accentHover: Color(red: 0.500, green: 0.620, blue: 1.0),
-        text: Color(red: 0.930, green: 0.930, blue: 0.960),
-        secondaryText: Color(red: 0.550, green: 0.550, blue: 0.600),
-        tertiaryText: Color(red: 0.380, green: 0.380, blue: 0.420),
-        border: Color(red: 0.160, green: 0.160, blue: 0.180),
-        success: Color(red: 0.300, green: 0.800, blue: 0.500),
-        warning: Color(red: 0.950, green: 0.770, blue: 0.390),
-        error: Color(red: 0.940, green: 0.350, blue: 0.350)
+        background:       Color(red: 0.051, green: 0.055, blue: 0.078),
+        surface:          Color(red: 0.102, green: 0.106, blue: 0.137),
+        hover:            Color(red: 0.133, green: 0.137, blue: 0.176),
+        floating:         Color(red: 0.165, green: 0.165, blue: 0.188),
+        tertiarySurface:  Color(red: 0.082, green: 0.086, blue: 0.118),
+        accent:           Color(red: 0.231, green: 0.510, blue: 0.965),
+        accentHover:      Color(red: 0.331, green: 0.610, blue: 1.0),
+        text:             Color(red: 0.941, green: 0.941, blue: 0.961),
+        secondaryText:    Color(red: 0.541, green: 0.541, blue: 0.580),
+        tertiaryText:     Color(red: 0.333, green: 0.333, blue: 0.369),
+        border:           Color.white.opacity(0.06),
+        divider:          Color.white.opacity(0.04),
+        success:          Color(red: 0.220, green: 0.780, blue: 0.420),
+        warning:          Color(red: 0.950, green: 0.770, blue: 0.390),
+        error:            Color(red: 0.940, green: 0.350, blue: 0.350),
+        nixpkgs:          Color(red: 0.231, green: 0.510, blue: 0.965),
+        nix:              Color(red: 0.160, green: 0.720, blue: 0.800),
+        homebrewBrew:     Color(red: 0.933, green: 0.655, blue: 0.271),
+        homebrewCask:     Color(red: 0.851, green: 0.545, blue: 0.235),
+        custom:           Color(red: 0.678, green: 0.502, blue: 0.890)
     )
 
     // Catppuccin with Space-like refinement
     static let catppuccin = OmanixTheme(
-        background: Color(red: 0.060, green: 0.060, blue: 0.085),
-        surface: Color(red: 0.100, green: 0.100, blue: 0.130),
-        tertiarySurface: Color(red: 0.140, green: 0.140, blue: 0.175),
-        accent: Color(red: 0.830, green: 0.535, blue: 0.760),
-        accentHover: Color(red: 0.910, green: 0.615, blue: 0.840),
-        text: Color(red: 0.930, green: 0.930, blue: 0.960),
-        secondaryText: Color(red: 0.580, green: 0.580, blue: 0.630),
-        tertiaryText: Color(red: 0.420, green: 0.420, blue: 0.470),
-        border: Color(red: 0.180, green: 0.180, blue: 0.210),
-        success: Color(red: 0.650, green: 0.800, blue: 0.540),
-        warning: Color(red: 0.950, green: 0.770, blue: 0.390),
-        error: Color(red: 0.940, green: 0.350, blue: 0.350)
+        background:       Color(red: 0.047, green: 0.047, blue: 0.071),
+        surface:          Color(red: 0.098, green: 0.098, blue: 0.129),
+        hover:            Color(red: 0.125, green: 0.125, blue: 0.161),
+        floating:         Color(red: 0.157, green: 0.157, blue: 0.188),
+        tertiarySurface:  Color(red: 0.078, green: 0.078, blue: 0.106),
+        accent:           Color(red: 0.827, green: 0.533, blue: 0.757),
+        accentHover:      Color(red: 0.907, green: 0.613, blue: 0.837),
+        text:             Color(red: 0.941, green: 0.941, blue: 0.961),
+        secondaryText:    Color(red: 0.580, green: 0.580, blue: 0.631),
+        tertiaryText:     Color(red: 0.353, green: 0.353, blue: 0.400),
+        border:           Color.white.opacity(0.06),
+        divider:          Color.white.opacity(0.04),
+        success:          Color(red: 0.647, green: 0.792, blue: 0.537),
+        warning:          Color(red: 0.949, green: 0.769, blue: 0.388),
+        error:            Color(red: 0.922, green: 0.380, blue: 0.380),
+        nixpkgs:          Color(red: 0.827, green: 0.533, blue: 0.757),
+        nix:              Color(red: 0.160, green: 0.720, blue: 0.800),
+        homebrewBrew:     Color(red: 0.933, green: 0.655, blue: 0.271),
+        homebrewCask:     Color(red: 0.851, green: 0.545, blue: 0.235),
+        custom:           Color(red: 0.678, green: 0.502, blue: 0.890)
     )
 
     static func load() -> OmanixTheme {

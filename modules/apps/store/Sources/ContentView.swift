@@ -46,8 +46,7 @@ struct ContentView: View {
             .padding(.bottom, 12)
 
             Divider()
-                .background(theme.border)
-                .opacity(0.5)
+                .background(theme.divider)
 
             // Navigation
             List(SidebarTab.allCases, id: \.self, selection: $selectedTab) { tab in
@@ -60,8 +59,7 @@ struct ContentView: View {
 
             // Status
             Divider()
-                .background(theme.border)
-                .opacity(0.5)
+                .background(theme.divider)
 
             HStack(spacing: 6) {
                 Circle()

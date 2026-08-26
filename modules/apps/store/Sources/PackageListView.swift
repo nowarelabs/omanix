@@ -8,15 +8,27 @@ struct PackageListView: View {
     @Binding var selectedPackage: PackageItem?
     @Environment(\.omanixTheme) var theme
     @State private var hoveredPackageId: UUID?
+    @State private var inspectorPackage: PackageItem?
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            searchBar
-            sourceFilters
-            rebuildBanner
-            content
-            statusBar
+        ZStack(alignment: .bottomTrailing) {
+            VStack(spacing: 0) {
+                header
+                searchBar
+                sourceFilters
+                rebuildBanner
+                content
+                statusBar
+            }
+
+            // Floating inspector panel
+            if let pkg = inspectorPackage {
+                InspectorPanel(package: pkg) {
+                    withAnimation(.easeInOut(duration: 0.2)) { inspectorPackage = nil }
+                }
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+                .padding(16)
+            }
         }
     }
 
@@ -40,6 +52,10 @@ struct PackageListView: View {
         .padding(.horizontal, 24)
         .padding(.top, 20)
         .padding(.bottom, 12)
+        .background(theme.background)
+        .overlay(alignment: .bottom) {
+            Divider().background(theme.divider)
+        }
     }
 
     private var resultSummary: some View {
@@ -97,7 +113,7 @@ struct PackageListView: View {
         .cornerRadius(8)
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(searchText.isEmpty ? theme.border : theme.accent.opacity(0.3), lineWidth: 1)
+                .stroke(searchText.isEmpty ? theme.border : theme.accent.opacity(0.35), lineWidth: 1)
         )
         .padding(.horizontal, 24)
         .padding(.bottom, 12)
@@ -149,7 +165,7 @@ struct PackageListView: View {
                 .padding(.vertical, 10)
                 .background(theme.accent.opacity(0.06))
                 .overlay(alignment: .bottom) {
-                    Divider().background(theme.border).opacity(0.5)
+                    Divider().background(theme.divider)
                 }
 
                 if !store.rebuildLog.isEmpty {
@@ -168,7 +184,7 @@ struct PackageListView: View {
                             .padding(12)
                         }
                         .frame(maxHeight: 160)
-                        .background(Color.black.opacity(0.4))
+                        .background(Color.black.opacity(0.5))
                         .cornerRadius(6)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
@@ -198,17 +214,20 @@ struct PackageListView: View {
                             .font(.system(size: 10))
                         Text("Rebuild")
                     }
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(theme.accent)
+                    .cornerRadius(6)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .tint(theme.accent)
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .background(theme.warning.opacity(0.06))
             .overlay(alignment: .bottom) {
-                Divider().background(theme.border).opacity(0.5)
+                Divider().background(theme.divider)
             }
             .transition(.move(edge: .top).combined(with: .opacity))
             .animation(.easeInOut(duration: 0.25), value: store.needsRebuild)
@@ -235,7 +254,7 @@ struct PackageListView: View {
             Spacer()
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 32, weight: .light))
-                .foregroundColor(theme.tertiaryText.opacity(0.5))
+                .foregroundColor(theme.tertiaryText.opacity(0.4))
             VStack(spacing: 4) {
                 Text("Search for packages")
                     .font(.system(size: 15, weight: .medium, design: .rounded))
@@ -266,7 +285,7 @@ struct PackageListView: View {
             Spacer()
             Image(systemName: "questionmark")
                 .font(.system(size: 32, weight: .light))
-                .foregroundColor(theme.tertiaryText.opacity(0.5))
+                .foregroundColor(theme.tertiaryText.opacity(0.4))
             VStack(spacing: 4) {
                 Text("No packages found")
                     .font(.system(size: 15, weight: .medium, design: .rounded))
@@ -281,22 +300,31 @@ struct PackageListView: View {
 
     private var packageList: some View {
         ScrollView {
-            LazyVStack(spacing: 1) {
-                ForEach(store.packages) { package in
-                    PackageRow(
-                        package: package,
-                        store: store,
-                        isHovered: hoveredPackageId == package.id
+            VStack(spacing: 12) {
+                ForEach(groupedBySource) { group in
+                    SourceCard(
+                        source: group.source,
+                        packages: group.packages,
+                        hoveredPackageId: $hoveredPackageId,
+                        inspectorPackage: $inspectorPackage,
+                        store: store
                     )
-                    .onHover { hovering in
-                        hoveredPackageId = hovering ? package.id : nil
-                    }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
         }
         .background(theme.background)
+    }
+
+    private var groupedBySource: [(source: PackageItem.PackageSource, packages: [PackageItem])] {
+        var groups: [PackageItem.PackageSource: [PackageItem]] = [:]
+        for pkg in store.packages {
+            groups[pkg.source, default: []].append(pkg)
+        }
+        return groups
+            .map { (source: $0.key, packages: $0.value.sorted { $0.name < $1.name }) }
+            .sorted { $0.source.rawValue < $1.source.rawValue }
     }
 
     // MARK: - Status Bar
@@ -355,17 +383,20 @@ struct PackageListView: View {
                         .font(.system(size: 10))
                     Text("Rebuild")
                 }
-                .font(.system(size: 11, weight: .medium))
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5)
+                .background(theme.accent)
+                .cornerRadius(6)
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .tint(theme.accent)
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(theme.surface)
         .overlay(alignment: .top) {
-            Divider().background(theme.border).opacity(0.5)
+            Divider().background(theme.divider)
         }
     }
 
@@ -377,30 +408,97 @@ struct PackageListView: View {
     }
 }
 
+// MARK: - Source Card
+
+struct SourceCard: View {
+    let source: PackageItem.PackageSource
+    let packages: [PackageItem]
+    @Binding var hoveredPackageId: UUID?
+    @Binding var inspectorPackage: PackageItem?
+    @ObservedObject var store: StoreViewModel
+    @Environment(\.omanixTheme) var theme
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Section header
+            HStack(spacing: 8) {
+                Image(systemName: source.icon)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(source.badgeColor)
+                    .frame(width: 24, height: 24)
+                    .background(source.badgeColor.opacity(0.12))
+                    .cornerRadius(6)
+
+                Text(source.sectionName)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(theme.text)
+
+                Spacer()
+
+                Text("\(packages.count)")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundColor(source.badgeColor)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(source.badgeColor.opacity(0.1))
+                    .cornerRadius(999)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+
+            Divider().background(theme.divider).padding(.leading, 48)
+
+            // Rows
+            VStack(spacing: 1) {
+                ForEach(packages) { package in
+                    PackageRow(
+                        package: package,
+                        store: store,
+                        isHovered: hoveredPackageId == package.id,
+                        onSelect: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                inspectorPackage = package
+                            }
+                        }
+                    )
+                    .onHover { hovering in
+                        withAnimation(.easeInOut(duration: 0.1)) {
+                            hoveredPackageId = hovering ? package.id : nil
+                        }
+                    }
+                }
+            }
+        }
+        .background(theme.surface)
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 1)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(theme.border, lineWidth: 1)
+        )
+    }
+}
+
 // MARK: - Package Row
 
 struct PackageRow: View {
     let package: PackageItem
     @ObservedObject var store: StoreViewModel
     let isHovered: Bool
+    let onSelect: () -> Void
     @Environment(\.omanixTheme) var theme
     @State private var isInstalling = false
 
     var body: some View {
         HStack(spacing: 12) {
-            // App icon
-            Image(systemName: AppIcons.icon(for: package.name))
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(package.source.badgeColor)
-                .frame(width: 28, height: 28)
-                .background(package.source.badgeColor.opacity(0.08))
-                .cornerRadius(6)
+            // Consistent icon container
+            PackageIcon(name: package.name, source: package.source, size: 28)
 
             // Package info
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(package.name)
-                        .font(.system(size: 13, weight: .medium, design: .monospaced))
+                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
                         .foregroundColor(theme.text)
                     if package.isInstalled {
                         Image(systemName: "checkmark.circle.fill")
@@ -420,23 +518,35 @@ struct PackageRow: View {
 
             // Source badge
             Text(package.source.displayName)
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: 9, weight: .semibold))
                 .foregroundColor(package.source.badgeColor)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(package.source.badgeColor.opacity(0.08))
                 .cornerRadius(4)
 
+            // Info button
+            Button(action: onSelect) {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 12))
+                    .foregroundColor(theme.tertiaryText)
+            }
+            .buttonStyle(.plain)
+            .help("Show package info")
+            .opacity(isHovered ? 1 : 0)
+            .animation(.easeInOut(duration: 0.1), value: isHovered)
+
             // Action button
             actionButton
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(isHovered ? theme.tertiarySurface.opacity(0.5) : .clear)
+                .fill(isHovered ? Color.white.opacity(0.04) : .clear)
         )
-        .animation(.easeInOut(duration: 0.1), value: isHovered)
+        .contentShape(Rectangle())
+        .onTapGesture { onSelect() }
     }
 
     @ViewBuilder
@@ -451,12 +561,12 @@ struct PackageRow: View {
                         .font(.system(size: 8, weight: .bold))
                     Text("Installed")
                 }
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: 10, weight: .semibold))
                 .foregroundColor(theme.success)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(theme.success.opacity(0.08))
-                .cornerRadius(4)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(theme.success.opacity(0.1))
+                .cornerRadius(6)
             }
             .buttonStyle(.plain)
             .help("Click to uninstall")
@@ -467,12 +577,12 @@ struct PackageRow: View {
                         .font(.system(size: 8, weight: .bold))
                     Text("Install")
                 }
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: 10, weight: .semibold))
                 .foregroundColor(.white)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
                 .background(theme.accent)
-                .cornerRadius(4)
+                .cornerRadius(6)
             }
             .buttonStyle(.plain)
         }
@@ -492,6 +602,78 @@ struct PackageRow: View {
             await store.uninstallPackage(package)
             isInstalling = false
         }
+    }
+}
+
+// MARK: - Inspector Panel
+
+struct InspectorPanel: View {
+    let package: PackageItem
+    let onClose: () -> Void
+    @Environment(\.omanixTheme) var theme
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Title bar
+            HStack {
+                Text(package.name)
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .foregroundColor(theme.text)
+                Spacer()
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(theme.tertiaryText)
+                        .frame(width: 20, height: 20)
+                        .background(Color.white.opacity(0.06))
+                        .cornerRadius(999)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+
+            Divider().background(theme.divider)
+
+            // Info rows
+            VStack(spacing: 0) {
+                infoRow("Name", package.name)
+                Divider().background(theme.divider).padding(.leading, 16)
+                infoRow("Source", package.source.displayName)
+                Divider().background(theme.divider).padding(.leading, 16)
+                infoRow("Installed", package.isInstalled ? "Yes" : "No")
+                Divider().background(theme.divider).padding(.leading, 16)
+                infoRow("Icon", AppIcons.icon(for: package.name))
+                if !package.description.isEmpty {
+                    Divider().background(theme.divider).padding(.leading, 16)
+                    infoRow("Description", package.description)
+                }
+            }
+            .padding(.vertical, 8)
+        }
+        .frame(width: 280)
+        .background(theme.floating)
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.4), radius: 8, x: 0, y: 4)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(theme.border, lineWidth: 1)
+        )
+    }
+
+    private func infoRow(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(theme.tertiaryText)
+            Spacer()
+            Text(value)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundColor(theme.text)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
     }
 }
 
@@ -516,7 +698,7 @@ struct SourceFilterChip: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(source.badgeColor.opacity(0.06))
-        .cornerRadius(4)
+        .cornerRadius(6)
     }
 }
 

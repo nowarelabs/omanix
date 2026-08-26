@@ -61,15 +61,19 @@ struct InstalledView: View {
         .padding(.horizontal, 24)
         .padding(.top, 20)
         .padding(.bottom, 12)
+        .background(theme.background)
+        .overlay(alignment: .bottom) {
+            Divider().background(theme.divider)
+        }
     }
 
     // MARK: - Content
 
     private var content: some View {
         ScrollView {
-            LazyVStack(spacing: 0) {
+            VStack(spacing: 12) {
                 ForEach(groupedPackages, id: \.source) { group in
-                    SourceSection(
+                    InstalledSourceCard(
                         source: group.source,
                         packages: group.packages,
                         isExpanded: expandedSources.contains(group.source.rawValue),
@@ -79,8 +83,8 @@ struct InstalledView: View {
                     )
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
         }
         .background(theme.background)
     }
@@ -92,7 +96,7 @@ struct InstalledView: View {
             Spacer()
             Image(systemName: "tray")
                 .font(.system(size: 32, weight: .light))
-                .foregroundColor(theme.tertiaryText.opacity(0.5))
+                .foregroundColor(theme.tertiaryText.opacity(0.4))
             VStack(spacing: 4) {
                 Text("No packages declared")
                     .font(.system(size: 15, weight: .medium, design: .rounded))
@@ -142,17 +146,20 @@ struct InstalledView: View {
                         .font(.system(size: 10))
                     Text("Rebuild")
                 }
-                .font(.system(size: 11, weight: .medium))
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5)
+                .background(theme.accent)
+                .cornerRadius(6)
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .tint(theme.accent)
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(theme.surface)
         .overlay(alignment: .top) {
-            Divider().background(theme.border).opacity(0.5)
+            Divider().background(theme.divider)
         }
     }
 
@@ -173,7 +180,7 @@ struct InstalledView: View {
     }
 
     private func toggleSource(_ source: PackageItem.PackageSource) {
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(.easeInOut(duration: 0.15)) {
             if expandedSources.contains(source.rawValue) {
                 expandedSources.remove(source.rawValue)
             } else {
@@ -183,9 +190,9 @@ struct InstalledView: View {
     }
 }
 
-// MARK: - Source Section
+// MARK: - Installed Source Card
 
-struct SourceSection: View {
+struct InstalledSourceCard: View {
     let source: PackageItem.PackageSource
     let packages: [PackageItem]
     let isExpanded: Bool
@@ -196,39 +203,43 @@ struct SourceSection: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // Disclosure header
             Button(action: onToggle) {
-                HStack(spacing: 10) {
-                    Image(systemName: source.icon)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(source.badgeColor)
-                        .frame(width: 24, height: 24)
-                        .background(source.badgeColor.opacity(0.08))
-                        .cornerRadius(5)
-
-                    Text(source.sectionName)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(theme.text)
-
-                    Spacer()
-
-                    Text("\(packages.count)")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundColor(source.badgeColor)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(source.badgeColor.opacity(0.08))
-                        .cornerRadius(4)
-
+                HStack(spacing: 8) {
+                    // Rotating chevron
                     Image(systemName: "chevron.right")
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundColor(theme.tertiaryText)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
+
+                    Image(systemName: source.icon)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(source.badgeColor)
+                        .frame(width: 24, height: 24)
+                        .background(source.badgeColor.opacity(0.12))
+                        .cornerRadius(6)
+
+                    Text(source.sectionName)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(theme.text)
+
+                    Spacer()
+
+                    // Pill badge
+                    Text("\(packages.count)")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundColor(source.badgeColor)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(source.badgeColor.opacity(0.1))
+                        .cornerRadius(999)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
             .buttonStyle(.plain)
 
+            // Expanded rows
             if isExpanded {
                 VStack(spacing: 1) {
                     ForEach(packages) { package in
@@ -238,11 +249,17 @@ struct SourceSection: View {
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
-            Divider()
-                .background(theme.border)
-                .opacity(0.5)
-                .padding(.leading, 44)
+            if isExpanded {
+                Divider().background(theme.divider).padding(.leading, 48)
+            }
         }
+        .background(theme.surface)
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 1)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(theme.border, lineWidth: 1)
+        )
     }
 }
 
@@ -258,24 +275,23 @@ struct InstalledPackageRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
+            // Checkmark
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 12))
                 .foregroundColor(theme.success)
 
-            // App icon
-            Image(systemName: AppIcons.icon(for: package.name))
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(theme.secondaryText)
-                .frame(width: 20)
+            // Consistent icon
+            PackageIcon(name: package.name, source: package.source, size: 22)
 
+            // Package info
             VStack(alignment: .leading, spacing: 1) {
                 Text(package.name)
-                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
                     .foregroundColor(theme.text)
                 if !package.description.isEmpty {
                     Text(package.description)
                         .font(.system(size: 10))
-                        .foregroundColor(theme.tertiaryText)
+                        .foregroundColor(theme.secondaryText)
                         .lineLimit(1)
                 }
             }
@@ -297,10 +313,13 @@ struct InstalledPackageRow: View {
                 .animation(.easeInOut(duration: 0.1), value: isHovered)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .padding(.leading, 44)
-        .background(isHovered ? theme.tertiarySurface.opacity(0.3) : .clear)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 7)
+        .padding(.leading, 20)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isHovered ? Color.white.opacity(0.04) : .clear)
+        )
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.1)) {
                 isHovered = hovering

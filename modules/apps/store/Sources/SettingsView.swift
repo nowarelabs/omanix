@@ -36,6 +36,10 @@ struct SettingsView: View {
         .padding(.horizontal, 24)
         .padding(.top, 20)
         .padding(.bottom, 12)
+        .background(theme.background)
+        .overlay(alignment: .bottom) {
+            Divider().background(theme.divider)
+        }
     }
 
     // MARK: - Content
@@ -64,19 +68,19 @@ struct SettingsView: View {
                     value: hostName,
                     icon: "server.rack"
                 )
-                Divider().background(theme.border).opacity(0.5).padding(.leading, 32)
+                Divider().background(theme.divider).padding(.leading, 32)
                 settingRow(
                     label: "Username",
                     value: userName,
                     icon: "person"
                 )
-                Divider().background(theme.border).opacity(0.5).padding(.leading, 32)
+                Divider().background(theme.divider).padding(.leading, 32)
                 settingRow(
                     label: "Version",
                     value: "0.1.0",
                     icon: "tag"
                 )
-                Divider().background(theme.border).opacity(0.5).padding(.leading, 32)
+                Divider().background(theme.divider).padding(.leading, 32)
                 HStack {
                     Image(systemName: "arrow.triangle.2.circlepath")
                         .font(.system(size: 11))
@@ -95,7 +99,12 @@ struct SettingsView: View {
                 .padding(.vertical, 10)
             }
             .background(theme.surface)
-            .cornerRadius(8)
+            .cornerRadius(12)
+            .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 1)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(theme.border, lineWidth: 1)
+            )
         }
     }
 
@@ -114,7 +123,7 @@ struct SettingsView: View {
                 ) {
                     Task { await store.rebuild() }
                 }
-                Divider().background(theme.border).opacity(0.5).padding(.leading, 32)
+                Divider().background(theme.divider).padding(.leading, 32)
                 actionRow(
                     title: "Rollback",
                     subtitle: "Revert to the previous generation",
@@ -123,7 +132,7 @@ struct SettingsView: View {
                 ) {
                     rollback()
                 }
-                Divider().background(theme.border).opacity(0.5).padding(.leading, 32)
+                Divider().background(theme.divider).padding(.leading, 32)
                 actionRow(
                     title: "Update Flake Inputs",
                     subtitle: "Pull latest nixpkgs and rebuild",
@@ -134,7 +143,12 @@ struct SettingsView: View {
                 }
             }
             .background(theme.surface)
-            .cornerRadius(8)
+            .cornerRadius(12)
+            .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 1)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(theme.border, lineWidth: 1)
+            )
         }
     }
 
@@ -165,7 +179,7 @@ struct SettingsView: View {
                 .buttonStyle(.plain)
 
                 if showAdvanced {
-                    Divider().background(theme.border).opacity(0.5).padding(.leading, 32)
+                    Divider().background(theme.divider).padding(.leading, 32)
 
                     actionRow(
                         title: "Reset Configuration",
@@ -176,7 +190,7 @@ struct SettingsView: View {
                         resetConfig()
                     }
 
-                    Divider().background(theme.border).opacity(0.5).padding(.leading, 32)
+                    Divider().background(theme.divider).padding(.leading, 32)
 
                     actionRow(
                         title: "Uninstall Omanix",
@@ -189,7 +203,12 @@ struct SettingsView: View {
                 }
             }
             .background(theme.surface)
-            .cornerRadius(8)
+            .cornerRadius(12)
+            .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 1)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(theme.border, lineWidth: 1)
+            )
         }
     }
 
@@ -285,7 +304,7 @@ struct SettingsView: View {
         .padding(.vertical, 8)
         .background(theme.surface)
         .overlay(alignment: .top) {
-            Divider().background(theme.border).opacity(0.5)
+            Divider().background(theme.divider)
         }
     }
 

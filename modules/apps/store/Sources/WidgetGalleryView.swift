@@ -31,6 +31,10 @@ struct WidgetGalleryView: View {
         .padding(.horizontal, 24)
         .padding(.top, 20)
         .padding(.bottom, 12)
+        .background(theme.background)
+        .overlay(alignment: .bottom) {
+            Divider().background(theme.divider)
+        }
     }
 
     // MARK: - Content
@@ -85,17 +89,20 @@ struct WidgetGalleryView: View {
                         .font(.system(size: 10))
                     Text("Rebuild")
                 }
-                .font(.system(size: 11, weight: .medium))
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5)
+                .background(theme.accent)
+                .cornerRadius(6)
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .tint(theme.accent)
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(theme.surface)
         .overlay(alignment: .top) {
-            Divider().background(theme.border).opacity(0.5)
+            Divider().background(theme.divider)
         }
     }
 }
@@ -113,7 +120,7 @@ struct WidgetCard: View {
             HStack {
                 ZStack {
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(widget.isEnabled ? theme.accent.opacity(0.1) : theme.tertiarySurface)
+                        .fill(widget.isEnabled ? theme.accent.opacity(0.1) : Color.white.opacity(0.04))
                         .frame(width: 36, height: 36)
                     Image(systemName: widget.icon)
                         .font(.system(size: 16, weight: .medium))
@@ -133,7 +140,7 @@ struct WidgetCard: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(widget.name)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(theme.text)
                 Text(widgetDescription)
                     .font(.system(size: 11))
@@ -153,9 +160,10 @@ struct WidgetCard: View {
         }
         .padding(14)
         .background(theme.surface)
-        .cornerRadius(10)
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 1)
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 12)
                 .stroke(
                     widget.isEnabled
                         ? theme.accent.opacity(isHovered ? 0.4 : 0.2)

@@ -36,6 +36,10 @@ struct ThemePickerView: View {
         .padding(.horizontal, 24)
         .padding(.top, 20)
         .padding(.bottom, 12)
+        .background(theme.background)
+        .overlay(alignment: .bottom) {
+            Divider().background(theme.divider)
+        }
     }
 
     // MARK: - Content
@@ -92,17 +96,20 @@ struct ThemePickerView: View {
                         .font(.system(size: 10))
                     Text("Rebuild")
                 }
-                .font(.system(size: 11, weight: .medium))
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5)
+                .background(theme.accent)
+                .cornerRadius(6)
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .tint(theme.accent)
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(theme.surface)
         .overlay(alignment: .top) {
-            Divider().background(theme.border).opacity(0.5)
+            Divider().background(theme.divider)
         }
     }
 }
@@ -129,14 +136,14 @@ struct ThemeCard: View {
                     colorBlock(theme.colors[.text] ?? .gray, label: "Text")
                 }
                 .frame(height: cardHeight)
-                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 10, topTrailingRadius: 10))
+                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 12, topTrailingRadius: 12))
 
                 // Info section
                 VStack(spacing: 8) {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(theme.name)
-                                .font(.system(size: 13, weight: .medium))
+                                .font(.system(size: 13, weight: .semibold))
                                 .foregroundColor(appTheme.text)
                             Text(theme.id)
                                 .font(.system(size: 10, design: .monospaced))
@@ -148,7 +155,7 @@ struct ThemeCard: View {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.system(size: 12))
                                 Text("Active")
-                                    .font(.system(size: 10, weight: .medium))
+                                    .font(.system(size: 10, weight: .semibold))
                             }
                             .foregroundColor(appTheme.success)
                             .padding(.horizontal, 6)
@@ -164,9 +171,10 @@ struct ThemeCard: View {
                 .padding(12)
             }
             .background(appTheme.surface)
-            .cornerRadius(10)
+            .cornerRadius(12)
+            .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 1)
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: 12)
                     .stroke(
                         isSelected
                             ? appTheme.accent
