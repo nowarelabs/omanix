@@ -30,11 +30,11 @@ struct PackageItem: Identifiable, Hashable {
 
         var badgeColor: Color {
             switch self {
-            case .nixpkgs: return Color(red: 0.231, green: 0.510, blue: 0.965)
-            case .nix: return Color(red: 0.160, green: 0.720, blue: 0.800)
-            case .homebrewBrew: return Color(red: 0.933, green: 0.655, blue: 0.271)
-            case .homebrewCask: return Color(red: 0.851, green: 0.545, blue: 0.235)
-            case .custom: return Color(red: 0.678, green: 0.502, blue: 0.890)
+            case .nixpkgs: return Color(red: 0.522, green: 0.686, blue: 0.980)  // #85AEFA
+            case .nix: return Color(red: 0.133, green: 0.827, blue: 0.933)      // #22D3EE
+            case .homebrewBrew: return Color(red: 0.957, green: 0.620, blue: 0.204) // #F49D34
+            case .homebrewCask: return Color(red: 0.906, green: 0.698, blue: 0.180) // #E7B22E
+            case .custom: return Color(red: 0.620, green: 0.525, blue: 0.910)    // #9E86E8
             }
         }
 
