@@ -10,7 +10,7 @@
       autohide = true;
       mru-spaces = false;
       # Hide competing macOS spaces swipe indicators — AeroSpace owns workspaces
-      expose-group-by-app = false;
+      expose-group-apps = false;
     };
     finder = {
       AppleShowAllExtensions = true;
