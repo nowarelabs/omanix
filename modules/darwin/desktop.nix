@@ -152,7 +152,7 @@ in {
             notch_width=200 \
             display=main \
             sticky=on \
-            topmost=off
+            topmost=on
 
           sketchybar --default \
             icon.color="$FG_HEX" \
