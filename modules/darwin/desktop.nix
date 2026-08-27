@@ -1,7 +1,7 @@
-# modules/darwin/desktop.nix — AeroSpace tiling + SketchyBar (mac-only, theme-aware)
-# AeroSpace requires Accessibility permission — activation script guides user
-# Theme colors flow from lib/themed.nix -> SketchyBar bar + AeroSpace borders
-# See docs/themes.md and lib/themed.nix
+# modules/darwin/desktop.nix — AeroSpace + SketchyBar + JankyBorders — Omanix Omakase
+# World-class tiling: i3-like via AeroSpace, polished bar via SketchyBar, popping borders via JankyBorders.
+# All theme-aware (lib/themed.nix) and matching the GUI app's OC palette (page #FBFBFC, card white, accent #0A7CFF, border #E6E6EA)
+# References: frankcarv.com/blog/sketchy, nikitabobko.github.io/AeroSpace/goodies, mozumasu window customization, Masstronaut dotfiles
 { config, lib, pkgs, ... }:
 let
   themed = import ../../lib/themed.nix { inherit lib; };
@@ -12,65 +12,248 @@ let
   barIsGlass = config.omanix.bar.style == "glass";
   barTransparent = config.omanix.bar.transparent || barIsGlass;
   barBlur = config.omanix.bar.blur || barIsGlass;
-  # SketchyBar bar color: transparent or theme background (uses per-app sketchybar overrides)
-  barColor = if barTransparent then "0x00000000" else sketchyColors.background;
+  toSketchy = hex: "0xff${lib.removePrefix "#" hex}";
+  toSketchyAlpha = hex: alpha: "0x${alpha}${lib.removePrefix "#" hex}";
+  barColor = if barTransparent then "0x00000000" else toSketchy sketchyColors.background;
   barBlurRadius = if barBlur then toString config.omanix.bar.blurRadius else "0";
-  # Style specifics
-  barCornerRadius = if config.omanix.bar.style == "modern" then "9" else if barIsGlass then "12" else "0";
+  barCornerRadius = if config.omanix.bar.style == "modern" then "9" else if barIsGlass then "12" else if config.omanix.theme == "omanix" then "10" else "8";
   barBorderWidth = if config.omanix.bar.style == "minimal" then "0" else "1";
-  barBorderColor = sketchyColors.muted;
+  barBorderColor = toSketchy sketchyColors.muted;
   barPosition = config.omanix.bar.position;
-  # AeroSpace accent (per-app aerospace overrides for borders)
   aerospaceActiveBorder = aerospaceColors.accent;
   aerospaceInactiveBorder = aerospaceColors.muted;
+  gapOuterTop = if barPosition == "top" then 42 else 10;
+  gapOuterBottom = if barPosition == "bottom" then 42 else 10;
+  # SketchyBar font — matches GUI's SF Pro, with app-font for icons (install via brew: sketchybar-app-font)
+  iconFont = "sketchybar-app-font:Regular:14.0";
+  labelFont = "SF Pro:Semibold:12.5";
 in {
-  # AeroSpace tiling window manager — themed borders
+  # AeroSpace — Omakase i3-like, with goodies and Omakase gaps
   services.aerospace = {
     enable = true;
     settings = {
+      after-startup-command = [
+        "exec-and-forget sketchybar --reload"
+        "exec-and-forget sketchybar"
+        "exec-and-forget borders active_color=0xff${lib.removePrefix "#" aerospaceActiveBorder} inactive_color=0x40${lib.removePrefix "#" aerospaceInactiveBorder} width=5.0 style=round || true"
+      ];
+      after-login-command = [];
+      start-at-login = true;
+      enable-normalization-flatten-containers = true;
+      enable-normalization-opposite-orientation-for-nested-containers = true;
+      accordion-padding = 30;
+      default-root-container-layout = "tiles";
+      default-root-container-orientation = "auto";
+      on-focused-monitor-changed = [ "move-mouse monitor-lazy-center" ];
+      automatically-unhide-macos-hidden-apps = false;
+      exec-on-workspace-change = [
+        "/bin/bash"
+        "-c"
+        "sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE PREV_WORKSPACE=$AEROSPACE_PREV_WORKSPACE"
+      ];
+      on-focus-changed = [];
       gaps = {
         inner.horizontal = 8;
         inner.vertical = 8;
-        outer.left = 8;
-        outer.bottom = 8;
-        outer.top = 8;
-        outer.right = 8;
+        outer.left = 10;
+        outer.bottom = gapOuterBottom;
+        outer.top = gapOuterTop;
+        outer.right = 10;
       };
     };
   };
 
-  # SketchyBar status bar — theme-aware
-  services.sketchybar = {
-    enable = true;
-  };
-
-  # Theme-aware SketchyBar configuration (home-manager xdg)
-  # This complements modules/theme/theme.nix's colors.sh — we set bar appearance here
+  # Also write the full Omakase aerospace.toml via home-manager for transparent customization
+  # This file is the source of truth for keybindings and window rules — theme-aware and Omakase
   home-manager.users.${user} = lib.mkIf (user != "") {
+    xdg.configFile."aerospace/aerospace.toml" = {
+      text = ''
+        # Omanix AeroSpace — Omakase, theme-aware, generated via lib/themed.nix
+        # Theme: ${config.omanix.theme} | accent ${aerospaceActiveBorder} muted ${aerospaceInactiveBorder}
+        # Gaps tuned for SketchyBar + JankyBorders — do not edit, set omanix.* in configuration.nix
+        after-login-command = []
+        after-startup-command = ['exec-and-forget sketchybar --reload', 'exec-and-forget sketchybar', 'exec-and-forget borders active_color=0xff${lib.removePrefix "#" aerospaceActiveBorder} inactive_color=0x40${lib.removePrefix "#" aerospaceInactiveBorder} width=5.0 style=round || true']
+        start-at-login = true
+        enable-normalization-flatten-containers = true
+        enable-normalization-opposite-orientation-for-nested-containers = true
+        accordion-padding = 30
+        default-root-container-layout = 'tiles'
+        default-root-container-orientation = 'auto'
+        on-focused-monitor-changed = ['move-mouse monitor-lazy-center']
+        automatically-unhide-macos-hidden-apps = false
+        exec-on-workspace-change = ['/bin/bash', '-c', 'sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE PREV_WORKSPACE=$AEROSPACE_PREV_WORKSPACE']
+        [key-mapping]
+        preset = 'qwerty'
+        [gaps]
+        inner.horizontal = 8
+        inner.vertical = 8
+        outer.left = 10
+        outer.bottom = ${toString gapOuterBottom}
+        outer.top = ${toString gapOuterTop}
+        outer.right = 10
+
+        # --- Floating windows (goodies: Finder, Settings, etc.) ---
+        [[on-window-detected]]
+        if.app-id = 'com.apple.finder'
+        run = 'layout floating'
+        [[on-window-detected]]
+        if.app-id = 'com.apple.systempreferences'
+        run = 'layout floating'
+        [[on-window-detected]]
+        if.app-id = 'com.apple.ActivityMonitor'
+        run = 'layout floating'
+        [[on-window-detected]]
+        if.app-name-regex-substring = 'finder'
+        run = 'layout floating'
+
+        # --- Workspace assignments (Masstronaut style) ---
+        [[on-window-detected]]
+        if.app-id = 'com.google.Chrome'
+        run = 'move-node-to-workspace B'
+        [[on-window-detected]]
+        if.app-id = 'company.thebrowser.Browser'
+        run = 'move-node-to-workspace B'
+        [[on-window-detected]]
+        if.app-id = 'com.tinyspeck.slackmacgap'
+        run = 'move-node-to-workspace I'
+        [[on-window-detected]]
+        if.app-id = 'com.hnc.Discord'
+        run = 'move-node-to-workspace M'
+        [[on-window-detected]]
+        if.app-id = 'md.obsidian'
+        run = 'move-node-to-workspace N'
+        [[on-window-detected]]
+        if.app-id = 'notion.id'
+        run = 'move-node-to-workspace W'
+        [[on-window-detected]]
+        if.app-id = 'com.github.wez.wezterm'
+        run = 'move-node-to-workspace T'
+        [[on-window-detected]]
+        if.app-id = 'com.apple.Terminal'
+        run = 'move-node-to-workspace T'
+        [[on-window-detected]]
+        if.app-id = 'com.mitchellh.ghostty'
+        run = 'move-node-to-workspace T'
+
+        # --- Main mode: vim hjkl + workspaces 1-9 ---
+        [mode.main.binding]
+        # Focus with alt-h/j/k/l (ergonomic, frankcarv)
+        alt-h = 'focus left'
+        alt-j = 'focus down'
+        alt-k = 'focus up'
+        alt-l = 'focus right'
+        # Move with alt-shift-h/j/k/l
+        alt-shift-h = 'move left'
+        alt-shift-j = 'move down'
+        alt-shift-k = 'move up'
+        alt-shift-l = 'move right'
+        # Resize smart
+        alt-minus = 'resize smart -50'
+        alt-equal = 'resize smart +50'
+        alt-shift-minus = 'resize smart -50'
+        alt-shift-equal = 'resize smart +50'
+        # Workspaces 1-9 (instant, no animation)
+        alt-1 = 'workspace 1'
+        alt-2 = 'workspace 2'
+        alt-3 = 'workspace 3'
+        alt-4 = 'workspace 4'
+        alt-5 = 'workspace 5'
+        alt-6 = 'workspace 6'
+        alt-7 = 'workspace 7'
+        alt-8 = 'workspace 8'
+        alt-9 = 'workspace 9'
+        alt-a = 'workspace A'
+        alt-b = 'workspace B'
+        alt-c = 'workspace C'
+        alt-d = 'workspace D'
+        alt-e = 'workspace E'
+        alt-f = 'workspace F'
+        alt-g = 'workspace G'
+        alt-i = 'workspace I'
+        alt-m = 'workspace M'
+        alt-n = 'workspace N'
+        alt-o = 'workspace O'
+        alt-p = 'workspace P'
+        alt-q = 'workspace Q'
+        alt-r = 'workspace R'
+        alt-s = 'workspace S'
+        alt-t = 'workspace T'
+        alt-u = 'workspace U'
+        alt-v = 'workspace V'
+        alt-w = 'workspace W'
+        alt-x = 'workspace X'
+        alt-y = 'workspace Y'
+        alt-z = 'workspace Z'
+        # Move to workspace (with sketchybar trigger, Masstronaut)
+        alt-shift-1 = ['move-node-to-workspace 1', 'exec-and-forget sketchybar --trigger change-window-workspace TARGET_WORKSPACE=1 FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE']
+        alt-shift-2 = ['move-node-to-workspace 2', 'exec-and-forget sketchybar --trigger change-window-workspace TARGET_WORKSPACE=2 FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE']
+        alt-shift-3 = ['move-node-to-workspace 3', 'exec-and-forget sketchybar --trigger change-window-workspace TARGET_WORKSPACE=3 FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE']
+        alt-shift-4 = ['move-node-to-workspace 4', 'exec-and-forget sketchybar --trigger change-window-workspace TARGET_WORKSPACE=4 FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE']
+        alt-shift-5 = ['move-node-to-workspace 5', 'exec-and-forget sketchybar --trigger change-window-workspace TARGET_WORKSPACE=5 FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE']
+        alt-shift-6 = ['move-node-to-workspace 6', 'exec-and-forget sketchybar --trigger change-window-workspace TARGET_WORKSPACE=6 FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE']
+        alt-shift-7 = ['move-node-to-workspace 7', 'exec-and-forget sketchybar --trigger change-window-workspace TARGET_WORKSPACE=7 FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE']
+        alt-shift-8 = ['move-node-to-workspace 8', 'exec-and-forget sketchybar --trigger change-window-workspace TARGET_WORKSPACE=8 FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE']
+        alt-shift-9 = ['move-node-to-workspace 9', 'exec-and-forget sketchybar --trigger change-window-workspace TARGET_WORKSPACE=9 FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE']
+        # Layout, fullscreen, back-and-forth
+        alt-tab = 'workspace-back-and-forth'
+        alt-shift-tab = 'move-workspace-to-monitor --wrap-around next'
+        alt-f = 'fullscreen'
+        alt-slash = 'layout tiles horizontal vertical'
+        alt-comma = 'layout accordion horizontal vertical'
+        alt-shift-semicolon = 'mode service'
+        alt-shift-space = 'layout floating tiling'
+        cmd-h = []  # disable hide (goodies#10)
+        cmd-alt-h = []
+
+        [mode.service.binding]
+        esc = ['reload-config', 'mode main']
+        r = ['flatten-workspace-tree', 'mode main']
+        f = ['layout floating tiling', 'mode main']
+        backspace = ['close-all-windows-but-current', 'mode main']
+
+        [mode.resize.binding]
+        h = 'resize width -50'
+        j = 'resize height +50'
+        k = 'resize height -50'
+        l = 'resize width +50'
+        enter = 'mode main'
+        esc = 'mode main'
+      '';
+    };
+
+    # SketchyBar — Omanix Omakase, frankcarv + mozumasu polish, theme-aware
     xdg.configFile."sketchybar/sketchybarrc" = {
       executable = true;
       text = ''
         #!/bin/bash
-        # Omanix SketchyBar — generated from lib/themed.nix + omanix.bar options
-        # Theme: ${config.omanix.theme} | Style: ${config.omanix.bar.style} | Bar: ${barPosition} transparent=${if barTransparent then "true" else "false"} blur=${if barBlur then "true" else "false"}
-        # Do not edit — set omanix.theme / omanix.bar.* in configuration.nix (see docs/themes.md)
+        # Omanix SketchyBar — Omakase, generated from lib/themed.nix + omanix.bar
+        # Theme: ${config.omanix.theme} | ${sketchyColors.background} -> ${sketchyColors.foreground} | accent ${sketchyColors.accent}
+        # Matches GUI app: page #FBFBFC, card white, border #E6E6EA, text #1D1D1F
 
-        # Load theme colors (generated by modules/theme/theme.nix, per-app sketchybar overrides)
+        # Load theme colors
         if [ -f "$HOME/.config/sketchybar/colors.sh" ]; then
           source "$HOME/.config/sketchybar/colors.sh"
         else
-          # Fallback if colors.sh not yet generated (uses per-app sketchybar palette)
           export OMANIX_ACCENT="${sketchyColors.accent}"
           export OMANIX_BACKGROUND="${sketchyColors.background}"
           export OMANIX_FOREGROUND="${sketchyColors.foreground}"
           export OMANIX_MUTED="${sketchyColors.muted}"
           export OMANIX_SELECTION="${sketchyColors.selection}"
+          export OMANIX_RED="${colors.red}"
         fi
 
-        # Bar appearance — theme + bar options
+        # Convert #RRGGBB to 0xffRRGGBB for SketchyBar
+        to_hex() { echo "0xff''${1#\#}"; }
+        ACCENT_HEX=$(to_hex "$OMANIX_ACCENT")
+        BG_HEX=$(to_hex "$OMANIX_BACKGROUND")
+        FG_HEX=$(to_hex "$OMANIX_FOREGROUND")
+        MUTED_HEX=$(to_hex "$OMANIX_MUTED")
+        SELECTION_HEX=$(to_hex "$OMANIX_SELECTION")
+
+        # Bar — floating card like GUI: height 32, margin 8, y_offset 8, notched aware, blur for glass
         sketchybar --bar \
           position="${barPosition}" \
-          height=32 \
+          height=34 \
           color="${barColor}" \
           border_width=${barBorderWidth} \
           border_color="${barBorderColor}" \
@@ -78,74 +261,184 @@ in {
           blur_radius=${barBlurRadius} \
           padding_left=8 \
           padding_right=8 \
-          margin=0 \
-          y_offset=0 \
-          notch_width=0 \
-          display=main
+          margin=8 \
+          y_offset=8 \
+          notch_width=200 \
+          display=main \
+          sticky=on \
+          topmost=off
 
-        # Defaults — themed
+        # Defaults — subtle, like GUI cards
         sketchybar --default \
-          icon.color="$OMANIX_FOREGROUND" \
-          label.color="$OMANIX_FOREGROUND" \
-          background.color="$OMANIX_SELECTION" \
+          icon.color="$FG_HEX" \
+          label.color="$FG_HEX" \
+          background.color="$SELECTION_HEX" \
           background.corner_radius=6 \
           background.height=22 \
           background.border_width=0 \
+          background.drawing=off \
           icon.font="SF Pro:Semibold:13.0" \
-          label.font="SF Pro:Regular:12.0" \
-          padding_left=6 \
-          padding_right=6
+          label.font="SF Pro:Medium:12.0" \
+          icon.padding_left=6 \
+          icon.padding_right=4 \
+          label.padding_left=4 \
+          label.padding_right=6 \
+          padding_left=4 \
+          padding_right=4
 
-        # AeroSpace workspace integration (uses accent for active)
-        # Workspaces 1-9 — active = accent, inactive = muted
-        # Plugins in ~/.config/sketchybar/plugins/ are themed via OMANIX_* vars
+        # Events for AeroSpace
+        sketchybar --add event aerospace_workspace_change
+        sketchybar --add event change-window-workspace
+        sketchybar --add event aerospace_focus_change
 
-        # Notification + separator styling — uses theme red/orange for alerts, muted for dividers
-        sketchybar --default popup.background.color="$OMANIX_BACKGROUND" popup.background.border_color="$OMANIX_MUTED" popup.background.corner_radius=8 popup.blur_radius=${barBlurRadius}
-        # Separator style depends on bar.style
+        # --- Left: Omanix apple + workspaces + front_app ---
+        sketchybar --add item omanix.apple left \
+          --set omanix.apple icon="􀣺" icon.color="$ACCENT_HEX" label.drawing=off \
+          background.color="$SELECTION_HEX" background.drawing=on background.corner_radius=6 \
+          click_script="open -a 'Omanix'"
+
+        # Workspaces 1-9 + T/B/I/M/N/W (Omakase assignment)
+        for sid in 1 2 3 4 5 6 7 8 9 T B I M N W; do
+          sketchybar --add item space.$sid left \
+            --subscribe space.$sid aerospace_workspace_change change-window-workspace \
+            --set space.$sid \
+              icon="$sid" icon.color="$FG_HEX" label.drawing=off \
+              background.color="$SELECTION_HEX" background.corner_radius=5 background.height=20 background.drawing=off \
+              click_script="aerospace workspace $sid" \
+              script="$HOME/.config/sketchybar/plugins/aerospace.sh $sid"
+        done
+
+        # Front app — shows focused window (uses sketchybar-app-font if installed)
+        sketchybar --add item front_app left \
+          --set front_app icon.drawing=on label.color="$FG_HEX" icon.color="$ACCENT_HEX" \
+          script="$HOME/.config/sketchybar/plugins/front_app.sh" \
+          --subscribe front_app front_app_switched
+
+        # --- Right: system ---
+        sketchybar --add item clock right \
+          --set clock update_freq=10 icon="󰥔" icon.color="$FG_HEX" label.color="$FG_HEX" background.color="$SELECTION_HEX" background.drawing=on \
+          script="$HOME/.config/sketchybar/plugins/clock.sh"
+
+        sketchybar --add item battery right \
+          --set battery update_freq=30 icon.color="$FG_HEX" label.color="$FG_HEX" script="$HOME/.config/sketchybar/plugins/battery.sh" \
+          --subscribe battery system_woke power_source_change
+
+        sketchybar --add item volume right \
+          --set volume icon.color="$FG_HEX" label.color="$FG_HEX" script="$HOME/.config/sketchybar/plugins/volume.sh" \
+          --subscribe volume volume_change
+
+        sketchybar --add item wifi right \
+          --set wifi icon="󰖩" icon.color="$FG_HEX" label.drawing=off script="$HOME/.config/sketchybar/plugins/wifi.sh"
+
+        # Separator + notification
+        sketchybar --default popup.background.color="$BG_HEX" popup.background.border_color="$MUTED_HEX" popup.background.corner_radius=10 popup.blur_radius=${barBlurRadius}
         ${if config.omanix.bar.style == "minimal" then ''
-        sketchybar --add item separator right --set separator icon="│" icon.color="$OMANIX_MUTED" label.drawing=off background.drawing=off
+        sketchybar --add item separator right --set separator icon="│" icon.color="$MUTED_HEX" label.drawing=off background.drawing=off
         '' else ''
-        sketchybar --add bracket barBracket "/.*/" --set barBracket background.color="$OMANIX_BACKGROUND" background.border_color="$OMANIX_MUTED"
+        sketchybar --add bracket barBracket "/space\..*/" --set barBracket background.color="$BG_HEX" background.border_color="$MUTED_HEX" background.corner_radius=6
         ''}
-        # Notification badge prototype (hidden by default, plugins can show with sketchybar --set notification label)
-        sketchybar --add item omanix.notification right --set omanix.notification icon="󰂚" icon.color="$OMANIX_RED" label.color="$OMANIX_FOREGROUND" background.color="$OMANIX_SELECTION" drawing=off
+        sketchybar --add item omanix.notification right --set omanix.notification icon="󰂚" icon.color="0xff${lib.removePrefix "#" colors.red}" label.color="$FG_HEX" background.color="$SELECTION_HEX" drawing=off
 
-        # Load plugins (pomodoro, clock, etc.) — each sources OMANIX_* for colors
-        for plugin in "$HOME/.config/sketchybar/plugins/"*.sh; do
-          [ -x "$plugin" ] && source "$plugin" 2>/dev/null || true
+        # User widgets (pomodoro etc.) — each sources OMANIX_* and inherits theme
+        for plugin in "$HOME/.config/sketchybar/plugins/"omanix-*.sh "$HOME/.config/sketchybar/plugins/"pomodoro.sh "$HOME/.config/sketchybar/plugins/"clock.sh; do
+          [ -x "$plugin" ] && [ -f "$plugin" ] && source "$plugin" 2>/dev/null || true
         done
 
         sketchybar --update
       '';
     };
 
-    # AeroSpace themed config fragment (for reference / debugging)
-    xdg.configFile."aerospace/theme.toml" = {
+    # AeroSpace workspace helper — highlights active with accent, like GUI selected card
+    xdg.configFile."sketchybar/plugins/aerospace.sh" = {
+      executable = true;
       text = ''
-        # Omanix AeroSpace theme — accent from ${config.omanix.theme}
-        # Generated via lib/themed.nix — do not edit
-        # Active border = accent (${aerospaceActiveBorder}), inactive = muted (${aerospaceInactiveBorder})
-        # Gaps: 8px (configurable via omanix.desktop.aerospace.gaps in future)
-        [gaps]
-        inner.horizontal = 8
-        inner.vertical = 8
-        outer.left = 8
-        outer.right = 8
-        outer.top = 8
-        outer.bottom = 8
+        #!/bin/bash
+        # Omanix aerospace workspace indicator — theme-aware
+        if [ -f "$HOME/.config/sketchybar/colors.sh" ]; then source "$HOME/.config/sketchybar/colors.sh"; fi
+        to_hex() { echo "0xff''${1#\#}"; }
+        ACCENT_HEX=$(to_hex "''${OMANIX_ACCENT:-#0A7CFF}")
+        MUTED_HEX=$(to_hex "''${OMANIX_MUTED:-#AEAEB4}")
+        SELECTION_HEX=$(to_hex "''${OMANIX_SELECTION:-#E6E6EA}")
+        if [ "$1" = "$FOCUSED_WORKSPACE" ]; then
+          sketchybar --set $NAME background.drawing=on background.color="$ACCENT_HEX" icon.color="0xffffffff" label.color="0xffffffff"
+        else
+          # Highlight target if window moved there (Masstronaut)
+          if [ "$1" = "$TARGET_WORKSPACE" ] && [ -n "$TARGET_WORKSPACE" ]; then
+            sketchybar --set $NAME background.drawing=on background.color="$MUTED_HEX" icon.color="0xffffffff"
+          else
+            sketchybar --set $NAME background.drawing=off icon.color="$SELECTION_HEX"
+          fi
+        fi
+      '';
+    };
+
+    xdg.configFile."sketchybar/plugins/front_app.sh" = {
+      executable = true;
+      text = ''
+        #!/bin/bash
+        # Front app — shows focused app with icon (requires sketchybar-app-font)
+        if [ "$SENDER" = "front_app_switched" ]; then
+          sketchybar --set $NAME label="$INFO" icon="$INFO"
+          # Use app-font if available: icon is app name -> ligature
+          if command -v icon_map.sh >/dev/null 2>&1; then
+            ICON=$(icon_map.sh "$INFO" 2>/dev/null || echo "􀆔")
+            sketchybar --set $NAME icon="$ICON"
+          fi
+        fi
+      '';
+    };
+
+    xdg.configFile."sketchybar/plugins/clock.sh" = {
+      executable = true;
+      text = ''
+        #!/bin/bash
+        sketchybar --set $NAME label="$(date '+%a %d %b %H:%M')" icon="󰥔"
+      '';
+    };
+
+    xdg.configFile."sketchybar/plugins/battery.sh" = {
+      executable = true;
+      text = ''
+        #!/bin/bash
+        PERCENT=$(pmset -g batt 2>/dev/null | grep -Eo "[0-9]+%" | cut -d% -f1)
+        if [ -z "$PERCENT" ]; then sketchybar --set $NAME drawing=off; exit 0; fi
+        if [ "$PERCENT" -gt 80 ]; then ICON="󰁹"; elif [ "$PERCENT" -gt 50 ]; then ICON="󰁿"; elif [ "$PERCENT" -gt 20 ]; then ICON="󰁾"; else ICON="󰁺"; fi
+        sketchybar --set $NAME icon="$ICON" label="''${PERCENT}%" drawing=on
+      '';
+    };
+
+    xdg.configFile."sketchybar/plugins/volume.sh" = {
+      executable = true;
+      text = ''
+        #!/bin/bash
+        VOL=$(osascript -e 'output volume of (get volume settings)' 2>/dev/null || echo 50)
+        if [ "$VOL" = "0" ] || [ "$(osascript -e 'output muted of (get volume settings)' 2>/dev/null)" = "true" ]; then ICON="󰸈"; else ICON="󰕾"; fi
+        sketchybar --set $NAME icon="$ICON" label="''${VOL}%"
+      '';
+    };
+
+    xdg.configFile."sketchybar/plugins/wifi.sh" = {
+      executable = true;
+      text = ''
+        #!/bin/bash
+        WIFI=$(networksetup -getairportnetwork en0 2>/dev/null | sed 's/You are not associated.*//')
+        if [ -n "$WIFI" ]; then sketchybar --set $NAME icon="󰖩" label.drawing=off; else sketchybar --set $NAME icon="󰖪" label.drawing=off; fi
       '';
     };
   };
 
-  # Activation script: check Accessibility permission and guide user
+  # Goodies: window dragging + animation disables
   system.activationScripts.postActivation.text = lib.mkAfter ''
-    # Check if AeroSpace has Accessibility permission
-    if ! /opt/homebrew/bin/aerospace --version >/dev/null 2>&1; then
+    # AeroSpace goodies: drag any part with ctrl+cmd, disable opening animations
+    defaults write -g NSWindowShouldDragOnGesture -bool true 2>/dev/null || true
+    defaults write -g NSAutomaticWindowAnimationsEnabled -bool false 2>/dev/null || true
+    # Group windows by app in Mission Control (fix small windows)
+    defaults write com.apple.spaces spans-displays -bool true 2>/dev/null || true
+
+    # Accessibility check
+    if ! /opt/homebrew/bin/aerospace --version >/dev/null 2>&1 && ! command -v aerospace >/dev/null 2>&1; then
       echo "AeroSpace installed but may need Accessibility permission."
     fi
-
-    # Auto-open System Settings > Privacy > Accessibility on first switch
     if [ ! -f /tmp/.omanix-aerospace-permissions-checked ]; then
       echo ""
       echo "┌─────────────────────────────────────────────────────────┐"
@@ -153,8 +446,12 @@ in {
       echo "│  Opening System Settings for you...                    │"
       echo "│  Click + and add AeroSpace, then close this window.    │"
       echo "└─────────────────────────────────────────────────────────┘"
-      open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+      open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility" 2>/dev/null || true
       touch /tmp/.omanix-aerospace-permissions-checked
+    fi
+    # SketchyBar app-font hint
+    if ! ls ~/Library/Fonts/*sketchybar* >/dev/null 2>&1 && ! ls /Library/Fonts/*sketchybar* >/dev/null 2>&1; then
+      echo "Tip: Install sketchybar-app-font for icons: brew install --cask font-sketchybar-app-font (tap FelixKratz/formulae)"
     fi
   '';
 }

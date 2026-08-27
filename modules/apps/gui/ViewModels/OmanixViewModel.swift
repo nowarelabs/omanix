@@ -21,7 +21,7 @@ final class OmanixViewModel: ObservableObject {
 
     @Published var widgets: [WidgetItem] = []
     @Published var themes: [ThemeItem] = []
-    @Published var currentTheme = "tokyo-night"
+    @Published var currentTheme = "omanix"
 
     @Published var isSearching = false
     @Published var isRebuilding = false
@@ -236,10 +236,13 @@ final class OmanixViewModel: ObservableObject {
         do { try store.setBarStyle(style); needsRebuild = true } catch { showMessage("Could not set style: \(error.localizedDescription)", .error) }
     }
 
-    // MARK: - Themes (12 — mirrors themes/*/colors.toml via lib/themed.nix)
+    // MARK: - Themes (13 — mirrors themes/*/colors.toml via lib/themed.nix, omanix = signature Omakase light)
 
     func loadThemes() {
         themes = [
+            ThemeItem(id: "omanix", name: "Omanix", description: "Signature Omakase — light, clean, OC palette", mode: "Light", colors: [
+                .background: OColor(hex: "FBFBFC"), .surface: OColor(hex: "FFFFFF"), .accent: OColor(hex: "0A7CFF"), .text: OColor(hex: "1D1D1F"), .muted: OColor(hex: "AEAEB4"), .selection: OColor(hex: "E6E6EA"), .darkBackground: OColor(hex: "F6F6F7"),
+            ]),
             ThemeItem(id: "tokyo-night", name: "Tokyo Night", description: "Tokyo after hours — deep indigo", mode: "Dark", colors: [
                 .background: OColor(hex: "1a1b26"), .surface: OColor(hex: "24283b"), .accent: OColor(hex: "7aa2f7"), .text: OColor(hex: "c0caf5"), .muted: OColor(hex: "414868"), .selection: OColor(hex: "292e42"), .darkBackground: OColor(hex: "13141c"),
             ]),
@@ -279,7 +282,7 @@ final class OmanixViewModel: ObservableObject {
         ]
         // Read actual current theme from disk (theme.json or configuration.nix)
         currentTheme = store.currentThemeId()
-        if !themes.contains(where: { $0.id == currentTheme }) { currentTheme = "tokyo-night" }
+        if !themes.contains(where: { $0.id == currentTheme }) { currentTheme = "omanix" }
     }
 
     func selectTheme(_ theme: ThemeItem) {

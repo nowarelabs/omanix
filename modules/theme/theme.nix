@@ -141,11 +141,9 @@ in {
       };
     };
 
-    # macOS appearance — set dark/light based on theme mode + bar.colorScheme
-    # NSGlobalDomain AppleInterfaceStyle = "Dark" for dark, absent for light
-    system.defaults.NSGlobalDomain = lib.mkIf (config.omanix.bar.colorScheme != "auto") {
-      AppleInterfaceStyle = if config.omanix.bar.colorScheme == "dark" then "Dark" else null;
-    };
+    # macOS appearance — follows theme mode + bar.colorScheme (makes theme switch obvious: light vs dark)
+    # Omanix light (#FBFBFC) -> Light, all dark themes -> Dark. Also respected via Store/GUI.
+    system.defaults.NSGlobalDomain.AppleInterfaceStyle = if isDark then "Dark" else null;
 
     # Also write a store file for AeroSpace border colors (consumed by desktop.nix activation)
     # We create /tmp/omanix-theme for runtime reload

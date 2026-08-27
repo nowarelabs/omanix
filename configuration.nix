@@ -18,7 +18,7 @@
 { pkgs, ... }: {
   omanix.host = "Vances-MacBook-Pro"; # `scutil --get LocalHostName`
   omanix.user = "vanceworks"; # `whoami` — also system.primaryUser
-  omanix.theme = "tokyo-night"; # see `ls themes/` and docs/themes.md (12 themes)
+  omanix.theme = "omanix"; # signature Omakase light — see `ls themes/` and docs/themes.md (13 themes: omanix + 12)
   omanix.bar = {
     position = "top"; # top | bottom — flows around the notch on MacBook Pro
     transparent = false; # true for glass desktop

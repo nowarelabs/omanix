@@ -37,7 +37,8 @@
           ./modules/darwin/activation.nix # preActivation scripts (postgresql dir)
           ./modules/darwin/home-manager.nix # home-manager integration
           ./modules/darwin/homebrew.nix  # Homebrew (pristine, declarative)
-          ./modules/darwin/desktop.nix   # AeroSpace + SketchyBar (mac-only)
+          ./modules/darwin/desktop.nix   # AeroSpace + SketchyBar (Omanix Omakase)
+          ./modules/darwin/borders.nix   # JankyBorders — theme-aware window borders
           ./modules/darwin/packages.nix  # system packages
           ./modules/darwin/sudo.nix      # passwordless sudo for darwin-rebuild
           ./modules/darwin/services.nix  # redis, postgresql

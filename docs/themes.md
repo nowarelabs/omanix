@@ -4,10 +4,11 @@
 
 ---
 
-## Available Themes (12)
+## Available Themes (13)
 
 | Theme | Mode | Accent | Background | Style | VS Code |
 |---|---|---|---|---|---|
+| `omanix` | light | `#0A7CFF` | `#FBFBFC` | **Signature Omakase** — OC light, matches GUI | `vscode.omanix-light` |
 | `tokyo-night` | dark | `#7aa2f7` | `#1a1b26` | Tokyo deep blue | `enkia.tokyo-night` |
 | `catppuccin` | dark | `#89b4fa` | `#1e1e2e` | Pastel mocha | `catppuccin.catppuccin-vsc` |
 | `gruvbox` | dark | `#fe8019` | `#282828` | Warm retro 1970s | `jdinhlife.gruvbox` |

@@ -16,6 +16,7 @@
 
   options.omanix.theme = lib.mkOption {
     type = lib.types.enum [
+      "omanix"
       "tokyo-night"
       "catppuccin"
       "gruvbox"
@@ -29,8 +30,8 @@
       "matte-black"
       "horizon"
     ];
-    default = "tokyo-night";
-    description = "Bar, terminal, and app theme. Rendered at build time via lib/themed.nix. See `ls themes/` and docs/themes.md. Preview via Store or overlays/ without editing colors.toml.";
+    default = "omanix";
+    description = "Bar, terminal, and app theme. Rendered at build time via lib/themed.nix. 'omanix' is the signature light Omakase (OC palette #FBFBFC/#0A7CFF) matching the GUI app. See `ls themes/` and docs/themes.md. Preview via Store or overlays/ without editing colors.toml.";
     example = "catppuccin";
   };
 
