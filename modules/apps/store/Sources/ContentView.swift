@@ -22,127 +22,57 @@ struct ContentView: View {
             sidebar
         } detail: {
             VStack(spacing: 0) {
-                topBar
-                Divider().background(theme.divider)
+                toolbar
+                Divider().background(theme.border)
                 detailContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                Divider().background(theme.divider)
-                StatusBarView(store: store, idleText: topBarIdleText) {
-                    EmptyView()
-                }
             }
         }
         .navigationTitle("")
-        .toolbar {
-            ToolbarItem(placement: .navigation) {
-                HStack(spacing: 6) {
-                    Image(systemName: "cube.transparent")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(theme.accent)
-                    Text("Omanix")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundColor(theme.text)
-                }
-            }
-        }
         .background(theme.background)
     }
 
-    // MARK: - Top Bar
+    // MARK: - Toolbar
 
-    private var topBar: some View {
-        HStack(alignment: .lastTextBaseline) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(selectedTab.rawValue)
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
-                    .foregroundColor(theme.text)
-                Text(topBarSubtitle)
-                    .font(.system(size: 12))
-                    .foregroundColor(theme.tertiaryText)
-            }
+    private var toolbar: some View {
+        HStack(spacing: 0) {
             Spacer()
-            topBarActions
+            toolbarButton("square.grid.2x2", "View", isActive: selectedTab == .packages)
+            toolbarButton("sliders.horizontal", "Group", isActive: false)
+            toolbarButton("square.and.arrow.up", "Share", isActive: false)
+            toolbarButton("ellipsis", "Action", isActive: false)
+            toolbarButton("magnifyingglass", "Search", isActive: false)
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 20)
-        .padding(.bottom, 12)
-        .background(theme.background)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(theme.surface)
     }
 
-    private var topBarSubtitle: String {
-        switch selectedTab {
-        case .packages:
-            return "Search across nixpkgs, Homebrew, and custom sources"
-        case .installed:
-            let count = store.declaredPackages.count
-            let sources = Set(store.declaredPackages.map { $0.source }).count
-            return "\(count) packages in \(sources) sources"
-        case .widgets:
-            let enabled = store.widgets.filter(\.isEnabled).count
-            return "\(enabled) of \(store.widgets.count) enabled"
-        case .themes:
-            return "Current: \(store.currentTheme)"
-        case .settings:
-            return "Configure your Omanix system"
-        }
-    }
-
-    @ViewBuilder
-    private var topBarActions: some View {
-        switch selectedTab {
-        case .packages:
-            if store.brewIndexReady {
-                Button(action: { Task { await store.refreshBrewIndex() } }) {
-                    HStack(spacing: 3) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 10))
-                        Text("Update index")
-                    }
+    private func toolbarButton(_ icon: String, _ label: String, isActive: Bool) -> some View {
+        Button(action: {}) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 13))
+                Text(label)
                     .font(.system(size: 11, weight: .medium))
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .tint(theme.accent)
             }
-        case .installed:
-            Button(action: { store.loadDeclaredPackages() }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 10))
-                    Text("Refresh")
-                }
-                .font(.system(size: 11, weight: .medium))
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .tint(theme.accent)
-        default:
-            EmptyView()
+            .foregroundColor(isActive ? theme.text : theme.secondaryText)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(isActive ? Color.white.opacity(0.06) : Color.clear)
+            .cornerRadius(UIConstants.cornerRow)
         }
-    }
-
-    private var topBarIdleText: String {
-        switch selectedTab {
-        case .packages:
-            return "\(store.packages.count) packages"
-        case .installed:
-            return "All packages from configuration.nix"
-        case .widgets:
-            return "Toggle widgets, then rebuild"
-        case .themes:
-            return "Select a theme, then rebuild to apply"
-        case .settings:
-            return ""
-        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Sidebar
 
     private var sidebar: some View {
         VStack(spacing: 0) {
+            // Brand
             HStack(spacing: 8) {
                 Image(systemName: "cube.transparent")
-                    .font(.system(size: 20, weight: .medium))
+                    .font(.system(size: 18, weight: .medium))
                     .foregroundColor(theme.accent)
                 Text("Omanix")
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
@@ -150,34 +80,53 @@ struct ContentView: View {
                 Spacer()
             }
             .padding(.horizontal, 16)
-            .padding(.top, 16)
+            .padding(.top, 14)
             .padding(.bottom, 12)
 
-            Divider().background(theme.divider)
+            // Nav heading
+            Text("Library")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(theme.tertiaryText)
+                .textCase(.uppercase)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 6)
 
-            VStack(spacing: 2) {
+            // Nav items
+            VStack(spacing: 1) {
                 ForEach(SidebarTab.allCases, id: \.self) { tab in
                     sidebarRow(tab)
                 }
             }
-            .padding(.vertical, 8)
             .padding(.horizontal, 8)
 
             Spacer(minLength: 0)
 
-            Divider().background(theme.divider)
+            Divider().background(theme.border)
 
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(theme.success)
-                    .frame(width: 5, height: 5)
-                Text("System OK")
-                    .font(.system(size: 11))
-                    .foregroundColor(theme.tertiaryText)
-                Spacer()
-                Text("v\(versionString)")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(theme.tertiaryText)
+            // Footer
+            VStack(spacing: 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: "externaldrive.connected.to.line.below")
+                        .font(.system(size: 13))
+                        .foregroundColor(theme.secondaryText)
+                    Text("Homebrew")
+                        .font(.system(size: 12))
+                        .foregroundColor(theme.secondaryText)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(theme.tertiaryText)
+                }
+                HStack(spacing: 6) {
+                    Image(systemName: "bolt")
+                        .font(.system(size: 13))
+                        .foregroundColor(theme.tertiaryText)
+                    Text("\(activeSourceCount) sources")
+                        .font(.system(size: 12))
+                        .foregroundColor(theme.tertiaryText)
+                    Spacer()
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -191,11 +140,9 @@ struct ContentView: View {
         return Button(action: { selectedTab = tab }) {
             HStack(spacing: 8) {
                 Image(systemName: iconName(for: tab))
-                    .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
-                    .foregroundColor(isSelected ? theme.accent : theme.tertiaryText)
-                    .frame(width: UIConstants.iconChipSmall, height: UIConstants.iconChipSmall)
-                    .background(isSelected ? theme.accent.opacity(0.12) : Color.clear)
-                    .cornerRadius(UIConstants.cornerRow)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(isSelected ? theme.text : theme.secondaryText)
+                    .frame(width: 18, alignment: .center)
 
                 Text(tab.rawValue)
                     .font(.system(size: 13, weight: isSelected ? .medium : .regular))
@@ -205,12 +152,8 @@ struct ContentView: View {
 
                 if let badge = badgeText(for: tab) {
                     Text(badge)
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundColor(theme.accent)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(theme.accent.opacity(0.1))
-                        .cornerRadius(UIConstants.cornerRow)
+                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .foregroundColor(theme.secondaryText)
                 }
             }
             .padding(.horizontal, 10)
@@ -243,17 +186,16 @@ struct ContentView: View {
 
     // MARK: - Helpers
 
-    private var versionString: String {
-        (try? String(contentsOfFile: FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".omanix/version").path, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "0.1.0"
+    private var activeSourceCount: Int {
+        Set(store.packages.map { $0.source }).count
     }
 
     func iconName(for tab: SidebarTab) -> String {
         switch tab {
         case .packages: return "square.grid.2x2"
-        case .installed: return "checkmark.circle"
-        case .widgets: return "rectangle.stack"
-        case .themes: return "paintbrush"
+        case .installed: return "checkmark"
+        case .widgets: return "archivebox"
+        case .themes: return "tag"
         case .settings: return "gearshape"
         }
     }

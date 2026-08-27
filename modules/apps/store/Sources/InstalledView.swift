@@ -7,13 +7,19 @@ struct InstalledView: View {
     @State private var selectedPackage: PackageItem?
     @Environment(\.omanixTheme) var theme
     @State private var expandedSources: Set<String> = []
+    @State private var refreshed = false
 
     var body: some View {
         Group {
             if store.declaredPackages.isEmpty {
                 emptyState
             } else {
-                content
+                VStack(spacing: 0) {
+                    contentHeading
+                    listHeader
+                    packageList
+                }
+                .background(theme.background)
             }
         }
         .onAppear {
@@ -23,39 +29,128 @@ struct InstalledView: View {
         }
     }
 
-    // MARK: - Content
+    // MARK: - Content Heading
 
-    private var content: some View {
+    private var contentHeading: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("INSTALLED PACKAGES")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundColor(theme.tertiaryText)
+                    .tracking(0.5)
+                Text("Installed")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(theme.text)
+                Text(subheading)
+                    .font(.system(size: 12))
+                    .foregroundColor(theme.tertiaryText)
+            }
+            Spacer()
+            Button(action: {
+                refreshed = true
+                store.loadDeclaredPackages()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { refreshed = false }
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 12))
+                        .rotationEffect(.degrees(refreshed ? 360 : 0))
+                        .animation(refreshed ? .easeInOut(duration: 0.6) : .default, value: refreshed)
+                    Text(refreshed ? "Updated" : "Refresh")
+                }
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(refreshed ? theme.success : theme.text)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(theme.surface)
+                .cornerRadius(UIConstants.cornerRow)
+                .overlay(
+                    RoundedRectangle(cornerRadius: UIConstants.cornerRow)
+                        .stroke(theme.border, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+        .padding(.bottom, 12)
+    }
+
+    private var subheading: String {
+        let count = store.declaredPackages.count
+        let sources = Set(store.declaredPackages.map { $0.source }).count
+        return "\(count) packages in \(sources) sources"
+    }
+
+    // MARK: - List Header
+
+    private var listHeader: some View {
+        HStack(spacing: 0) {
+            Text("PACKAGE")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(theme.tertiaryText)
+                .tracking(0.5)
+            Spacer()
+            Text("STATUS")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(theme.tertiaryText)
+                .tracking(0.5)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 6)
+        .background(theme.surface)
+        .overlay(alignment: .bottom) {
+            Divider().background(theme.border)
+        }
+    }
+
+    // MARK: - Package List
+
+    private var packageList: some View {
         ScrollView {
-            VStack(spacing: 12) {
+            LazyVStack(spacing: 0) {
                 ForEach(groupedPackages, id: \.source) { group in
-                    InstalledSourceCard(
-                        source: group.source,
-                        packages: group.packages,
-                        isExpanded: expandedSources.contains(group.source.rawValue),
-                        onToggle: { toggleSource(group.source) },
-                        store: store,
-                        selectedPackage: $selectedPackage
-                    )
+                    // Source section header
+                    HStack(spacing: 8) {
+                        Image(systemName: group.source.icon)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(group.source.badgeColor)
+                        Text(group.source.sectionName)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(theme.text)
+                        Text("\(group.packages.count)")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundColor(group.source.badgeColor)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
+                    .background(theme.surface.opacity(0.5))
+
+                    ForEach(group.packages) { package in
+                        InstalledPackageRow(package: package, store: store)
+                        if package.id != group.packages.last?.id {
+                            Divider().background(theme.border).padding(.leading, 56)
+                        }
+                    }
+
+                    Divider().background(theme.border)
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
         }
-        .background(theme.background)
     }
 
     // MARK: - Empty State
 
     private var emptyState: some View {
-        VStack(spacing: 16) {
-            Spacer()
+        VStack(spacing: 12) {
+            Spacer().frame(height: 60)
             Image(systemName: "tray")
-                .font(.system(size: 32, weight: .light))
+                .font(.system(size: 28, weight: .light))
                 .foregroundColor(theme.tertiaryText.opacity(0.4))
             VStack(spacing: 4) {
                 Text("No packages declared")
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundColor(theme.text)
                 Text("Add packages with omanix add or edit configuration.nix")
                     .font(.system(size: 12))
@@ -64,6 +159,8 @@ struct InstalledView: View {
             }
             Spacer()
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(theme.background)
     }
 
     // MARK: - Helpers
@@ -76,85 +173,6 @@ struct InstalledView: View {
         return groups
             .map { (source: $0.key, packages: $0.value.sorted { $0.name < $1.name }) }
             .sorted { $0.source.rawValue < $1.source.rawValue }
-    }
-
-    private func toggleSource(_ source: PackageItem.PackageSource) {
-        withAnimation(.easeInOut(duration: 0.15)) {
-            if expandedSources.contains(source.rawValue) {
-                expandedSources.remove(source.rawValue)
-            } else {
-                expandedSources.insert(source.rawValue)
-            }
-        }
-    }
-}
-
-// MARK: - Installed Source Card
-
-struct InstalledSourceCard: View {
-    let source: PackageItem.PackageSource
-    let packages: [PackageItem]
-    let isExpanded: Bool
-    let onToggle: () -> Void
-    @ObservedObject var store: StoreViewModel
-    @Binding var selectedPackage: PackageItem?
-    @Environment(\.omanixTheme) var theme
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Button(action: onToggle) {
-                HStack(spacing: 8) {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundColor(theme.tertiaryText)
-                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
-
-                    Image(systemName: source.icon)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(source.badgeColor)
-                        .frame(width: UIConstants.iconChipMedium, height: UIConstants.iconChipMedium)
-                        .background(source.badgeColor.opacity(0.12))
-                        .cornerRadius(UIConstants.cornerRow)
-
-                    Text(source.sectionName)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(theme.text)
-
-                    Spacer()
-
-                    Text("\(packages.count)")
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
-                        .foregroundColor(source.badgeColor)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 2)
-                        .background(source.badgeColor.opacity(0.1))
-                        .cornerRadius(UIConstants.cornerPill)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-            }
-            .buttonStyle(.plain)
-
-            if isExpanded {
-                VStack(spacing: 1) {
-                    ForEach(packages) { package in
-                        InstalledPackageRow(package: package, store: store)
-                    }
-                }
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-
-            if isExpanded {
-                Divider().background(theme.divider).padding(.leading, 48)
-            }
-        }
-        .background(theme.surface)
-        .cornerRadius(UIConstants.cornerCard)
-        .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 1)
-        .overlay(
-            RoundedRectangle(cornerRadius: UIConstants.cornerCard)
-                .stroke(theme.border, lineWidth: 1)
-        )
     }
 }
 
@@ -170,21 +188,30 @@ struct InstalledPackageRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 12))
-                .foregroundColor(theme.success)
+            // Status check
+            Image(systemName: "checkmark")
+                .font(.system(size: 8, weight: .bold))
+                .foregroundColor(theme.text)
                 .frame(width: 16, height: 16)
+                .background(theme.accent)
+                .cornerRadius(UIConstants.cornerPill)
 
-            PackageIcon(name: package.name, source: package.source, size: UIConstants.iconChipSmall)
-                .frame(width: UIConstants.iconChipSmall, height: UIConstants.iconChipSmall)
+            // Checkbox
+            Button(action: {}) {
+                Image(systemName: "square")
+                    .font(.system(size: 16, weight: .light))
+                    .foregroundColor(theme.secondaryText)
+            }
+            .buttonStyle(.plain)
 
+            // Package name + description
             VStack(alignment: .leading, spacing: 1) {
                 Text(package.name)
-                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 13, weight: .medium, design: .monospaced))
                     .foregroundColor(theme.text)
                 if !package.description.isEmpty {
                     Text(package.description)
-                        .font(.system(size: 10))
+                        .font(.system(size: 11))
                         .foregroundColor(theme.secondaryText)
                         .lineLimit(1)
                 }
@@ -192,28 +219,33 @@ struct InstalledPackageRow: View {
 
             Spacer()
 
-            if isRemoving {
-                ProgressView()
-                    .controlSize(.mini)
-            } else {
-                Button(action: { isConfirming = true }) {
-                    Image(systemName: "minus.circle")
-                        .font(.system(size: 12))
-                        .foregroundColor(theme.error.opacity(isHovered ? 1.0 : 0.4))
+            // Row actions
+            HStack(spacing: 8) {
+                if isHovered {
+                    Button(action: { isConfirming = true }) {
+                        Image(systemName: "minus.circle")
+                            .font(.system(size: 16))
+                            .foregroundColor(theme.error)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Remove \(package.name)")
                 }
-                .buttonStyle(.plain)
-                .help("Remove from configuration.nix")
-                .opacity(isHovered ? 1.0 : 0.0)
-                .animation(.easeInOut(duration: 0.1), value: isHovered)
+
+                if isRemoving {
+                    ProgressView()
+                        .controlSize(.mini)
+                } else {
+                    Text("Installed")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(theme.success)
+                }
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 20)
         .padding(.vertical, 7)
-        .padding(.leading, 20)
-        .frame(minHeight: 44)
+        .frame(minHeight: 40)
         .background(
-            RoundedRectangle(cornerRadius: UIConstants.cornerRow)
-                .fill(isHovered ? Color.white.opacity(0.04) : .clear)
+            isHovered ? Color.white.opacity(0.03) : Color.clear
         )
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.1)) {
