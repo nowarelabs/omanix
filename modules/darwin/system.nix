@@ -15,5 +15,8 @@
       FXPreferredViewStyle = "clmv";
     };
     loginwindow.LoginwindowText = config.omanix.user;
+    trackpad = {
+      TrackpadThreeFingerVertSwipeGesture = 2;
+    };
   };
 }
