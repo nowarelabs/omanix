@@ -61,7 +61,46 @@ in {
         outer.top = gapOuterTop;
         outer.right = 10;
       };
+      key-mapping = { preset = "qwerty"; };
+      on-window-detected = [
+        { "if".app-id = "com.apple.finder"; run = "layout floating"; }
+        { "if".app-id = "com.apple.systempreferences"; run = "layout floating"; }
+        { "if".app-id = "com.apple.ActivityMonitor"; run = "layout floating"; }
+        { "if"."app-name-regex-substring" = "finder"; run = "layout floating"; }
+        { "if".app-id = "com.google.Chrome"; run = "move-node-to-workspace B"; }
+        { "if".app-id = "company.thebrowser.Browser"; run = "move-node-to-workspace B"; }
+        { "if".app-id = "com.tinyspeck.slackmacgap"; run = "move-node-to-workspace I"; }
+        { "if".app-id = "com.hnc.Discord"; run = "move-node-to-workspace M"; }
+        { "if".app-id = "md.obsidian"; run = "move-node-to-workspace N"; }
+        { "if".app-id = "notion.id"; run = "move-node-to-workspace W"; }
+        { "if".app-id = "com.github.wez.wezterm"; run = "move-node-to-workspace T"; }
+        { "if".app-id = "com.apple.Terminal"; run = "move-node-to-workspace T"; }
+        { "if".app-id = "com.mitchellh.ghostty"; run = "move-node-to-workspace T"; }
+      ];
+      mode.main.binding = {
+        alt-h = "focus left"; alt-j = "focus down"; alt-k = "focus up"; alt-l = "focus right";
+        alt-shift-h = "move left"; alt-shift-j = "move down"; alt-shift-k = "move up"; alt-shift-l = "move right";
+        alt-minus = "resize smart -50"; alt-equal = "resize smart +50"; alt-shift-minus = "resize smart -50"; alt-shift-equal = "resize smart +50";
+        alt-1 = "workspace 1"; alt-2 = "workspace 2"; alt-3 = "workspace 3"; alt-4 = "workspace 4"; alt-5 = "workspace 5"; alt-6 = "workspace 6"; alt-7 = "workspace 7"; alt-8 = "workspace 8"; alt-9 = "workspace 9";
+        alt-a = "workspace A"; alt-b = "workspace B"; alt-c = "workspace C"; alt-d = "workspace D"; alt-e = "workspace E"; alt-g = "workspace G"; alt-i = "workspace I"; alt-m = "workspace M"; alt-n = "workspace N"; alt-o = "workspace O"; alt-p = "workspace P"; alt-q = "workspace Q"; alt-r = "workspace R"; alt-s = "workspace S"; alt-t = "workspace T"; alt-u = "workspace U"; alt-v = "workspace V"; alt-w = "workspace W"; alt-x = "workspace X"; alt-y = "workspace Y"; alt-z = "workspace Z";
+        alt-shift-1 = ''move-node-to-workspace 1''; alt-shift-2 = ''move-node-to-workspace 2''; alt-shift-3 = ''move-node-to-workspace 3''; alt-shift-4 = ''move-node-to-workspace 4''; alt-shift-5 = ''move-node-to-workspace 5''; alt-shift-6 = ''move-node-to-workspace 6''; alt-shift-7 = ''move-node-to-workspace 7''; alt-shift-8 = ''move-node-to-workspace 8''; alt-shift-9 = ''move-node-to-workspace 9'';
+        alt-tab = "workspace-back-and-forth"; alt-shift-tab = "move-workspace-to-monitor --wrap-around next";
+        alt-f = "fullscreen"; alt-slash = "layout tiles horizontal vertical"; alt-comma = "layout accordion horizontal vertical";
+        alt-shift-semicolon = "mode service"; alt-shift-space = "layout floating tiling";
+        cmd-h = []; cmd-alt-h = [];
+      };
+      mode.service.binding = {
+        esc = [ "reload-config" "mode main" ]; r = [ "flatten-workspace-tree" "mode main" ]; f = [ "layout floating tiling" "mode main" ]; backspace = [ "close-all-windows-but-current" "mode main" ];
+      };
+      mode.resize.binding = {
+        h = "resize width -50"; j = "resize height +50"; k = "resize height -50"; l = "resize width +50"; enter = "mode main"; esc = "mode main";
+      };
     };
+  };
+
+  # SketchyBar — enable via nix-darwin (provides /nix/store/.../bin/sketchybar + launchd)
+  services.sketchybar = {
+    enable = true;
   };
 
   # Also write the full Omakase aerospace.toml via home-manager for transparent customization
