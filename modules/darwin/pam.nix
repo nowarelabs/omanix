@@ -1,5 +1,5 @@
 # modules/darwin/pam.nix — Touch ID + primary user (darwin-only)
-# From config/flake.nix:87-93
+
 { config, ... }: {
   security.pam.services.sudo_local.touchIdAuth = true;
 

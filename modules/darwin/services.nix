@@ -1,6 +1,7 @@
-# modules/darwin/services.nix — redis + postgresql (from config/flake.nix:176-204)
+# modules/darwin/services.nix — redis + postgresql
+
 { pkgs, config, ... }: {
-  services = {
+  services = {  
     redis = {
       enable = true;
       package = pkgs.redis;

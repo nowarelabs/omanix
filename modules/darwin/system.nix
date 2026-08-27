@@ -15,14 +15,5 @@
       FXPreferredViewStyle = "clmv";
     };
     loginwindow.LoginwindowText = config.omanix.user;
-    screencapture.location = "~/Pictures/screenshots";
-    screensaver.askForPasswordDelay = 10;
-
-    CustomSystemPreferences = {
-      "com.apple.dock" = {
-        # Ensure menu bar stays hidden even after updates
-        autohide-delay = 0.0;
-      };
-    };
   };
 }
