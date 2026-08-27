@@ -48,17 +48,11 @@ elif [[ "$PREVIEW" == "true" ]]; then
   step 1 "Building impure overlay preview"
   sudo darwin-rebuild switch --flake "$FLAKE_DIR#$HOST" --impure --show-trace
   log_info "preview build complete"
-  step 2 "Hot-reloading services"
-  sketchybar --reload 2>/dev/null || true
-  aerospace reload-config 2>/dev/null || true
 
 else
   step 1 "Switching to flake $FLAKE_DIR#$HOST"
   sudo darwin-rebuild switch --flake "$FLAKE_DIR#$HOST" --show-trace
   log_info "switch complete"
-  step 2 "Hot-reloading services"
-  sketchybar --reload 2>/dev/null || true
-  aerospace reload-config 2>/dev/null || true
 fi
 
 summary "Rebuild complete."

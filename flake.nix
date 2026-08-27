@@ -29,25 +29,20 @@
           ./modules/core/nix.nix      # nix daemon, experimental features, revision
           ./modules/core/fonts.nix    # shared fonts
           # Theme
-          ./modules/theme/options.nix # omanix.theme enum, omanix.bar.* + overrides
-          ./modules/theme/theme.nix   # themed distribution -> Ghostty/SketchyBar/AeroSpace (lib/themed.nix)
+          ./modules/theme/options.nix # omanix.theme enum + overrides
+          ./modules/theme/theme.nix   # themed distribution -> Ghostty (lib/themed.nix)
           # Darwin-only
           ./modules/darwin/system.nix # system.defaults (dock, finder, loginwindow)
           ./modules/darwin/pam.nix    # Touch ID, primary user, users.users
           ./modules/darwin/activation.nix # preActivation scripts (postgresql dir)
           ./modules/darwin/home-manager.nix # home-manager integration
           ./modules/darwin/homebrew.nix  # Homebrew (pristine, declarative)
-          ./modules/darwin/desktop.nix   # AeroSpace + SketchyBar (Omanix Omakase)
-          ./modules/darwin/borders.nix   # JankyBorders — theme-aware window borders
           ./modules/darwin/packages.nix  # system packages
           ./modules/darwin/sudo.nix      # passwordless sudo for darwin-rebuild
           ./modules/darwin/services.nix  # redis, postgresql
           ./modules/darwin/env.nix       # environment variables
           ./modules/darwin/shell.nix     # zsh config, aliases, direnv
-          # Widgets
-          ./modules/widgets/options.nix  # omanix.widgets.*.enable
-          ./modules/widgets/pomodoro.nix # pomodoro timer widget
-          ./modules/widgets/clock.nix    # clock widget
+
           # Apps
           ./modules/apps/gui/default.nix   # Omanix app (SwiftUI GUI, enabled by default)
           ./modules/apps/custom.nix        # Apps not in Homebrew (Antigravity, MKPlayer, etc.)

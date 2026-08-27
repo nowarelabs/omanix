@@ -8,8 +8,6 @@ rec {
   readTheme = themeName: builtins.fromTOML (builtins.readFile ../themes/${themeName}/colors.toml);
 
   # Get merged theme colors = base palette // user overrides (if any)
-  # Overrides from config.omanix.themeOverrides (preferred). The spec's omanix.theme.colors is
-  # not a Nix option (would clash with string type) but we still handle it if set via extra config.
   getThemeColors = config:
     let
       base = readTheme config.omanix.theme;
@@ -21,22 +19,17 @@ rec {
     in base // overrides;
 
   # Per-application colors — global theme+overrides plus per-app delta
-  # Primary: config.omanix.perApp.<app> (options.omanix.perApp). Fallback: config.omanix.theme.perApp.<app> for spec alias without option.
   getAppColors = config: app:
     let
       base = getThemeColors config;
       perApp =
         if config ? omanix && config.omanix ? perApp && builtins.hasAttr app config.omanix.perApp
         then (config.omanix.perApp.${app} or {})
-        else if config ? omanix && config.omanix ? theme && builtins.isAttrs config.omanix.theme && config.omanix.theme ? perApp && builtins.hasAttr app config.omanix.theme.perApp
-        then (config.omanix.theme.perApp.${app} or {})
         else {};
       filtered = lib.filterAttrs (_: v: v != null) perApp;
     in base // filtered;
 
   getGhosttyColors = config: getAppColors config "ghostty";
-  getSketchyBarColors = config: getAppColors config "sketchybar";
-  getAerospaceColors = config: getAppColors config "aerospace";
 
   # List all available themes (from themes/ directory)
   availableThemes = builtins.attrNames (builtins.readDir ../themes);
@@ -80,7 +73,7 @@ rec {
       }
     ) (lib.filterAttrs (n: v: v == "regular" && lib.hasSuffix ".tpl" n) templateFiles);
 
-  # --- Color helpers (used by SketchyBar / Ghostty / widgets) ---
+  # --- Color helpers ---
 
   # Convert #RRGGBB -> "R,G,B"
   hexToRgb = hex:
@@ -95,17 +88,6 @@ rec {
       g = fromHex (builtins.substring 2 2 h);
       b = fromHex (builtins.substring 4 2 h);
     in "${toString r},${toString g},${toString b}";
-
-  # Hex with opacity 0.0-1.0 -> "0xAARRGGBB" (SketchyBar) or "rgba(R,G,B,A)"
-  hexWithOpacity = hex: opacity:
-    let
-      rgb = hexToRgb hex;
-      alpha = builtins.toString (builtins.floor (opacity * 255));
-    in { inherit rgb; alphaDec = builtins.floor (opacity * 255); };
-
-  # Bar background: respect transparent flag, returns SketchyBar color
-  barBackground = colors: transparent:
-    if transparent then "0x00000000" else colors.background;
 
   # Generate Ghostty config text from colors (written to xdg.configFile)
   ghosttyConfig = colors: ''
@@ -132,35 +114,5 @@ rec {
     palette = 13=${lib.removePrefix "#" colors.bright_magenta}
     palette = 14=${lib.removePrefix "#" colors.bright_cyan}
     palette = 15=${lib.removePrefix "#" colors.bright_foreground}
-  '';
-
-  # Generate SketchyBar colors.sh (sourced by sketchybarrc)
-  sketchyBarColors = colors: transparent: ''
-    #!/bin/bash
-    # Omanix SketchyBar theme — generated via lib/themed.nix
-    export OMANIX_ACCENT="${colors.accent}"
-    export OMANIX_ACCENT_STRIP="${lib.removePrefix "#" colors.accent}"
-    export OMANIX_BACKGROUND="${colors.background}"
-    export OMANIX_BACKGROUND_STRIP="${lib.removePrefix "#" colors.background}"
-    export OMANIX_FOREGROUND="${colors.foreground}"
-    export OMANIX_FOREGROUND_STRIP="${lib.removePrefix "#" colors.foreground}"
-    export OMANIX_MUTED="${colors.muted}"
-    export OMANIX_SELECTION="${colors.selection}"
-    export OMANIX_RED="${colors.red}"
-    export OMANIX_GREEN="${colors.green}"
-    export OMANIX_YELLOW="${colors.yellow}"
-    export OMANIX_BLUE="${colors.blue}"
-    export OMANIX_MAGENTA="${colors.magenta}"
-    export OMANIX_CYAN="${colors.cyan}"
-    export OMANIX_ORANGE="${colors.orange}"
-    export OMANIX_BAR_BG="${barBackground colors transparent}"
-    export OMANIX_BAR_TRANSPARENT="${if transparent then "1" else "0"}"
-  '';
-
-  # Generate AeroSpace border colors snippet (TOML fragment)
-  aerospaceTheme = colors: ''
-    # Omanix AeroSpace theme — accent from lib/themed.nix
-    # active border = accent, inactive = muted
-    # Use in aerospace.toml: border_active = "${colors.accent}"
   '';
 }

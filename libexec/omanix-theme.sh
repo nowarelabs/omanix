@@ -105,7 +105,7 @@ new_theme() {
 per_app() {
   local app="$1" key="$2" val="$3"
   if [[ -z "$app" || -z "$key" || -z "$val" ]]; then
-    echo "Usage: omanix theme per-app <ghostty|sketchybar|aerospace> <key> <value>" >&2
+    echo "Usage: omanix theme per-app <ghostty> <key> <value>" >&2
     echo "Example: omanix theme per-app ghostty background \"#000000\"" >&2
     exit 1
   fi
