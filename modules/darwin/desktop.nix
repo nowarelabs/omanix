@@ -38,7 +38,8 @@ in {
         "exec-and-forget borders active_color=0xff${lib.removePrefix "#" aerospaceActiveBorder} inactive_color=0x40${lib.removePrefix "#" aerospaceInactiveBorder} width=5.0 style=round || true"
       ];
       after-login-command = [];
-      start-at-login = true;
+      # start-at-login is managed by launchd (services.aerospace + launchd.user.agents), not aerospace.toml itself — nix-darwin assertion
+      start-at-login = false;
       enable-normalization-flatten-containers = true;
       enable-normalization-opposite-orientation-for-nested-containers = true;
       accordion-padding = 30;
@@ -65,6 +66,7 @@ in {
 
   # Also write the full Omakase aerospace.toml via home-manager for transparent customization
   # This file is the source of truth for keybindings and window rules — theme-aware and Omakase
+  # start-at-login is false here as well — launchd (nix-darwin) handles login
   home-manager.users.${user} = lib.mkIf (user != "") {
     xdg.configFile."aerospace/aerospace.toml" = {
       text = ''
@@ -73,7 +75,7 @@ in {
         # Gaps tuned for SketchyBar + JankyBorders — do not edit, set omanix.* in configuration.nix
         after-login-command = []
         after-startup-command = ['exec-and-forget sketchybar --reload', 'exec-and-forget sketchybar', 'exec-and-forget borders active_color=0xff${lib.removePrefix "#" aerospaceActiveBorder} inactive_color=0x40${lib.removePrefix "#" aerospaceInactiveBorder} width=5.0 style=round || true']
-        start-at-login = true
+        start-at-login = false
         enable-normalization-flatten-containers = true
         enable-normalization-opposite-orientation-for-nested-containers = true
         accordion-padding = 30
