@@ -16,7 +16,7 @@ in {
   };
 
   # Activation script: check Accessibility permission and guide user
-  system.activationScripts.postActivation.text = ''
+  system.activationScripts.postActivation.text = lib.mkAfter ''
     # Check if AeroSpace has Accessibility permission
     if ! /opt/homebrew/bin/aerospace --version >/dev/null 2>&1; then
       echo "AeroSpace installed but may need Accessibility permission."

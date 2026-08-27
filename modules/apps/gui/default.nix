@@ -39,7 +39,7 @@ let
 
 in {
   config = lib.mkIf enabled {
-    system.activationScripts.omanixGui.text = ''
+    system.activationScripts.postActivation.text = lib.mkAfter ''
 STORE_DIR="$HOME/.omanix"
 LOG_DIR="$STORE_DIR/logs"
 mkdir -p "$STORE_DIR" "$LOG_DIR"
@@ -68,6 +68,7 @@ if [ -x "$XCRUN" ] || command -v xcrun >/dev/null 2>&1; then
   GUI_DIR="$STORE_DIR/gui"
   if [ -d "$GUI_DIR" ]; then
     echo "Building Omanix GUI..."
+    # shellcheck disable=SC2046
     "$XCRUN" swiftc \
       -framework SwiftUI \
       -framework Foundation \
