@@ -206,12 +206,10 @@ in {
         '';
       };
     };
-  };
 
-  # Also write the full Omakase aerospace.toml via home-manager for transparent customization
-  # This file is the source of truth for keybindings and window rules — theme-aware and Omakase
-  # start-at-login is false here as well — launchd (nix-darwin) handles login
-  home-manager.users.${user} = lib.mkIf (user != "") {
+    # Also write the full Omakase aerospace.toml via home-manager for transparent customization
+    # This file is the source of truth for keybindings and window rules — theme-aware and Omakase
+    # start-at-login is false here as well — launchd (nix-darwin) handles login
     xdg.configFile."aerospace/aerospace.toml" = {
       text = ''
         # Omanix AeroSpace — Omakase, theme-aware, generated via lib/themed.nix
