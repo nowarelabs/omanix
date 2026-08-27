@@ -1,11 +1,11 @@
 // Views/ThemesView.swift
-// "Themes" page: appearance picker grid with mini window previews.
-// Appearance-only — not written to configuration.nix.
+// "Themes" page: 12 Omanix themes (colors.toml) with live preview and Store wiring.
+// Writes omanix.theme via OmanixStore.setTheme -> configuration.nix, rebuild to apply.
 
 import SwiftUI
 
 struct ThemesView: View {
-    @State private var selectedID: UUID = ThemePreviewOption.all[0].id
+    @EnvironmentObject private var vm: OmanixViewModel
 
     private let columns = [GridItem(.adaptive(minimum: 260, maximum: 300), spacing: 20)]
 
@@ -15,13 +15,22 @@ struct ThemesView: View {
                 PageHeader(
                     breadcrumb: "Appearance / Library",
                     title: "Themes",
-                    subtitle: "Choose an appearance for your Omanix workspace"
-                )
+                    subtitle: "Choose an appearance for your Omanix workspace — 12 themes, Ghostty + SketchyBar + AeroSpace"
+                ) {
+                    if vm.needsRebuild {
+                        FilledButton(title: "Rebuild", icon: "wrench.and.screwdriver.fill") { vm.rebuild() }
+                    } else {
+                        BorderedButton(title: "\(vm.themes.count) themes", icon: "paintpalette")
+                    }
+                }
+
+                // Bar appearance controls (wired to omanix.bar.*)
+                barAppearanceSection
 
                 LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
-                    ForEach(ThemePreviewOption.all) { theme in
-                        ThemeCard(theme: theme, isSelected: selectedID == theme.id) {
-                            selectedID = theme.id
+                    ForEach(vm.themes) { theme in
+                        ThemeCard(theme: theme, isSelected: vm.currentTheme == theme.id) {
+                            vm.selectTheme(theme)
                         }
                     }
                 }
@@ -29,41 +38,76 @@ struct ThemesView: View {
             .padding(24)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            StatusBar(left: "\(ThemePreviewOption.all.count) appearance themes available")
+            StatusBar(
+                left: vm.needsRebuild ? "Theme change pending — rebuild to apply" : "\(vm.themes.count) themes · \(vm.currentTheme) active",
+                rightText: vm.needsRebuild ? "Rebuild required" : "Omanix themes",
+                rightDotColor: vm.needsRebuild ? OC.orange : OC.green
+            )
+        }
+    }
+
+    private var barAppearanceSection: some View {
+        CardBox {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Text("Bar Appearance").font(.system(size: 13.5, weight: .semibold)).foregroundColor(OC.textPrimary)
+                    Spacer()
+                    Text("omanix.bar.* in configuration.nix").font(OFont.mono(11)).foregroundColor(OC.textTertiary)
+                }
+                Divider().overlay(OC.divider)
+
+                HStack(spacing: 16) {
+                    // Position
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Position").font(.system(size: 11, weight: .semibold)).foregroundColor(OC.textSecondary)
+                        Picker("", selection: Binding(get: { vm.barPosition }, set: { vm.setBarPosition($0) })) {
+                            Text("Top").tag("top")
+                            Text("Bottom").tag("bottom")
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 160)
+                    }
+
+                    // Style
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Style").font(.system(size: 11, weight: .semibold)).foregroundColor(OC.textSecondary)
+                        Picker("", selection: Binding(get: { vm.barStyle }, set: { vm.setBarStyle($0) })) {
+                            Text("Default").tag("default")
+                            Text("Minimal").tag("minimal")
+                            Text("Glass").tag("glass")
+                            Text("Modern").tag("modern")
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 280)
+                    }
+
+                    Spacer()
+                }
+
+                HStack(spacing: 24) {
+                    Toggle("Transparent", isOn: Binding(get: { vm.barTransparent }, set: { _ in vm.toggleBarTransparent() }))
+                        .toggleStyle(.switch).tint(OC.green)
+                    Toggle("Blur", isOn: Binding(get: { vm.barBlur }, set: { _ in vm.toggleBarBlur() }))
+                        .toggleStyle(.switch).tint(OC.green)
+                    Text("Blur implies vibrancy when transparent").font(.system(size: 11)).foregroundColor(OC.textTertiary)
+                    Spacer()
+                }
+                .font(.system(size: 12, weight: .medium))
+                .padding(.top, 2)
+            }
+            .padding(16)
         }
     }
 }
 
-// MARK: - Local presentation type for the light appearance picker
-
-struct ThemePreviewOption: Identifiable {
-    let id = UUID()
-    let name: String
-    let description: String
-    let mode: String
-    let style: ThemePreviewStyle
-
-    enum ThemePreviewStyle {
-        case systemDefault, pureLight, highContrast, graphite, rose
-    }
-
-    static let all: [ThemePreviewOption] = [
-        .init(name: "System Default", description: "Follows your device appearance", mode: "Automatic", style: .systemDefault),
-        .init(name: "Pure Light", description: "Clean, bright, and spacious", mode: "Light", style: .pureLight),
-        .init(name: "High Contrast", description: "Maximum clarity for every detail", mode: "Light", style: .highContrast),
-        .init(name: "Graphite", description: "A calm, focused dark appearance", mode: "Dark", style: .graphite),
-        .init(name: "Rose", description: "A warm accent for your workspace", mode: "Light", style: .rose),
-    ]
-}
-
 private struct ThemeCard: View {
-    let theme: ThemePreviewOption
+    let theme: ThemeItem
     let isSelected: Bool
     var onSelect: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            ThemePreview(style: theme.style)
+            ThemePreview(theme: theme)
                 .frame(height: 176)
                 .clipShape(RoundedRectangle(cornerRadius: 9))
                 .overlay(RoundedRectangle(cornerRadius: 9).stroke(OC.border, lineWidth: 1))
@@ -75,13 +119,12 @@ private struct ThemeCard: View {
                         .font(.system(size: 12))
                         .foregroundColor(OC.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    Text(theme.id).font(OFont.mono(10)).foregroundColor(OC.textTertiary)
                 }
                 Spacer()
                 Button(action: onSelect) {
                     HStack(spacing: 4) {
-                        if isSelected {
-                            Image(systemName: "checkmark").font(.system(size: 11, weight: .bold))
-                        }
+                        if isSelected { Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)) }
                         Text(isSelected ? "Selected" : "Select")
                             .font(.system(size: 12.5, weight: .semibold))
                     }
@@ -105,7 +148,11 @@ private struct ThemeCard: View {
 }
 
 private struct ThemePreview: View {
-    let style: ThemePreviewOption.ThemePreviewStyle
+    let theme: ThemeItem
+
+    private func color(_ role: ThemeColorRole, fallback: Color) -> Color {
+        theme.colors[role]?.toColor ?? fallback
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -114,84 +161,39 @@ private struct ThemePreview: View {
                 Circle().fill(Color(hex: "FEBC2E")).frame(width: 7, height: 7)
                 Circle().fill(Color(hex: "28C840")).frame(width: 7, height: 7)
                 Spacer()
+                Circle().fill(color(.accent, fallback: OC.accentBlue)).frame(width: 6, height: 6)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(titleBarColor)
+            .background(color(.darkBackground, fallback: Color(hex: "1C1C1F")))
 
             HStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Capsule().fill(accentColor).frame(width: 46, height: 5)
-                    Capsule().fill(sidebarLineColor).frame(width: 40, height: 5)
-                    Capsule().fill(sidebarLineColor).frame(width: 40, height: 5)
+                    Capsule().fill(color(.accent, fallback: OC.accentBlue)).frame(width: 46, height: 5)
+                    Capsule().fill(color(.muted, fallback: Color.white.opacity(0.3))).frame(width: 40, height: 5)
+                    Capsule().fill(color(.muted, fallback: Color.white.opacity(0.3))).frame(width: 40, height: 5)
                     Spacer()
+                    Capsule().fill(color(.selection, fallback: Color.white.opacity(0.15))).frame(height: 14).overlay(
+                        Text("bar").font(.system(size: 7, weight: .bold)).foregroundColor(color(.text, fallback: .white))
+                    )
                 }
                 .padding(10)
                 .frame(width: 78, alignment: .topLeading)
                 .frame(maxHeight: .infinity)
-                .background(sidebarBackground)
+                .background(color(.background, fallback: Color(hex: "1C1C1F")))
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Capsule().fill(contentLineColor).frame(height: 6)
-                    Capsule().fill(contentLineColor).frame(width: 90, height: 6)
+                    Capsule().fill(color(.text, fallback: Color.white.opacity(0.7))).frame(height: 6)
+                    Capsule().fill(color(.text, fallback: Color.white.opacity(0.7)).opacity(0.6)).frame(width: 90, height: 6)
+                    Capsule().fill(color(.muted, fallback: Color.gray)).frame(width: 70, height: 4)
                     Spacer(minLength: 6)
-                    Capsule().fill(accentBarColor).frame(width: 70, height: 8)
+                    Capsule().fill(color(.accent, fallback: OC.accentBlue)).frame(width: 70, height: 8)
                 }
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
                 .frame(maxHeight: .infinity)
-                .background(contentBackground)
+                .background(color(.surface, fallback: Color(hex: "111113")))
             }
-        }
-    }
-
-    private var titleBarColor: Color {
-        switch style {
-        case .highContrast, .graphite: return Color(hex: "0B0B0D")
-        default: return Color(hex: "F5F5F6")
-        }
-    }
-    private var sidebarBackground: Color {
-        switch style {
-        case .systemDefault, .pureLight: return Color(hex: "F2F2F4")
-        case .highContrast: return Color.black
-        case .graphite: return Color(hex: "1C1C1F")
-        case .rose: return Color(hex: "FBE6EA")
-        }
-    }
-    private var contentBackground: Color {
-        switch style {
-        case .systemDefault, .pureLight: return Color(hex: "FAFAFB")
-        case .highContrast: return Color.white
-        case .graphite: return Color(hex: "111113")
-        case .rose: return Color(hex: "FFF4F6")
-        }
-    }
-    private var sidebarLineColor: Color {
-        switch style {
-        case .highContrast, .graphite: return Color.white.opacity(0.3)
-        default: return Color.black.opacity(0.15)
-        }
-    }
-    private var contentLineColor: Color {
-        switch style {
-        case .highContrast: return Color.black.opacity(0.85)
-        case .graphite: return Color.white.opacity(0.7)
-        case .rose: return Color(hex: "C9738A")
-        default: return Color.black.opacity(0.12)
-        }
-    }
-    private var accentColor: Color {
-        switch style {
-        case .rose: return Color(hex: "B23A55")
-        default: return OC.accentBlue
-        }
-    }
-    private var accentBarColor: Color {
-        switch style {
-        case .highContrast: return Color(hex: "FBBF24")
-        case .rose: return Color(hex: "8E1F3B")
-        default: return OC.accentBlue
         }
     }
 }

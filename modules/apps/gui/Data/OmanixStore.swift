@@ -265,6 +265,32 @@ final class OmanixStore {
         try rewriteOption("omanix.theme", toLiteral: "\"\(id)\"", in: configPath)
     }
 
+    func currentThemeId() -> String {
+        // 1. Try ~/.config/omanix/theme.json (written by modules/theme/theme.nix)
+        let themeJSON = NSHomeDirectory() + "/.config/omanix/theme.json"
+        if let data = FileManager.default.contents(atPath: themeJSON),
+           let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let name = obj["name"] as? String { return name }
+        // 2. Fallback: parse configuration.nix
+        if let text = try? String(contentsOfFile: configPath, encoding: .utf8),
+           let range = text.range(of: #"omanix\.theme\s*=\s*"([^"]+)""#, options: .regularExpression) {
+            let substr = String(text[range])
+            if let q1 = substr.firstIndex(of: "\""), let q2 = substr.lastIndex(of: "\""), q1 != q2 {
+                return String(substr[substr.index(after: q1)..<q2])
+            }
+        }
+        return "tokyo-night"
+    }
+
+    func setBarOption(_ key: String, _ value: String) throws {
+        try rewriteOption("omanix.bar.\(key)", toLiteral: value, in: configPath)
+    }
+
+    func setBarPosition(_ pos: String) throws { try setBarOption("position", "\"\(pos)\"") }
+    func setBarTransparent(_ v: Bool) throws { try setBarOption("transparent", v ? "true" : "false") }
+    func setBarBlur(_ v: Bool) throws { try setBarOption("blur", v ? "true" : "false") }
+    func setBarStyle(_ style: String) throws { try setBarOption("style", "\"\(style)\"") }
+
     /// Rewrites `option = ...;` in a Nix config file, appending if absent.
     private func rewriteOption(_ option: String, toLiteral value: String, in path: String) throws {
         let original = try String(contentsOfFile: path, encoding: .utf8)

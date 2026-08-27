@@ -67,11 +67,13 @@ struct WidgetItem: Identifiable {
 struct ThemeItem: Identifiable {
     let id: String
     let name: String
+    let description: String
+    let mode: String
     var colors: [ThemeColorRole: OColor]
 }
 
 enum ThemeColorRole: String, CaseIterable {
-    case background, surface, accent, text
+    case background, surface, accent, text, muted, selection, darkBackground
 }
 
 /// A small color wrapper so models don't have to import SwiftUI.

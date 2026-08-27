@@ -20,6 +20,24 @@ rec {
       overrides = lib.filterAttrs (_: v: v != null) rawOverrides;
     in base // overrides;
 
+  # Per-application colors — global theme+overrides plus per-app delta
+  # Primary: config.omanix.perApp.<app> (options.omanix.perApp). Fallback: config.omanix.theme.perApp.<app> for spec alias without option.
+  getAppColors = config: app:
+    let
+      base = getThemeColors config;
+      perApp =
+        if config ? omanix && config.omanix ? perApp && builtins.hasAttr app config.omanix.perApp
+        then (config.omanix.perApp.${app} or {})
+        else if config ? omanix && config.omanix ? theme && builtins.isAttrs config.omanix.theme && config.omanix.theme ? perApp && builtins.hasAttr app config.omanix.theme.perApp
+        then (config.omanix.theme.perApp.${app} or {})
+        else {};
+      filtered = lib.filterAttrs (_: v: v != null) perApp;
+    in base // filtered;
+
+  getGhosttyColors = config: getAppColors config "ghostty";
+  getSketchyBarColors = config: getAppColors config "sketchybar";
+  getAerospaceColors = config: getAppColors config "aerospace";
+
   # List all available themes (from themes/ directory)
   availableThemes = builtins.attrNames (builtins.readDir ../themes);
 

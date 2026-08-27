@@ -194,9 +194,59 @@ Future Linux: same `lib/themed.nix` drives `Hyprland` borders + `Quickshell` (se
 
 ---
 
-## Store Integration (future)
+## Per-Application Overrides
 
-`modules/apps/gui` theme picker reads `~/.config/omanix/theme.json` and `lib/themed.nix:availableThemes` ( `builtins.readDir ../../themes` ) to list all themes with `preview.png`. Selection writes `omanix.theme = "<name>"` via `libexec/omanix-add.sh` helper, then `omanix rebuild --preview` hot-reloads `sketchybar --reload` without a generation (see `principles.md:15`).
+Global `omanix.themeOverrides` affects all apps. For per-app divergence (e.g. keep bar on `tokyo-night` but terminal on pure black):
+
+```nix
+{
+  omanix.theme = "tokyo-night";
+  omanix.perApp.ghostty.background = "#000000"; # alias omanix.theme.perApp.ghostty.background
+  omanix.perApp.ghostty.accent = "#ff00ff";
+  omanix.perApp.sketchybar.background = "#1a1b26"; # bar stays readable
+  omanix.perApp.aerospace.accent = "#7aa2f7";      # window borders
+}
+# CLI:
+# omanix theme per-app ghostty background "#000000"
+```
+
+Resolution: `base = themes/<name>/colors.toml` → `// omanix.themeOverrides` → `// omanix.perApp.<app>` (via `lib/themed.nix:getAppColors`, spec alias `theme.perApp` also read if set). Ghostty uses `ghostty` delta, SketchyBar/AeroSpace use theirs, widgets use global.
+
+---
+
+## Theme Transitions
+
+Animated switches keep the desktop feeling native (Omarchy provides no animation on Linux).
+
+```nix
+omanix.transition.enable = true;   # default true — alias omanix.theme.transition.enable
+omanix.transition.duration = 200;  # 0-1000 ms
+omanix.transition.type = "crossfade"; # crossfade | slide | none
+# CLI: omanix theme transition on|off
+```
+
+Implementation: `modules/theme/theme.nix` writes `~/.config/omanix/theme-transition.sh` (uses `sketchybar --animate sin <frames>`). `crossfade` fades bar to transparent → `sketchybar --reload` → fade back; `slide` animates `y_offset=-32 → 0`; `none` instant. Disable (`enable = false`) for instant cut (useful for screenshots/tests). Nix path is `omanix.transition` because `omanix.theme` is a string enum (cannot nest); spec alias `theme.transition` also honoured. All are `<30s` rollbackable via generations.
+
+---
+
+## Store Integration
+
+`Super → Omanix Store → Themes` (12 cards) reads `vm.themes` (hardcoded from `themes/*/colors.toml`, bridged via `OColor(hex:)`) and `store.currentThemeId()` (`~/.config/omanix/theme.json` → `configuration.nix`). Tap **Select** → `store.setTheme(id)` → `needsRebuild` banner → **Rebuild**. Bar appearance controls (`position`/`style`/`transparent`/`blur`) live in the same page and write `omanix.bar.*`. See `modules/apps/gui/Views/ThemesView.swift:12` and `ViewModels/OmanixViewModel.swift:217`.
+
+---
+
+## Community Theme Submission
+
+We don't keep a private registry — `search.nixos.org` + `brew` are the registry for packages, but themes are curated in-tree (like Omarchy's 22).
+
+1. **Scaffold:** `omanix theme new <my-theme>` (copies `tokyo-night/colors.toml` + `icons.theme`/`vscode.json` to `themes/<my-theme>/`), or `mkdir -p themes/<my-theme>/backgrounds` and copy `themes/tokyo-night/colors.toml`.
+2. **Edit palette:** All 25 keys `mode` + `#RRGGBB` (see `themes/tokyo-night/colors.toml:1`). Validate with `nix-instantiate --parse themes/<my-theme>/colors.toml`.
+3. **Register enum:** Add `"<my-theme>"` to `modules/core/options.nix:18` `omanix.theme` enum.
+4. **Preview:** `omanix theme set <my-theme> && omanix rebuild --preview` (impure, no generation, instant `sketchybar --reload`). Add `backgrounds/*.jpg` and `preview.png` (16:9, 1200x675).
+5. **Check:** `nix flake check` (ensures `lib/themed.nix:8` can `fromTOML` your file and Store can render it). No `lib/themed.nix` edit needed — colors auto-propagate.
+6. **PR:** Include `themes/<name>/colors.toml`, `icons.theme`, `neovim.lua`, `vscode.json`, `preview.png`, enum entry, and a line in `docs/themes.md` table. CI fails if any `{{ var }}` missing.
+
+Vendor sync: `themes/` at pinned rev, no hand edits to `config/`/`default/`; see `docs/conventions.md:12`.
 
 ---
 

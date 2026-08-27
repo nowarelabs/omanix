@@ -41,6 +41,11 @@ Commands:
   uninstall-app <name> Uninstall a custom app
   list-apps            List installed custom apps
   list-packages        List all declared packages (JSON)
+  theme list           List available themes
+  theme set <name>     Set theme (edits configuration.nix)
+  theme preview <name> Preview theme (impure, no generation)
+  theme new <name>     Scaffold new theme (community)
+  theme per-app <app> <key> <val>  Per-app color override
   open                 Open Omanix app
   ask <prompt>         Ask AI (frontier Claude)
   ask --local <prompt> Ask AI (local Qwen, offline)
@@ -65,6 +70,7 @@ case "$cmd" in
   add)              exec "$FLAKE_DIR/libexec/omanix-add.sh" "$@" ;;
   remove)           exec "$FLAKE_DIR/libexec/omanix-remove.sh" "$@" ;;
   search)           exec "$FLAKE_DIR/libexec/omanix-search.sh" "$@" ;;
+  theme)            exec "$FLAKE_DIR/libexec/omanix-theme.sh" "$@" ;;
   install-app)      exec "$FLAKE_DIR/libexec/omanix-install-app.sh" "$@" ;;
   uninstall-app)    exec "$FLAKE_DIR/libexec/omanix-uninstall-app.sh" "$@" ;;
   list-apps)        exec "$FLAKE_DIR/libexec/omanix-list-apps.sh" "$@" ;;

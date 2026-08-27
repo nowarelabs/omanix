@@ -2,11 +2,15 @@
 # See docs/principles.md:3 for why you never edit .toml/.tpl
 #
 # Available options (all typed, see modules/core/options.nix and modules/theme/options.nix):
-#   omanix.host       — machine hostname (`scutil --get LocalHostName`)
-#   omanix.user       — primary user (`whoami`)
-#   omanix.theme      — bar+terminal+app theme (see `ls themes/`)
-#   omanix.bar.*      — bar position, transparency
-#   omanix.widgets.*  — toggle widgets (pomodoro, clock, store)
+#   omanix.host                 — machine hostname (`scutil --get LocalHostName`)
+#   omanix.user                 — primary user (`whoami`)
+#   omanix.theme                — bar+terminal+app theme (see `ls themes/` and `omanix theme list`)
+#   omanix.bar.*                — bar position, transparency, blur, style, colorScheme
+#   omanix.themeOverrides.*     — global per-color overrides (accent, background, etc.)
+#   omanix.perApp.*             — per-application overrides (ghostty, sketchybar, aerospace) — alias theme.perApp.*
+#   omanix.transition.*         — theme switch animation (enable, duration, type) — alias theme.transition.*
+#   omanix.widgets.*            — toggle widgets (pomodoro, clock, store)
+#   Use Store GUI (Super → Omanix Store → Themes) or `omanix theme set <name>` + `omanix rebuild`
 #
 # Packages: use `omanix add <name>` (routes nixpkgs → brew) or add below.
 # Contributor rule: packages/ is ONLY for Omanix adapters. Before any packages/foo.nix,
@@ -23,8 +27,14 @@
     # style = "default"; # default | minimal | glass | modern
     # colorScheme = "auto"; # auto | dark | light
   };
-  # omanix.themeOverrides.accent = "#FF00FF"; # per-color override (see docs/themes.md)
+  # omanix.themeOverrides.accent = "#FF00FF"; # global per-color override (see docs/themes.md)
   # omanix.themeOverrides.background = "#0a0a12";
+  # Per-app overrides — e.g. terminal darker than bar (Nix path is omanix.perApp due to theme being a string enum):
+  # omanix.perApp.ghostty.background = "#000000"; # spec alias omanix.theme.perApp.ghostty.background
+  # omanix.perApp.sketchybar.foreground = "#c0caf5";
+  # Theme transition (SketchyBar animation):
+  # omanix.transition.enable = true; # crossfade | slide | none, duration 200ms (alias omanix.theme.transition.enable)
+  # omanix.transition.type = "crossfade";
   # omanix.widgets.pomodoro.enable = true;
   # omanix.widgets.clock.enable = true;
   # omanix.homebrew.cleanup = "none"; # "uninstall" (default), "zap", or "none"

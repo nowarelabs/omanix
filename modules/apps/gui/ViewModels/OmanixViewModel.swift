@@ -212,24 +212,74 @@ final class OmanixViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Themes
+    // MARK: - Bar appearance (mirrors omanix.bar.*)
+
+    @Published var barPosition: String = "top"
+    @Published var barTransparent: Bool = false
+    @Published var barBlur: Bool = false
+    @Published var barStyle: String = "default"
+
+    func setBarPosition(_ pos: String) {
+        barPosition = pos
+        do { try store.setBarPosition(pos); needsRebuild = true } catch { showMessage("Could not set bar position: \(error.localizedDescription)", .error) }
+    }
+    func toggleBarTransparent() {
+        barTransparent.toggle()
+        do { try store.setBarTransparent(barTransparent); needsRebuild = true } catch { barTransparent.toggle(); showMessage("Could not set transparency: \(error.localizedDescription)", .error) }
+    }
+    func toggleBarBlur() {
+        barBlur.toggle()
+        do { try store.setBarBlur(barBlur); needsRebuild = true } catch { barBlur.toggle(); showMessage("Could not set blur: \(error.localizedDescription)", .error) }
+    }
+    func setBarStyle(_ style: String) {
+        barStyle = style
+        do { try store.setBarStyle(style); needsRebuild = true } catch { showMessage("Could not set style: \(error.localizedDescription)", .error) }
+    }
+
+    // MARK: - Themes (12 — mirrors themes/*/colors.toml via lib/themed.nix)
 
     func loadThemes() {
         themes = [
-            ThemeItem(id: "tokyo-night", name: "Tokyo Night", colors: [
-                .background: OColor(red: 0.13, green: 0.13, blue: 0.17),
-                .surface:    OColor(red: 0.18, green: 0.18, blue: 0.23),
-                .accent:     OColor(red: 0.42, green: 0.44, blue: 0.95),
-                .text:       OColor(red: 0.87, green: 0.87, blue: 0.93),
+            ThemeItem(id: "tokyo-night", name: "Tokyo Night", description: "Tokyo after hours — deep indigo", mode: "Dark", colors: [
+                .background: OColor(hex: "1a1b26"), .surface: OColor(hex: "24283b"), .accent: OColor(hex: "7aa2f7"), .text: OColor(hex: "c0caf5"), .muted: OColor(hex: "414868"), .selection: OColor(hex: "292e42"), .darkBackground: OColor(hex: "13141c"),
             ]),
-            ThemeItem(id: "catppuccin", name: "Catppuccin Mocha", colors: [
-                .background: OColor(red: 0.11, green: 0.11, blue: 0.15),
-                .surface:    OColor(red: 0.15, green: 0.15, blue: 0.20),
-                .accent:     OColor(red: 0.83, green: 0.53, blue: 0.76),
-                .text:       OColor(red: 0.90, green: 0.90, blue: 0.95),
+            ThemeItem(id: "catppuccin", name: "Catppuccin Mocha", description: "Pastel mocha — soft and balanced", mode: "Dark", colors: [
+                .background: OColor(hex: "1e1e2e"), .surface: OColor(hex: "313244"), .accent: OColor(hex: "89b4fa"), .text: OColor(hex: "cdd6f4"), .muted: OColor(hex: "585b70"), .selection: OColor(hex: "45475a"), .darkBackground: OColor(hex: "161622"),
+            ]),
+            ThemeItem(id: "gruvbox", name: "Gruvbox", description: "Warm retro — amber & wood", mode: "Dark", colors: [
+                .background: OColor(hex: "282828"), .surface: OColor(hex: "3c3836"), .accent: OColor(hex: "fe8019"), .text: OColor(hex: "fbf1c7"), .muted: OColor(hex: "928374"), .selection: OColor(hex: "3c3836"), .darkBackground: OColor(hex: "1d2021"),
+            ]),
+            ThemeItem(id: "everforest", name: "Everforest", description: "Forest green — low contrast calm", mode: "Dark", colors: [
+                .background: OColor(hex: "2b3339"), .surface: OColor(hex: "3a4540"), .accent: OColor(hex: "a7c080"), .text: OColor(hex: "f0e0c0"), .muted: OColor(hex: "859289"), .selection: OColor(hex: "3d4840"), .darkBackground: OColor(hex: "232a2e"),
+            ]),
+            ThemeItem(id: "kanagawa", name: "Kanagawa Wave", description: "Japanese wave — granite & ink", mode: "Dark", colors: [
+                .background: OColor(hex: "1f1f28"), .surface: OColor(hex: "2a2a37"), .accent: OColor(hex: "7e9cd8"), .text: OColor(hex: "dcd7ba"), .muted: OColor(hex: "727169"), .selection: OColor(hex: "2d4f67"), .darkBackground: OColor(hex: "16161d"),
+            ]),
+            ThemeItem(id: "rose-pine", name: "Rosé Pine", description: "Muted rosé — soft plum", mode: "Dark", colors: [
+                .background: OColor(hex: "191724"), .surface: OColor(hex: "1f1d2e"), .accent: OColor(hex: "ebbcba"), .text: OColor(hex: "e0def4"), .muted: OColor(hex: "6e6a86"), .selection: OColor(hex: "26233a"), .darkBackground: OColor(hex: "12111a"),
+            ]),
+            ThemeItem(id: "nord", name: "Nord", description: "Arctic frost — cool slate", mode: "Dark", colors: [
+                .background: OColor(hex: "2e3440"), .surface: OColor(hex: "3b4252"), .accent: OColor(hex: "88c0d0"), .text: OColor(hex: "eceff4"), .muted: OColor(hex: "4c566a"), .selection: OColor(hex: "434c5e"), .darkBackground: OColor(hex: "242933"),
+            ]),
+            ThemeItem(id: "dracula", name: "Dracula", description: "Vampire purple — midnight neon", mode: "Dark", colors: [
+                .background: OColor(hex: "282a36"), .surface: OColor(hex: "343746"), .accent: OColor(hex: "bd93f9"), .text: OColor(hex: "f8f8f2"), .muted: OColor(hex: "6272a4"), .selection: OColor(hex: "44475a"), .darkBackground: OColor(hex: "1e1f29"),
+            ]),
+            ThemeItem(id: "solarized-dark", name: "Solarized Dark", description: "Solarized — ethan schooner", mode: "Dark", colors: [
+                .background: OColor(hex: "002b36"), .surface: OColor(hex: "073642"), .accent: OColor(hex: "268bd2"), .text: OColor(hex: "eee8d5"), .muted: OColor(hex: "586e75"), .selection: OColor(hex: "073642"), .darkBackground: OColor(hex: "001e26"),
+            ]),
+            ThemeItem(id: "one-dark", name: "One Dark", description: "Atom One Dark — modern slate", mode: "Dark", colors: [
+                .background: OColor(hex: "282c34"), .surface: OColor(hex: "2c313a"), .accent: OColor(hex: "61afef"), .text: OColor(hex: "ffffff"), .muted: OColor(hex: "5c6370"), .selection: OColor(hex: "3e4452"), .darkBackground: OColor(hex: "21252b"),
+            ]),
+            ThemeItem(id: "matte-black", name: "Matte Black", description: "Pure OLED — true black", mode: "Dark", colors: [
+                .background: OColor(hex: "0a0a0a"), .surface: OColor(hex: "1a1a1a"), .accent: OColor(hex: "d4d4d4"), .text: OColor(hex: "ffffff"), .muted: OColor(hex: "3a3a3a"), .selection: OColor(hex: "1e1e1e"), .darkBackground: OColor(hex: "050505"),
+            ]),
+            ThemeItem(id: "horizon", name: "Horizon", description: "Sunset horizon — peach & dusk", mode: "Dark", colors: [
+                .background: OColor(hex: "1c1e26"), .surface: OColor(hex: "2a2c38"), .accent: OColor(hex: "fab795"), .text: OColor(hex: "ffffff"), .muted: OColor(hex: "6c6f93"), .selection: OColor(hex: "2e303e"), .darkBackground: OColor(hex: "16161e"),
             ]),
         ]
-        currentTheme = themes.first?.id ?? "tokyo-night"
+        // Read actual current theme from disk (theme.json or configuration.nix)
+        currentTheme = store.currentThemeId()
+        if !themes.contains(where: { $0.id == currentTheme }) { currentTheme = "tokyo-night" }
     }
 
     func selectTheme(_ theme: ThemeItem) {
@@ -237,7 +287,7 @@ final class OmanixViewModel: ObservableObject {
         do {
             try store.setTheme(theme.id)
             needsRebuild = true
-            showMessage("Theme set to \(theme.name)", .success)
+            showMessage("Theme set to \(theme.name) — rebuild to apply", .success)
         } catch {
             showMessage("Could not set theme: \(error.localizedDescription)", .error)
         }
