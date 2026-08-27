@@ -47,7 +47,7 @@
           ./modules/widgets/pomodoro.nix # pomodoro timer widget
           ./modules/widgets/clock.nix    # clock widget
           # Apps
-          ./modules/apps/store/default.nix # Omanix Store GUI (enabled by default)
+          ./modules/apps/gui/default.nix   # Omanix app (SwiftUI GUI, enabled by default)
           ./modules/apps/custom.nix        # Apps not in Homebrew (Antigravity, MKPlayer, etc.)
           # Services
           ./modules/services/ollama.nix  # Ollama daemon for local AI (opt-in)

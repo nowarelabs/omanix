@@ -1,4 +1,4 @@
-// modules/apps/store/Sources/FileLogger.swift
+// Data/FileLogger.swift
 // Omanix — write structured logs to ~/.omanix/logs/
 import Foundation
 
@@ -24,7 +24,6 @@ final class FileLogger {
         timestampFormatter = DateFormatter()
         timestampFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
 
-        // Create log directory
         try? FileManager.default.createDirectory(atPath: logDir, withIntermediateDirectories: true)
     }
 
@@ -32,7 +31,6 @@ final class FileLogger {
         let timestamp = timestampFormatter.string(from: Date())
         let line = "[\(timestamp)] [\(level.rawValue)] [\(context)] \(message)"
 
-        // Write to file (daily log)
         let filename = "\(dateFormatter.string(from: Date())).log"
         let filepath = (logDir as NSString).appendingPathComponent(filename)
 
