@@ -29,7 +29,8 @@
           ./modules/core/nix.nix      # nix daemon, experimental features, revision
           ./modules/core/fonts.nix    # shared fonts
           # Theme
-          ./modules/theme/options.nix # omanix.theme enum, omanix.bar.*
+          ./modules/theme/options.nix # omanix.theme enum, omanix.bar.* + overrides
+          ./modules/theme/theme.nix   # themed distribution -> Ghostty/SketchyBar/AeroSpace (lib/themed.nix)
           # Darwin-only
           ./modules/darwin/system.nix # system.defaults (dock, finder, loginwindow)
           ./modules/darwin/pam.nix    # Touch ID, primary user, users.users

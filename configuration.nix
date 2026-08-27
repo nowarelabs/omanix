@@ -14,11 +14,17 @@
 { pkgs, ... }: {
   omanix.host = "Vances-MacBook-Pro"; # `scutil --get LocalHostName`
   omanix.user = "vanceworks"; # `whoami` — also system.primaryUser
-  omanix.theme = "tokyo-night"; # see `ls themes/`
+  omanix.theme = "tokyo-night"; # see `ls themes/` and docs/themes.md (12 themes)
   omanix.bar = {
-    position = "top"; # flows around the notch on MacBook Pro
-    transparent = false;
+    position = "top"; # top | bottom — flows around the notch on MacBook Pro
+    transparent = false; # true for glass desktop
+    # blur = false; # vibrancy blur (best with transparent)
+    # blurRadius = 50; # 0-100
+    # style = "default"; # default | minimal | glass | modern
+    # colorScheme = "auto"; # auto | dark | light
   };
+  # omanix.themeOverrides.accent = "#FF00FF"; # per-color override (see docs/themes.md)
+  # omanix.themeOverrides.background = "#0a0a12";
   # omanix.widgets.pomodoro.enable = true;
   # omanix.widgets.clock.enable = true;
   # omanix.homebrew.cleanup = "none"; # "uninstall" (default), "zap", or "none"
