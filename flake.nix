@@ -44,6 +44,7 @@
           ./modules/darwin/shell.nix     # zsh config, aliases, direnv
 
           # Apps
+          ./modules/apps/gui/options.nix   # Omanix app options
           ./modules/apps/gui/default.nix   # Omanix app (SwiftUI GUI, enabled by default)
           ./modules/apps/custom.nix        # Apps not in Homebrew (Antigravity, MKPlayer, etc.)
           # Services
