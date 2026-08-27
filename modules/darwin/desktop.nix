@@ -86,6 +86,7 @@ in {
         alt-shift-1 = ''move-node-to-workspace 1''; alt-shift-2 = ''move-node-to-workspace 2''; alt-shift-3 = ''move-node-to-workspace 3''; alt-shift-4 = ''move-node-to-workspace 4''; alt-shift-5 = ''move-node-to-workspace 5''; alt-shift-6 = ''move-node-to-workspace 6''; alt-shift-7 = ''move-node-to-workspace 7''; alt-shift-8 = ''move-node-to-workspace 8''; alt-shift-9 = ''move-node-to-workspace 9'';
         alt-tab = "workspace-back-and-forth"; alt-shift-tab = "move-workspace-to-monitor --wrap-around next";
         alt-f = "fullscreen"; alt-slash = "layout tiles horizontal vertical"; alt-comma = "layout accordion horizontal vertical";
+        alt-space = ''exec-and-forget open -a "Omanix"''; # Omanix launcher (also: open -a Omanix, or Super → Omanix)
         alt-shift-semicolon = "mode service"; alt-shift-space = "layout floating tiling";
         cmd-h = []; cmd-alt-h = [];
       };
@@ -208,7 +209,6 @@ in {
         alt-c = 'workspace C'
         alt-d = 'workspace D'
         alt-e = 'workspace E'
-        alt-f = 'workspace F'
         alt-g = 'workspace G'
         alt-i = 'workspace I'
         alt-m = 'workspace M'
@@ -235,12 +235,13 @@ in {
         alt-shift-7 = ['move-node-to-workspace 7', 'exec-and-forget sketchybar --trigger change-window-workspace TARGET_WORKSPACE=7 FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE']
         alt-shift-8 = ['move-node-to-workspace 8', 'exec-and-forget sketchybar --trigger change-window-workspace TARGET_WORKSPACE=8 FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE']
         alt-shift-9 = ['move-node-to-workspace 9', 'exec-and-forget sketchybar --trigger change-window-workspace TARGET_WORKSPACE=9 FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE']
-        # Layout, fullscreen, back-and-forth
+        # Layout, fullscreen, back-and-forth — plus Omanix launcher
         alt-tab = 'workspace-back-and-forth'
         alt-shift-tab = 'move-workspace-to-monitor --wrap-around next'
         alt-f = 'fullscreen'
         alt-slash = 'layout tiles horizontal vertical'
         alt-comma = 'layout accordion horizontal vertical'
+        alt-space = 'exec-and-forget open -a "Omanix"'
         alt-shift-semicolon = 'mode service'
         alt-shift-space = 'layout floating tiling'
         cmd-h = []  # disable hide (goodies#10)
@@ -291,41 +292,42 @@ in {
         MUTED_HEX=$(to_hex "$OMANIX_MUTED")
         SELECTION_HEX=$(to_hex "$OMANIX_SELECTION")
 
-        # Bar — floating card like GUI: height 32, margin 8, y_offset 8, notched aware, blur for glass
+        # Bar — Omakase floating card, 38px like GUI header, generous hit targets, notch-aware
         sketchybar --bar \
           position="${barPosition}" \
-          height=34 \
+          height=38 \
           color="${barColor}" \
           border_width=${barBorderWidth} \
           border_color="${barBorderColor}" \
           corner_radius=${barCornerRadius} \
           blur_radius=${barBlurRadius} \
-          padding_left=8 \
-          padding_right=8 \
-          margin=8 \
-          y_offset=8 \
-          notch_width=200 \
+          padding_left=10 \
+          padding_right=10 \
+          margin=10 \
+          y_offset=10 \
+          notch_width=240 \
           display=main \
           sticky=on \
           topmost=off
 
-        # Defaults — subtle, like GUI cards
+        # Defaults — larger, like GUI cards, high contrast
         sketchybar --default \
           icon.color="$FG_HEX" \
           label.color="$FG_HEX" \
           background.color="$SELECTION_HEX" \
-          background.corner_radius=6 \
-          background.height=22 \
-          background.border_width=0 \
+          background.corner_radius=8 \
+          background.height=26 \
+          background.border_width=1 \
+          background.border_color="$MUTED_HEX" \
           background.drawing=off \
-          icon.font="SF Pro:Semibold:13.0" \
-          label.font="SF Pro:Medium:12.0" \
-          icon.padding_left=6 \
-          icon.padding_right=4 \
-          label.padding_left=4 \
-          label.padding_right=6 \
-          padding_left=4 \
-          padding_right=4
+          icon.font="SF Pro:Semibold:14.0" \
+          label.font="SF Pro:Semibold:13.0" \
+          icon.padding_left=8 \
+          icon.padding_right=6 \
+          label.padding_left=6 \
+          label.padding_right=8 \
+          padding_left=6 \
+          padding_right=6
 
         # Events for AeroSpace
         sketchybar --add event aerospace_workspace_change
@@ -343,8 +345,9 @@ in {
           sketchybar --add item space.$sid left \
             --subscribe space.$sid aerospace_workspace_change change-window-workspace \
             --set space.$sid \
-              icon="$sid" icon.color="$FG_HEX" label.drawing=off \
-              background.color="$SELECTION_HEX" background.corner_radius=5 background.height=20 background.drawing=off \
+              icon="$sid" icon.font="SF Pro:Bold:13.0" icon.color="$FG_HEX" label.drawing=off \
+              background.color="$SELECTION_HEX" background.corner_radius=8 background.height=26 background.border_width=1 background.border_color="$MUTED_HEX" background.drawing=off \
+              padding_left=2 padding_right=2 \
               click_script="aerospace workspace $sid" \
               script="$HOME/.config/sketchybar/plugins/aerospace.sh $sid"
         done
@@ -389,25 +392,26 @@ in {
       '';
     };
 
-    # AeroSpace workspace helper — highlights active with accent, like GUI selected card
+    # AeroSpace workspace helper — high-contrast, like GUI selected card, 13px bold
     xdg.configFile."sketchybar/plugins/aerospace.sh" = {
       executable = true;
       text = ''
         #!/bin/bash
-        # Omanix aerospace workspace indicator — theme-aware
+        # Omanix aerospace workspace indicator — theme-aware, high contrast
         if [ -f "$HOME/.config/sketchybar/colors.sh" ]; then source "$HOME/.config/sketchybar/colors.sh"; fi
         to_hex() { echo "0xff''${1#\#}"; }
         ACCENT_HEX=$(to_hex "''${OMANIX_ACCENT:-#0A7CFF}")
+        FG_HEX=$(to_hex "''${OMANIX_FOREGROUND:-#1D1D1F}")
         MUTED_HEX=$(to_hex "''${OMANIX_MUTED:-#AEAEB4}")
         SELECTION_HEX=$(to_hex "''${OMANIX_SELECTION:-#E6E6EA}")
         if [ "$1" = "$FOCUSED_WORKSPACE" ]; then
-          sketchybar --set $NAME background.drawing=on background.color="$ACCENT_HEX" icon.color="0xffffffff" label.color="0xffffffff"
+          sketchybar --set $NAME background.drawing=on background.color="$ACCENT_HEX" background.border_color="$ACCENT_HEX" icon.color="0xffffffff" icon.font="SF Pro:Bold:14.0"
         else
-          # Highlight target if window moved there (Masstronaut)
           if [ "$1" = "$TARGET_WORKSPACE" ] && [ -n "$TARGET_WORKSPACE" ]; then
-            sketchybar --set $NAME background.drawing=on background.color="$MUTED_HEX" icon.color="0xffffffff"
+            sketchybar --set $NAME background.drawing=on background.color="$MUTED_HEX" background.border_color="$MUTED_HEX" icon.color="0xffffffff" icon.font="SF Pro:Semibold:13.0"
           else
-            sketchybar --set $NAME background.drawing=off icon.color="$SELECTION_HEX"
+            # Inactive: pill with selection bg + FG text (visible on both light/dark), not transparent
+            sketchybar --set $NAME background.drawing=on background.color="$SELECTION_HEX" background.border_color="$MUTED_HEX" icon.color="$FG_HEX" icon.font="SF Pro:Semibold:13.0"
           fi
         fi
       '';
@@ -468,27 +472,43 @@ in {
     };
   };
 
-  # Goodies: window dragging + animation disables
+  # Goodies: window dragging, hide Mac bar/tray/swipe, and one-click Accessibility
   system.activationScripts.postActivation.text = lib.mkAfter ''
-    # AeroSpace goodies: drag any part with ctrl+cmd, disable opening animations
+    # --- Hide native Mac bar/tray so SketchyBar is the only bar (no competition) ---
+    defaults write NSGlobalDomain _HIHideMenuBar -bool true 2>/dev/null || true
+    defaults write NSGlobalDomain NSAutomaticWindowAnimationsEnabled -bool false 2>/dev/null || true
     defaults write -g NSWindowShouldDragOnGesture -bool true 2>/dev/null || true
-    defaults write -g NSAutomaticWindowAnimationsEnabled -bool false 2>/dev/null || true
-    # Group windows by app in Mission Control (fix small windows)
     defaults write com.apple.spaces spans-displays -bool true 2>/dev/null || true
+    # Disable competing swipe between spaces/pages
+    defaults write -g AppleEnableSwipeNavigateWithScrolls -bool false 2>/dev/null || true
+    defaults write com.apple.dock expose-group-by-app -bool false 2>/dev/null || true
+    defaults write NSGlobalDomain AppleEnableSwipeNavigateWithScrolls -bool false 2>/dev/null || true
+    # Apply without logout
+    killall SystemUIServer 2>/dev/null || true
+    killall Dock 2>/dev/null || true
 
-    # Accessibility check
-    if ! /opt/homebrew/bin/aerospace --version >/dev/null 2>&1 && ! command -v aerospace >/dev/null 2>&1; then
-      echo "AeroSpace installed but may need Accessibility permission."
-    fi
-    if [ ! -f /tmp/.omanix-aerospace-permissions-checked ]; then
-      echo ""
-      echo "┌─────────────────────────────────────────────────────────┐"
-      echo "│  AeroSpace needs Accessibility permission.             │"
-      echo "│  Opening System Settings for you...                    │"
-      echo "│  Click + and add AeroSpace, then close this window.    │"
-      echo "└─────────────────────────────────────────────────────────┘"
-      open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility" 2>/dev/null || true
-      touch /tmp/.omanix-aerospace-permissions-checked
+    # --- AeroSpace Accessibility: one-click, not "may need" ---
+    # Check if AeroSpace can list workspaces (fails without Accessibility)
+    AEROSPACE_BIN=$(command -v aerospace 2>/dev/null || echo "/opt/homebrew/bin/aerospace")
+    if [ -x "$AEROSPACE_BIN" ]; then
+      if ! "$AEROSPACE_BIN" list-workspaces --all >/dev/null 2>&1; then
+        echo ""
+        echo "┌─────────────────────────────────────────────────────────┐"
+        echo "│  Omanix: Grant Accessibility to AeroSpace (one click)  │"
+        echo "│  Click 'Open Settings' → + → add AeroSpace → Done     │"
+        echo "└─────────────────────────────────────────────────────────┘"
+        # Try automated prompt with dialog (no manual file touch)
+        if command -v osascript >/dev/null 2>&1; then
+          osascript -e 'display dialog "Omanix needs Accessibility for AeroSpace to tile windows.\n\nClick Open Settings → + → add AeroSpace." buttons {"Open Settings", "Later"} default button "Open Settings" with title "Omanix — AeroSpace"' 2>/dev/null | grep -q "Open Settings" && \
+          open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility" 2>/dev/null || open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility" 2>/dev/null || true
+        else
+          open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility" 2>/dev/null || true
+        fi
+        # Also try CLI helper if user runs with sudo
+        echo "Tip: run 'omanix permissions grant' to auto-add (sudo) or re-run 'omanix rebuild' after granting"
+      else
+        echo "AeroSpace Accessibility: OK"
+      fi
     fi
     # SketchyBar app-font hint
     if ! ls ~/Library/Fonts/*sketchybar* >/dev/null 2>&1 && ! ls /Library/Fonts/*sketchybar* >/dev/null 2>&1; then
