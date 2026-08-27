@@ -7,37 +7,10 @@ struct WidgetGalleryView: View {
     @Environment(\.omanixTheme) var theme
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            if store.widgets.isEmpty {
-                emptyState
-            } else {
-                content
-            }
-            StatusBarView(store: store, idleText: "Toggle widgets, then rebuild") { EmptyView() }
-        }
-    }
-
-    // MARK: - Header
-
-    private var header: some View {
-        HStack(alignment: .lastTextBaseline) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Widgets")
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
-                    .foregroundColor(theme.text)
-                Text("\(store.widgets.filter(\.isEnabled).count) of \(store.widgets.count) enabled")
-                    .font(.system(size: 12))
-                    .foregroundColor(theme.tertiaryText)
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 24)
-        .padding(.top, 20)
-        .padding(.bottom, 12)
-        .background(theme.background)
-        .overlay(alignment: .bottom) {
-            Divider().background(theme.divider)
+        if store.widgets.isEmpty {
+            emptyState
+        } else {
+            content
         }
     }
 

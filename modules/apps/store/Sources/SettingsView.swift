@@ -11,40 +11,6 @@ struct SettingsView: View {
     @State private var showAdvanced = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            content
-            StatusBarView(store: store, idleText: "") { EmptyView() }
-        }
-        .onAppear { loadSettings() }
-    }
-
-    // MARK: - Header
-
-    private var header: some View {
-        HStack(alignment: .lastTextBaseline) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Settings")
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
-                    .foregroundColor(theme.text)
-                Text("Configure your Omanix system")
-                    .font(.system(size: 12))
-                    .foregroundColor(theme.tertiaryText)
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 24)
-        .padding(.top, 20)
-        .padding(.bottom, 12)
-        .background(theme.background)
-        .overlay(alignment: .bottom) {
-            Divider().background(theme.divider)
-        }
-    }
-
-    // MARK: - Content
-
-    private var content: some View {
         ScrollView {
             VStack(spacing: 16) {
                 systemSection
@@ -54,6 +20,7 @@ struct SettingsView: View {
             .padding(24)
         }
         .background(theme.background)
+        .onAppear { loadSettings() }
     }
 
     // MARK: - System Section
@@ -130,7 +97,7 @@ struct SettingsView: View {
                     icon: "arrow.uturn.backward",
                     color: theme.warning
                 ) {
-                    rollback()
+                    Task { await store.rollback() }
                 }
                 Divider().background(theme.divider).padding(.leading, 32)
                 actionRow(
@@ -139,7 +106,7 @@ struct SettingsView: View {
                     icon: "arrow.down.circle",
                     color: theme.accent
                 ) {
-                    updateFlake()
+                    Task { await store.updateFlake() }
                 }
             }
             .background(theme.surface)
@@ -295,14 +262,6 @@ struct SettingsView: View {
         if hostName.isEmpty {
             hostName = ProcessInfo.processInfo.hostName
         }
-    }
-
-    private func rollback() {
-        Task { await store.rollback() }
-    }
-
-    private func updateFlake() {
-        Task { await store.updateFlake() }
     }
 
     private func resetConfig() {

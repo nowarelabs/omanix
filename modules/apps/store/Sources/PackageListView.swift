@@ -13,26 +13,10 @@ struct PackageListView: View {
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             VStack(spacing: 0) {
-                header
                 searchBar
                 sourceFilters
                 rebuildBanner
                 content
-                StatusBarView(store: store, idleText: "\(store.packages.count) packages") {
-                    if store.brewIndexReady {
-                        Button(action: { Task { await store.refreshBrewIndex() } }) {
-                            HStack(spacing: 3) {
-                                Image(systemName: "arrow.clockwise")
-                                    .font(.system(size: 9))
-                                Text("Update index")
-                            }
-                            .font(.system(size: 10, weight: .medium))
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundColor(theme.tertiaryText)
-                        .help("Re-download Homebrew package index")
-                    }
-                }
             }
 
             // Floating inspector panel
@@ -42,50 +26,6 @@ struct PackageListView: View {
                 }
                 .transition(.move(edge: .trailing).combined(with: .opacity))
                 .padding(16)
-            }
-        }
-    }
-
-    // MARK: - Header
-
-    private var header: some View {
-        HStack(alignment: .lastTextBaseline) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Browse")
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
-                    .foregroundColor(theme.text)
-                Text("Search across nixpkgs, Homebrew, and custom sources")
-                    .font(.system(size: 12))
-                    .foregroundColor(theme.tertiaryText)
-            }
-            Spacer()
-            if !store.packages.isEmpty {
-                resultSummary
-            }
-        }
-        .padding(.horizontal, 24)
-        .padding(.top, 20)
-        .padding(.bottom, 12)
-        .background(theme.background)
-        .overlay(alignment: .bottom) {
-            Divider().background(theme.divider)
-        }
-    }
-
-    private var resultSummary: some View {
-        HStack(spacing: 12) {
-            ForEach(PackageItem.PackageSource.allCases, id: \.self) { source in
-                let count = store.packages.filter { $0.source == source }.count
-                if count > 0 {
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(source.badgeColor)
-                            .frame(width: 5, height: 5)
-                        Text("\(count)")
-                            .font(.system(size: 11, weight: .medium, design: .monospaced))
-                            .foregroundColor(theme.secondaryText)
-                    }
-                }
             }
         }
     }

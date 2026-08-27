@@ -21,7 +21,16 @@ struct ContentView: View {
         NavigationSplitView {
             sidebar
         } detail: {
-            detail
+            VStack(spacing: 0) {
+                topBar
+                Divider().background(theme.divider)
+                detailContent
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                Divider().background(theme.divider)
+                StatusBarView(store: store, idleText: topBarIdleText) {
+                    EmptyView()
+                }
+            }
         }
         .navigationTitle("")
         .toolbar {
@@ -39,11 +48,98 @@ struct ContentView: View {
         .background(theme.background)
     }
 
+    // MARK: - Top Bar
+
+    private var topBar: some View {
+        HStack(alignment: .lastTextBaseline) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(selectedTab.rawValue)
+                    .font(.system(size: 22, weight: .semibold, design: .rounded))
+                    .foregroundColor(theme.text)
+                Text(topBarSubtitle)
+                    .font(.system(size: 12))
+                    .foregroundColor(theme.tertiaryText)
+            }
+            Spacer()
+            topBarActions
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 20)
+        .padding(.bottom, 12)
+        .background(theme.background)
+    }
+
+    private var topBarSubtitle: String {
+        switch selectedTab {
+        case .packages:
+            return "Search across nixpkgs, Homebrew, and custom sources"
+        case .installed:
+            let count = store.declaredPackages.count
+            let sources = Set(store.declaredPackages.map { $0.source }).count
+            return "\(count) packages in \(sources) sources"
+        case .widgets:
+            let enabled = store.widgets.filter(\.isEnabled).count
+            return "\(enabled) of \(store.widgets.count) enabled"
+        case .themes:
+            return "Current: \(store.currentTheme)"
+        case .settings:
+            return "Configure your Omanix system"
+        }
+    }
+
+    @ViewBuilder
+    private var topBarActions: some View {
+        switch selectedTab {
+        case .packages:
+            if store.brewIndexReady {
+                Button(action: { Task { await store.refreshBrewIndex() } }) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 10))
+                        Text("Update index")
+                    }
+                    .font(.system(size: 11, weight: .medium))
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .tint(theme.accent)
+            }
+        case .installed:
+            Button(action: { store.loadDeclaredPackages() }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 10))
+                    Text("Refresh")
+                }
+                .font(.system(size: 11, weight: .medium))
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .tint(theme.accent)
+        default:
+            EmptyView()
+        }
+    }
+
+    private var topBarIdleText: String {
+        switch selectedTab {
+        case .packages:
+            return "\(store.packages.count) packages"
+        case .installed:
+            return "All packages from configuration.nix"
+        case .widgets:
+            return "Toggle widgets, then rebuild"
+        case .themes:
+            return "Select a theme, then rebuild to apply"
+        case .settings:
+            return ""
+        }
+    }
+
     // MARK: - Sidebar
 
     private var sidebar: some View {
         VStack(spacing: 0) {
-            // Logo
             HStack(spacing: 8) {
                 Image(systemName: "cube.transparent")
                     .font(.system(size: 20, weight: .medium))
@@ -57,10 +153,8 @@ struct ContentView: View {
             .padding(.top, 16)
             .padding(.bottom, 12)
 
-            Divider()
-                .background(theme.divider)
+            Divider().background(theme.divider)
 
-            // Navigation — VStack with Buttons for full control
             VStack(spacing: 2) {
                 ForEach(SidebarTab.allCases, id: \.self) { tab in
                     sidebarRow(tab)
@@ -71,9 +165,7 @@ struct ContentView: View {
 
             Spacer(minLength: 0)
 
-            // Status
-            Divider()
-                .background(theme.divider)
+            Divider().background(theme.divider)
 
             HStack(spacing: 6) {
                 Circle()
@@ -98,7 +190,6 @@ struct ContentView: View {
         let isSelected = selectedTab == tab
         return Button(action: { selectedTab = tab }) {
             HStack(spacing: 8) {
-                // Icon chip — tinted background when selected
                 Image(systemName: iconName(for: tab))
                     .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
                     .foregroundColor(isSelected ? theme.accent : theme.tertiaryText)
@@ -135,7 +226,7 @@ struct ContentView: View {
     // MARK: - Detail
 
     @ViewBuilder
-    private var detail: some View {
+    private var detailContent: some View {
         switch selectedTab {
         case .packages:
             PackageListView(store: store, searchText: $searchText, selectedPackage: $selectedPackage)

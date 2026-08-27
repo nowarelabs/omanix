@@ -7,42 +7,10 @@ struct ThemePickerView: View {
     @Environment(\.omanixTheme) var theme
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            if store.themes.isEmpty {
-                emptyState
-            } else {
-                content
-            }
-            StatusBarView(store: store, idleText: "Select a theme, then rebuild to apply") { EmptyView() }
-        }
-    }
-
-    // MARK: - Header
-
-    private var header: some View {
-        HStack(alignment: .lastTextBaseline) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Themes")
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
-                    .foregroundColor(theme.text)
-                HStack(spacing: 4) {
-                    Text("Current:")
-                        .font(.system(size: 12))
-                        .foregroundColor(theme.tertiaryText)
-                    Text(store.currentTheme)
-                        .font(.system(size: 12, weight: .medium, design: .monospaced))
-                        .foregroundColor(theme.accent)
-                }
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 24)
-        .padding(.top, 20)
-        .padding(.bottom, 12)
-        .background(theme.background)
-        .overlay(alignment: .bottom) {
-            Divider().background(theme.divider)
+        if store.themes.isEmpty {
+            emptyState
+        } else {
+            content
         }
     }
 
@@ -99,7 +67,6 @@ struct ThemeCard: View {
     var body: some View {
         Button(action: onSelect) {
             VStack(spacing: 0) {
-                // Color preview bar
                 HStack(spacing: 0) {
                     colorBlock(theme.colors[.background] ?? .gray, label: "BG")
                     colorBlock(theme.colors[.surface] ?? .gray, label: "Surface")
@@ -109,7 +76,6 @@ struct ThemeCard: View {
                 .frame(height: cardHeight)
                 .clipShape(UnevenRoundedRectangle(topLeadingRadius: UIConstants.cornerCard, topTrailingRadius: UIConstants.cornerCard))
 
-                // Info section
                 VStack(spacing: 8) {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
@@ -136,7 +102,6 @@ struct ThemeCard: View {
                         }
                     }
 
-                    // Mini terminal preview
                     miniPreview
                 }
                 .padding(12)

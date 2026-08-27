@@ -9,61 +9,17 @@ struct InstalledView: View {
     @State private var expandedSources: Set<String> = []
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
+        Group {
             if store.declaredPackages.isEmpty {
                 emptyState
             } else {
                 content
             }
-            StatusBarView(store: store, idleText: "All packages from configuration.nix") { EmptyView() }
         }
         .onAppear {
             if expandedSources.isEmpty {
                 expandedSources = Set(store.declaredPackages.map { $0.source.rawValue })
             }
-        }
-    }
-
-    // MARK: - Header
-
-    private var header: some View {
-        HStack(alignment: .lastTextBaseline) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Installed")
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
-                    .foregroundColor(theme.text)
-                HStack(spacing: 4) {
-                    Text("\(store.declaredPackages.count) packages")
-                        .font(.system(size: 12))
-                        .foregroundColor(theme.tertiaryText)
-                    Text("in")
-                        .font(.system(size: 12))
-                        .foregroundColor(theme.tertiaryText)
-                    Text("\(sourceCount) sources")
-                        .font(.system(size: 12))
-                        .foregroundColor(theme.tertiaryText)
-                }
-            }
-            Spacer()
-            Button(action: { store.loadDeclaredPackages() }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 10))
-                    Text("Refresh")
-                }
-                .font(.system(size: 11, weight: .medium))
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .tint(theme.accent)
-        }
-        .padding(.horizontal, 24)
-        .padding(.top, 20)
-        .padding(.bottom, 12)
-        .background(theme.background)
-        .overlay(alignment: .bottom) {
-            Divider().background(theme.divider)
         }
     }
 
@@ -122,10 +78,6 @@ struct InstalledView: View {
             .sorted { $0.source.rawValue < $1.source.rawValue }
     }
 
-    private var sourceCount: Int {
-        Set(store.declaredPackages.map { $0.source }).count
-    }
-
     private func toggleSource(_ source: PackageItem.PackageSource) {
         withAnimation(.easeInOut(duration: 0.15)) {
             if expandedSources.contains(source.rawValue) {
@@ -150,7 +102,6 @@ struct InstalledSourceCard: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Disclosure header
             Button(action: onToggle) {
                 HStack(spacing: 8) {
                     Image(systemName: "chevron.right")
@@ -184,7 +135,6 @@ struct InstalledSourceCard: View {
             }
             .buttonStyle(.plain)
 
-            // Expanded rows
             if isExpanded {
                 VStack(spacing: 1) {
                     ForEach(packages) { package in
