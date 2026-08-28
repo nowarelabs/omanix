@@ -11,7 +11,6 @@
       AppleEnableMouseSwipeNavigateWithScrolls = true;
       AppleEnableSwipeNavigateWithScrolls = false;
       AppleFontSmoothing = 2;
-      AppleInterfaceStyle = "Dark";
       AppleInterfaceStyleSwitchesAutomatically = false;
       AppleKeyboardUIMode = 3;
       AppleMeasurementUnits = "Centimeters";
