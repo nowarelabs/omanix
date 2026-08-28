@@ -52,7 +52,6 @@ struct SidebarView: View {
 
             VStack(alignment: .leading, spacing: 0) {
                 Divider().overlay(OC.divider)
-                FooterRow(icon: "shippingbox", title: "Homebrew", showChevron: true)
                 FooterRow(icon: "bolt.fill", title: "3 sources", showChevron: false)
             }
         }
