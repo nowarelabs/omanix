@@ -29,10 +29,10 @@ struct ContentView: View {
                         InstalledView()
                     case .widgets:
                         WidgetsView()
-                    case .tiling:
-                        TilingView()
-                    case .menubar:
-                        MenuBarView()
+                    case .omatiles:
+                        OmatilesView()
+                    case .omabar:
+                        OmabarView()
                     case .themes:
                         ThemesView()
                     case .settings:

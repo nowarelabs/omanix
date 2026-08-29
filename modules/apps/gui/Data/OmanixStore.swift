@@ -282,25 +282,38 @@ final class OmanixStore {
         return "tokyo-night"
     }
 
-    func setBarOption(_ key: String, _ value: String) throws {
-        try rewriteOption("omanix.bar.\(key)", toLiteral: value, in: configPath)
+    func setOmabarOption(_ key: String, _ value: String) throws {
+        try rewriteOption("omanix.omabar.\(key)", toLiteral: value, in: configPath)
     }
 
-    func setBarPosition(_ pos: String) throws { try setBarOption("position", "\"\(pos)\"") }
-    func setBarTransparent(_ v: Bool) throws { try setBarOption("transparent", v ? "true" : "false") }
-    func setBarBlur(_ v: Bool) throws { try setBarOption("blur", v ? "true" : "false") }
-    func setBarStyle(_ style: String) throws { try setBarOption("style", "\"\(style)\"") }
-    func setBarEnabled(_ v: Bool) throws { try setBarOption("enable", v ? "true" : "false") }
-    func setBarHeight(_ h: Int) throws { try setBarOption("height", "\(h)") }
+    func setOmabarPosition(_ pos: String) throws { try setOmabarOption("position", "\"\(pos)\"") }
+    func setOmabarTransparent(_ v: Bool) throws { try setOmabarOption("transparent", v ? "true" : "false") }
+    func setOmabarBlur(_ v: Bool) throws { try setOmabarOption("blur", v ? "true" : "false") }
+    func setOmabarStyle(_ style: String) throws { try setOmabarOption("style", "\"\(style)\"") }
+    func setOmabarColorScheme(_ scheme: String) throws { try setOmabarOption("colorScheme", "\"\(scheme)\"") }
+    func setOmabarEnabled(_ v: Bool) throws { try setOmabarOption("enable", v ? "true" : "false") }
+    func setOmabarHeight(_ h: Int) throws { try setOmabarOption("height", "\(h)") }
+    func setOmabarShowClock(_ v: Bool) throws { try setOmabarOption("showClock", v ? "true" : "false") }
+    func setOmabarShowBattery(_ v: Bool) throws { try setOmabarOption("showBattery", v ? "true" : "false") }
+    func setOmabarShowVolume(_ v: Bool) throws { try setOmabarOption("showVolume", v ? "true" : "false") }
+    func setOmabarShowWifi(_ v: Bool) throws { try setOmabarOption("showWifi", v ? "true" : "false") }
 
-    func setTilingOption(_ key: String, _ value: String) throws {
-        try rewriteOption("omanix.tiling.\(key)", toLiteral: value, in: configPath)
+    func setOmatilesOption(_ key: String, _ value: String) throws {
+        try rewriteOption("omanix.omatiles.\(key)", toLiteral: value, in: configPath)
     }
 
-    func setTilingEnabled(_ v: Bool) throws { try setTilingOption("enable", v ? "true" : "false") }
-    func setTilingLayout(_ layout: String) throws { try setTilingOption("layout", "\"\(layout)\"") }
-    func setTilingGapInner(_ gap: Int) throws { try setTilingOption("gapInner", "\(gap)") }
-    func setTilingGapOuter(_ gap: Int) throws { try setTilingOption("gapOuter", "\(gap)") }
+    func setOmatilesEnabled(_ v: Bool) throws { try setOmatilesOption("enable", v ? "true" : "false") }
+    func setOmatilesLayout(_ layout: String) throws { try setOmatilesOption("layout", "\"\(layout)\"") }
+    func setOmatilesGapInner(_ gap: Int) throws { try setOmatilesOption("gapInner", "\(gap)") }
+    func setOmatilesGapOuter(_ gap: Int) throws { try setOmatilesOption("gapOuter", "\(gap)") }
+    func setOmatilesBindings(_ v: Bool) throws { try setOmatilesOption("bindings", v ? "true" : "false") }
+    func setOmatilesWatch(_ v: Bool) throws { try setOmatilesOption("watch", v ? "true" : "false") }
+
+    /// Writes a space-separated Nix string list, e.g. `[ "a" "b" ]`.
+    func setOmatilesFloatingApps(_ apps: [String]) throws {
+        let literal = "[ " + apps.map { "\"\($0)\"" }.joined(separator: " ") + " ]"
+        try rewriteOption("omanix.omatiles.floatingApps", toLiteral: literal, in: configPath)
+    }
 
     // MARK: - Config state readers (bar + tiling)
 
@@ -327,27 +340,45 @@ final class OmanixStore {
         return Int(v)
     }
 
-    /// Reads the current `omanix.bar.*` values with defaults for anything unset.
-    func currentBarState() -> BarState {
-        BarState(
-            enable: readBoolOption("omanix.bar.enable") ?? true,
-            position: readOption("omanix.bar.position") ?? "top",
-            transparent: readBoolOption("omanix.bar.transparent") ?? false,
-            blur: readBoolOption("omanix.bar.blur") ?? true,
-            blurRadius: readIntOption("omanix.bar.blurRadius") ?? 30,
-            style: readOption("omanix.bar.style") ?? "default",
-            height: readIntOption("omanix.bar.height") ?? 40
+    /// Reads the current `omanix.omabar.*` values with defaults for anything unset.
+    func currentOmabarState() -> OmabarState {
+        OmabarState(
+            enable: readBoolOption("omanix.omabar.enable") ?? true,
+            position: readOption("omanix.omabar.position") ?? "top",
+            height: readIntOption("omanix.omabar.height") ?? 40,
+            transparent: readBoolOption("omanix.omabar.transparent") ?? false,
+            blur: readBoolOption("omanix.omabar.blur") ?? true,
+            style: readOption("omanix.omabar.style") ?? "default",
+            colorScheme: readOption("omanix.omabar.colorScheme") ?? "auto",
+            showClock: readBoolOption("omanix.omabar.showClock") ?? true,
+            showBattery: readBoolOption("omanix.omabar.showBattery") ?? true,
+            showVolume: readBoolOption("omanix.omabar.showVolume") ?? true,
+            showWifi: readBoolOption("omanix.omabar.showWifi") ?? true
         )
     }
 
-    /// Reads the current `omanix.tiling.*` values with defaults for anything unset.
-    func currentTilingState() -> TilingState {
-        TilingState(
-            enable: readBoolOption("omanix.tiling.enable") ?? true,
-            layout: readOption("omanix.tiling.layout") ?? "tiles",
-            gapInner: readIntOption("omanix.tiling.gapInner") ?? 8,
-            gapOuter: readIntOption("omanix.tiling.gapOuter") ?? 10
+    /// Reads the current `omanix.omatiles.*` values with defaults for anything unset.
+    func currentOmatilesState() -> OmatilesState {
+        var state = OmatilesState(
+            enable: readBoolOption("omanix.omatiles.enable") ?? true,
+            layout: readOption("omanix.omatiles.layout") ?? "tiles",
+            gapInner: readIntOption("omanix.omatiles.gapInner") ?? 8,
+            gapOuter: readIntOption("omanix.omatiles.gapOuter") ?? 10,
+            bindings: readBoolOption("omanix.omatiles.bindings") ?? true,
+            watch: readBoolOption("omanix.omatiles.watch") ?? false,
+            floatingApps: []
         )
+        state.floatingApps = readStringListOption("omanix.omatiles.floatingApps") ?? state.floatingApps
+        return state
+    }
+
+    /// Reads a Nix string-list literal like `[ "a" "b" ]`.
+    func readStringListOption(_ option: String) -> [String]? {
+        guard let raw = readOption(option) else { return nil }
+        let inner = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard inner.hasPrefix("["), inner.hasSuffix("]") else { return nil }
+        let tokens = inner.dropFirst().dropLast().split(whereSeparator: { $0 == " " || $0 == "\t" || $0 == "\n" })
+        return tokens.map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "\"")) }
     }
 
     /// Rewrites `option = ...;` in a Nix config file, appending if absent.

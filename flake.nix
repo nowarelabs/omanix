@@ -42,7 +42,8 @@
           ./modules/darwin/services.nix  # redis, postgresql
           ./modules/darwin/env.nix       # environment variables
           ./modules/darwin/shell.nix     # zsh config, aliases, direnv
-          ./modules/darwin/desktop.nix   # AeroSpace tiling + SketchyBar menu bar (omanix.tiling.*, omanix.bar.*)
+          ./modules/darwin/omabar.nix    # Omanix Omabar (menu bar) + Omatiles (tiling), native SwiftUI modules (omanix.omabar.*, omanix.omatiles.*)
+          ./modules/darwin/omatiles.nix
 
           # Apps
           ./modules/apps/gui/options.nix   # Omanix app options

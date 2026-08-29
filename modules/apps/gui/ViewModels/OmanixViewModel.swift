@@ -193,23 +193,31 @@ final class OmanixViewModel: ObservableObject {
     // MARK: - Widgets
 
     func loadWidgets() {
-        let barState = store.currentBarState()
-        let tilingState = store.currentTilingState()
-        barEnabled = barState.enable
-        barPosition = barState.position
-        barTransparent = barState.transparent
-        barBlur = barState.blur
-        barStyle = barState.style
-        barHeight = barState.height
-        tilingEnabled = tilingState.enable
-        tilingLayout = tilingState.layout
-        tilingGapInner = tilingState.gapInner
-        tilingGapOuter = tilingState.gapOuter
+        let barState = store.currentOmabarState()
+        let tilesState = store.currentOmatilesState()
+        omabarEnabled = barState.enable
+        omabarPosition = barState.position
+        omabarHeight = barState.height
+        omabarTransparent = barState.transparent
+        omabarBlur = barState.blur
+        omabarStyle = barState.style
+        omabarColorScheme = barState.colorScheme
+        omabarShowClock = barState.showClock
+        omabarShowBattery = barState.showBattery
+        omabarShowVolume = barState.showVolume
+        omabarShowWifi = barState.showWifi
+        omatilesEnabled = tilesState.enable
+        omatilesLayout = tilesState.layout
+        omatilesGapInner = tilesState.gapInner
+        omatilesGapOuter = tilesState.gapOuter
+        omatilesBindings = tilesState.bindings
+        omatilesWatch = tilesState.watch
+        omatilesFloatingApps = tilesState.floatingApps
 
         widgets = [
             WidgetItem(id: "store", name: "Omanix", icon: "bag", isEnabled: true),
-            WidgetItem(id: "menubar", name: "Menu Bar", icon: "rectangle.topthird.inset.filled", isEnabled: barEnabled),
-            WidgetItem(id: "tiling", name: "Window Tiling", icon: "rectangle.3.group", isEnabled: tilingEnabled),
+            WidgetItem(id: "omabar", name: "Omabar", icon: "rectangle.topthird.inset.filled", isEnabled: omabarEnabled),
+            WidgetItem(id: "omatiles", name: "Omatiles", icon: "rectangle.3.group", isEnabled: omatilesEnabled),
             WidgetItem(id: "pomodoro", name: "Pomodoro Timer", icon: "timer", isEnabled: false),
             WidgetItem(id: "clock", name: "Clock", icon: "clock", isEnabled: false),
         ]
@@ -217,16 +225,16 @@ final class OmanixViewModel: ObservableObject {
 
     func toggleWidget(_ widget: WidgetItem) {
         guard let i = widgets.firstIndex(where: { $0.id == widget.id }) else { return }
-        // Menu Bar + Window Tiling are desktop features (omanix.bar./omanix.tiling.),
+        // Omabar + Omatiles are desktop modules (omanix.omabar./omanix.omatiles.),
         // handled here so you can switch them on/off right from the Widgets page.
         switch widget.id {
-        case "menubar":
-            setBarEnabled(!widgets[i].isEnabled)
-            widgets[i].isEnabled = barEnabled
+        case "omabar":
+            setOmabarEnabled(!widgets[i].isEnabled)
+            widgets[i].isEnabled = omabarEnabled
             return
-        case "tiling":
-            setTilingEnabled(!widgets[i].isEnabled)
-            widgets[i].isEnabled = tilingEnabled
+        case "omatiles":
+            setOmatilesEnabled(!widgets[i].isEnabled)
+            widgets[i].isEnabled = omatilesEnabled
             return
         default:
             break
@@ -241,62 +249,202 @@ final class OmanixViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Bar appearance (mirrors omanix.bar.*)
+    // MARK: - Omabar appearance (mirrors omanix.omabar.*)
 
-    @Published var barEnabled: Bool = true
-    @Published var barPosition: String = "top"
-    @Published var barTransparent: Bool = false
-    @Published var barBlur: Bool = false
-    @Published var barStyle: String = "default"
-    @Published var barHeight: Int = 32
+    @Published var omabarEnabled: Bool = true
+    @Published var omabarPosition: String = "top"
+    @Published var omabarHeight: Int = 40
+    @Published var omabarTransparent: Bool = false
+    @Published var omabarBlur: Bool = true
+    @Published var omabarStyle: String = "default"
+    @Published var omabarColorScheme: String = "auto"
+    @Published var omabarShowClock: Bool = true
+    @Published var omabarShowBattery: Bool = true
+    @Published var omabarShowVolume: Bool = true
+    @Published var omabarShowWifi: Bool = true
 
-    func setBarEnabled(_ enabled: Bool) {
-        barEnabled = enabled
-        do { try store.setBarEnabled(enabled); needsRebuild = true } catch { barEnabled = !enabled; showMessage("Could not set menu bar: \(error.localizedDescription)", .error) }
-    }
-    func setBarPosition(_ pos: String) {
-        barPosition = pos
-        do { try store.setBarPosition(pos); needsRebuild = true } catch { showMessage("Could not set bar position: \(error.localizedDescription)", .error) }
-    }
-    func toggleBarTransparent() {
-        barTransparent.toggle()
-        do { try store.setBarTransparent(barTransparent); needsRebuild = true } catch { barTransparent.toggle(); showMessage("Could not set transparency: \(error.localizedDescription)", .error) }
-    }
-    func toggleBarBlur() {
-        barBlur.toggle()
-        do { try store.setBarBlur(barBlur); needsRebuild = true } catch { barBlur.toggle(); showMessage("Could not set blur: \(error.localizedDescription)", .error) }
-    }
-    func setBarStyle(_ style: String) {
-        barStyle = style
-        do { try store.setBarStyle(style); needsRebuild = true } catch { showMessage("Could not set style: \(error.localizedDescription)", .error) }
-    }
-    func setBarHeight(_ height: Int) {
-        barHeight = height
-        do { try store.setBarHeight(height); needsRebuild = true } catch { showMessage("Could not set bar height: \(error.localizedDescription)", .error) }
+    var omabarRunning: Bool { OmabarManager.shared.isRunning }
+
+    private func omabarSettings() -> RuntimeSettings.Omabar {
+        RuntimeSettings.Omabar(
+            enable: omabarEnabled,
+            position: omabarPosition,
+            height: omabarHeight,
+            transparent: omabarTransparent,
+            blur: omabarBlur,
+            style: omabarStyle,
+            colorScheme: omabarColorScheme,
+            showClock: omabarShowClock,
+            showBattery: omabarShowBattery,
+            showVolume: omabarShowVolume,
+            showWifi: omabarShowWifi
+        )
     }
 
-    // MARK: - Window tiling (mirrors omanix.tiling.*)
+    private func applyOmabarToRuntime() {
+        if omabarEnabled {
+            if OmabarManager.shared.isRunning {
+                OmabarManager.shared.apply(settings: omabarSettings())
+            } else {
+                _ = OmabarManager.shared.start(settings: omabarSettings())
+            }
+        } else {
+            OmabarManager.shared.stop()
+        }
+    }
 
-    @Published var tilingEnabled: Bool = true
-    @Published var tilingLayout: String = "tiles"
-    @Published var tilingGapInner: Int = 8
-    @Published var tilingGapOuter: Int = 10
+    func launchOmabar() {
+        guard !OmabarManager.shared.isRunning else { return }
+        _ = OmabarManager.shared.start(settings: omabarSettings())
+    }
 
-    func setTilingEnabled(_ enabled: Bool) {
-        tilingEnabled = enabled
-        do { try store.setTilingEnabled(enabled); needsRebuild = true } catch { tilingEnabled = !enabled; showMessage("Could not set tiling: \(error.localizedDescription)", .error) }
+    func stopOmabar() {
+        OmabarManager.shared.stop()
     }
-    func setTilingLayout(_ layout: String) {
-        tilingLayout = layout
-        do { try store.setTilingLayout(layout); needsRebuild = true } catch { showMessage("Could not set tiling layout: \(error.localizedDescription)", .error) }
+
+    func setOmabarEnabled(_ enabled: Bool) {
+        omabarEnabled = enabled
+        do { try store.setOmabarEnabled(enabled); needsRebuild = true; applyOmabarToRuntime() }
+        catch { omabarEnabled = !enabled; showMessage("Could not set Omabar: \(error.localizedDescription)", .error) }
     }
-    func setTilingGapInner(_ gap: Int) {
-        tilingGapInner = gap
-        do { try store.setTilingGapInner(gap); needsRebuild = true } catch { showMessage("Could not set inner gap: \(error.localizedDescription)", .error) }
+    func setOmabarPosition(_ pos: String) {
+        omabarPosition = pos
+        do { try store.setOmabarPosition(pos); needsRebuild = true; applyOmabarToRuntime() }
+        catch { showMessage("Could not set bar position: \(error.localizedDescription)", .error) }
     }
-    func setTilingGapOuter(_ gap: Int) {
-        tilingGapOuter = gap
-        do { try store.setTilingGapOuter(gap); needsRebuild = true } catch { showMessage("Could not set outer gap: \(error.localizedDescription)", .error) }
+    func setOmabarHeight(_ height: Int) {
+        omabarHeight = height
+        do { try store.setOmabarHeight(height); needsRebuild = true; applyOmabarToRuntime() }
+        catch { showMessage("Could not set bar height: \(error.localizedDescription)", .error) }
+    }
+    func toggleOmabarTransparent() {
+        omabarTransparent.toggle()
+        do { try store.setOmabarTransparent(omabarTransparent); needsRebuild = true; applyOmabarToRuntime() }
+        catch { omabarTransparent.toggle(); showMessage("Could not set transparency: \(error.localizedDescription)", .error) }
+    }
+    func toggleOmabarBlur() {
+        omabarBlur.toggle()
+        do { try store.setOmabarBlur(omabarBlur); needsRebuild = true; applyOmabarToRuntime() }
+        catch { omabarBlur.toggle(); showMessage("Could not set blur: \(error.localizedDescription)", .error) }
+    }
+    func setOmabarStyle(_ style: String) {
+        omabarStyle = style
+        do { try store.setOmabarStyle(style); needsRebuild = true; applyOmabarToRuntime() }
+        catch { showMessage("Could not set style: \(error.localizedDescription)", .error) }
+    }
+    func setOmabarColorScheme(_ scheme: String) {
+        omabarColorScheme = scheme
+        do { try store.setOmabarColorScheme(scheme); needsRebuild = true; applyOmabarToRuntime() }
+        catch { showMessage("Could not set color scheme: \(error.localizedDescription)", .error) }
+    }
+    func toggleOmabarShowClock() {
+        omabarShowClock.toggle()
+        do { try store.setOmabarShowClock(omabarShowClock); needsRebuild = true; applyOmabarToRuntime() }
+        catch { omabarShowClock.toggle(); showMessage("Could not update Omabar items: \(error.localizedDescription)", .error) }
+    }
+    func toggleOmabarShowBattery() {
+        omabarShowBattery.toggle()
+        do { try store.setOmabarShowBattery(omabarShowBattery); needsRebuild = true; applyOmabarToRuntime() }
+        catch { omabarShowBattery.toggle(); showMessage("Could not update Omabar items: \(error.localizedDescription)", .error) }
+    }
+    func toggleOmabarShowVolume() {
+        omabarShowVolume.toggle()
+        do { try store.setOmabarShowVolume(omabarShowVolume); needsRebuild = true; applyOmabarToRuntime() }
+        catch { omabarShowVolume.toggle(); showMessage("Could not update Omabar items: \(error.localizedDescription)", .error) }
+    }
+    func toggleOmabarShowWifi() {
+        omabarShowWifi.toggle()
+        do { try store.setOmabarShowWifi(omabarShowWifi); needsRebuild = true; applyOmabarToRuntime() }
+        catch { omabarShowWifi.toggle(); showMessage("Could not update Omabar items: \(error.localizedDescription)", .error) }
+    }
+
+    // MARK: - Omatiles window tiling (mirrors omanix.omatiles.*)
+
+    @Published var omatilesEnabled: Bool = true
+    @Published var omatilesLayout: String = "tiles"
+    @Published var omatilesGapInner: Int = 8
+    @Published var omatilesGapOuter: Int = 10
+    @Published var omatilesBindings: Bool = true
+    @Published var omatilesWatch: Bool = false
+    @Published var omatilesFloatingApps: [String] = []
+
+    var omatilesRunning: Bool { OmatilesEngine.shared.isRunning }
+    var omatilesTiledCount: Int { OmatilesEngine.shared.tiledCount }
+
+    private func omatilesSettings() -> RuntimeSettings.Omatiles {
+        RuntimeSettings.Omatiles(
+            enable: omatilesEnabled,
+            layout: omatilesLayout,
+            gapInner: omatilesGapInner,
+            gapOuter: omatilesGapOuter,
+            bindings: omatilesBindings,
+            watch: omatilesWatch,
+            floatingApps: omatilesFloatingApps.isEmpty ? ["com.apple.finder", "com.apple.systempreferences", "com.apple.ActivityMonitor"] : omatilesFloatingApps
+        )
+    }
+
+    private func applyOmatilesToRuntime() {
+        if omatilesEnabled {
+            if OmatilesEngine.shared.isRunning {
+                OmatilesEngine.shared.apply(settings: omatilesSettings())
+            } else {
+                OmatilesEngine.shared.start(settings: omatilesSettings())
+            }
+        } else {
+            OmatilesEngine.shared.stop()
+        }
+    }
+
+    func launchOmatiles() {
+        guard !OmatilesEngine.shared.isRunning else { return }
+        OmatilesEngine.shared.start(settings: omatilesSettings())
+    }
+
+    func stopOmatiles() {
+        OmatilesEngine.shared.stop()
+    }
+
+    func tileNow() {
+        if OmatilesEngine.ensureAccessibility() {
+            OmatilesEngine.shared.tile()
+        }
+    }
+
+    func setOmatilesEnabled(_ enabled: Bool) {
+        omatilesEnabled = enabled
+        do { try store.setOmatilesEnabled(enabled); needsRebuild = true; applyOmatilesToRuntime() }
+        catch { omatilesEnabled = !enabled; showMessage("Could not set Omatiles: \(error.localizedDescription)", .error) }
+    }
+    func setOmatilesLayout(_ layout: String) {
+        omatilesLayout = layout
+        do { try store.setOmatilesLayout(layout); needsRebuild = true; applyOmatilesToRuntime() }
+        catch { showMessage("Could not set layout: \(error.localizedDescription)", .error) }
+    }
+    func setOmatilesGapInner(_ gap: Int) {
+        omatilesGapInner = gap
+        do { try store.setOmatilesGapInner(gap); needsRebuild = true; applyOmatilesToRuntime() }
+        catch { showMessage("Could not set inner gap: \(error.localizedDescription)", .error) }
+    }
+    func setOmatilesGapOuter(_ gap: Int) {
+        omatilesGapOuter = gap
+        do { try store.setOmatilesGapOuter(gap); needsRebuild = true; applyOmatilesToRuntime() }
+        catch { showMessage("Could not set outer gap: \(error.localizedDescription)", .error) }
+    }
+    func toggleOmatilesBindings() {
+        omatilesBindings.toggle()
+        do { try store.setOmatilesBindings(omatilesBindings); needsRebuild = true; applyOmatilesToRuntime() }
+        catch { omatilesBindings.toggle(); showMessage("Could not set bindings: \(error.localizedDescription)", .error) }
+    }
+    func toggleOmatilesWatch() {
+        omatilesWatch.toggle()
+        do { try store.setOmatilesWatch(omatilesWatch); needsRebuild = true; applyOmatilesToRuntime() }
+        catch { omatilesWatch.toggle(); showMessage("Could not set watch mode: \(error.localizedDescription)", .error) }
+    }
+    func setOmatilesFloatingApps(_ apps: [String]) {
+        let cleaned = apps.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        omatilesFloatingApps = cleaned
+        do { try store.setOmatilesFloatingApps(cleaned); needsRebuild = true; applyOmatilesToRuntime() }
+        catch { showMessage("Could not set floating apps: \(error.localizedDescription)", .error) }
     }
 
     // MARK: - Themes (13 — mirrors themes/*/colors.toml via lib/themed.nix, omanix = signature Omakase light)

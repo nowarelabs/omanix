@@ -15,7 +15,7 @@ struct ThemesView: View {
                 PageHeader(
                     breadcrumb: "Appearance / Library",
                     title: "Themes",
-                    subtitle: "Choose an appearance for your Omanix workspace — 12 themes, Ghostty + SketchyBar + AeroSpace"
+                    subtitle: "Choose an appearance for your Omanix workspace — themes flow into Ghostty, Omabar, and the whole desktop"
                 ) {
                     if vm.needsRebuild {
                         FilledButton(title: "Rebuild", icon: "wrench.and.screwdriver.fill") { vm.rebuild() }
@@ -24,7 +24,7 @@ struct ThemesView: View {
                     }
                 }
 
-                // Bar appearance controls (wired to omanix.bar.*)
+                // Bar appearance controls (wired to omanix.omabar.*)
                 barAppearanceSection
 
                 LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
@@ -50,9 +50,9 @@ struct ThemesView: View {
         CardBox {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
-                    Text("Bar Appearance").font(.system(size: 13.5, weight: .semibold)).foregroundColor(OC.textPrimary)
+                    Text("Omabar Appearance").font(.system(size: 13.5, weight: .semibold)).foregroundColor(OC.textPrimary)
                     Spacer()
-                    Text("omanix.bar.* in configuration.nix").font(OFont.mono(11)).foregroundColor(OC.textTertiary)
+                    Text("omanix.omabar.* in configuration.nix").font(OFont.mono(11)).foregroundColor(OC.textTertiary)
                 }
                 Divider().overlay(OC.divider)
 
@@ -60,7 +60,7 @@ struct ThemesView: View {
                     // Position
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Position").font(.system(size: 11, weight: .semibold)).foregroundColor(OC.textSecondary)
-                        Picker("", selection: Binding(get: { vm.barPosition }, set: { vm.setBarPosition($0) })) {
+                        Picker("", selection: Binding(get: { vm.omabarPosition }, set: { vm.setOmabarPosition($0) })) {
                             Text("Top").tag("top")
                             Text("Bottom").tag("bottom")
                         }
@@ -71,7 +71,7 @@ struct ThemesView: View {
                     // Style
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Style").font(.system(size: 11, weight: .semibold)).foregroundColor(OC.textSecondary)
-                        Picker("", selection: Binding(get: { vm.barStyle }, set: { vm.setBarStyle($0) })) {
+                        Picker("", selection: Binding(get: { vm.omabarStyle }, set: { vm.setOmabarStyle($0) })) {
                             Text("Default").tag("default")
                             Text("Minimal").tag("minimal")
                             Text("Glass").tag("glass")
@@ -85,9 +85,9 @@ struct ThemesView: View {
                 }
 
                 HStack(spacing: 24) {
-                    Toggle("Transparent", isOn: Binding(get: { vm.barTransparent }, set: { _ in vm.toggleBarTransparent() }))
+                    Toggle("Transparent", isOn: Binding(get: { vm.omabarTransparent }, set: { _ in vm.toggleOmabarTransparent() }))
                         .toggleStyle(.switch).tint(OC.green)
-                    Toggle("Blur", isOn: Binding(get: { vm.barBlur }, set: { _ in vm.toggleBarBlur() }))
+                    Toggle("Blur", isOn: Binding(get: { vm.omabarBlur }, set: { _ in vm.toggleOmabarBlur() }))
                         .toggleStyle(.switch).tint(OC.green)
                     Text("Blur implies vibrancy when transparent").font(.system(size: 11)).foregroundColor(OC.textTertiary)
                     Spacer()

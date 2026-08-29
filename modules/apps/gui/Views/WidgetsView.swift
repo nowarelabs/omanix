@@ -72,8 +72,8 @@ private struct WidgetCard: View {
         switch widget.id {
         case "pomodoro": return OC.red
         case "clock": return OC.orange
-        case "menubar": return OC.purple
-        case "tiling": return OC.cyan
+        case "omabar": return OC.purple
+        case "omatiles": return OC.cyan
         default: return OC.accentBlue
         }
     }
@@ -81,8 +81,8 @@ private struct WidgetCard: View {
     private var description: String {
         switch widget.id {
         case "store": return "Browse and install packages with the Omanix store."
-        case "menubar": return "Replace the native macOS menu bar with the Omanix SketchyBar."
-        case "tiling": return "Tile windows i3-style with the AeroSpace window manager."
+        case "omabar": return "Native SwiftUI menu bar — right on your screen edge."
+        case "omatiles": return "Native window tiling built into Omanix."
         case "pomodoro": return "Focused work sessions with break reminders."
         case "clock": return "A quiet glance at the local time."
         default: return "Omanix widget"

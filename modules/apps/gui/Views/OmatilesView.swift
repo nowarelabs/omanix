@@ -1,27 +1,29 @@
-// Views/TilingView.swift
-// "Tiling" page — control the Omanix window tiling manager (AeroSpace).
-// Writes omanix.tiling.* in configuration.nix via the view model; rebuild to apply.
+// Views/OmatilesView.swift
+// "Omatiles" page — control the native Omanix window tiling engine.
+// Writes omanix.omatiles.* in configuration.nix via the view model; applies live.
 
 import SwiftUI
+import ApplicationServices
 
-struct TilingView: View {
+struct OmatilesView: View {
     @EnvironmentObject private var vm: OmanixViewModel
 
     private let layouts: [(value: String, label: String)] = [
         ("tiles", "Tiles"),
+        ("columns", "Columns"),
+        ("rows", "Rows"),
         ("accordion", "Accordion"),
-        ("floating", "Floating"),
     ]
 
-    @State private var searchLayout = "tiles"
+    @State private var floatingText = ""
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
                 PageHeader(
                     breadcrumb: "Library / Desktop",
-                    title: "Window Tiling",
-                    subtitle: "Tile and manage windows i3-style with AeroSpace — split, move, fullscreen, and workspace shortcuts."
+                    title: "Omatiles",
+                    subtitle: "Native window tiling, built into Omanix — no external window manager. Tile on demand, cycle layouts, or watch windows automatically."
                 ) {
                     if vm.needsRebuild {
                         FilledButton(title: "Rebuild", icon: "wrench.and.screwdriver.fill") { vm.rebuild() }
@@ -31,66 +33,94 @@ struct TilingView: View {
                 }
 
                 // Live layout preview
-                TilingSection(title: "Preview", subtitle: "How windows sit inside a workspace at your current gaps.") {
+                OmatilesSection(title: "Preview", subtitle: "How windows sit inside the screen at your current gaps.") {
                     CardBox {
-                        LayoutPreview(layout: vm.tilingLayout, gapInner: vm.tilingGapInner, gapOuter: vm.tilingGapOuter)
+                        LayoutPreview(layout: vm.omatilesLayout, gapInner: vm.omatilesGapInner, gapOuter: vm.omatilesGapOuter)
                             .padding(16)
                     }
                 }
 
-                TilingSection(title: "Tiling", subtitle: "Behaviour of the window tiling manager.") {
+                OmatilesSection(title: "Tiling", subtitle: "Behaviour of the tiling engine.") {
                     CardBox {
-                        ToggleRow(title: "Enable tiling", description: "Pass every window through the i3-like layout as it opens. Off restores native macOS window behaviour.", isOn: Binding(
-                            get: { vm.tilingEnabled },
-                            set: { vm.setTilingEnabled($0) }
+                        ToggleRow(title: "Enable tiling", description: "Start Omatiles at login and keep windows in the layout. Off restores native macOS window behaviour.", isOn: Binding(
+                            get: { vm.omatilesEnabled },
+                            set: { vm.setOmatilesEnabled($0) }
                         ))
                         Divider().overlay(OC.divider)
-                        SegmentRow(title: "Default layout", description: "Tiles strict-grid, accordion stacks in a row, floating ignores tiling.", options: layouts, selection: Binding(
-                            get: { vm.tilingLayout },
-                            set: { vm.setTilingLayout($0) }
+                        SegmentRow(title: "Default layout", description: "Tiles strict-grid, columns vertical splits, rows horizontal stacks, accordion one master + stack.", options: layouts, selection: Binding(
+                            get: { vm.omatilesLayout },
+                            set: { vm.setOmatilesLayout($0) }
                         ))
                         Divider().overlay(OC.divider)
                         SliderRow(title: "Inner gap", description: "Space between tiled windows.", value: Binding(
-                            get: { Double(vm.tilingGapInner) },
-                            set: { vm.setTilingGapInner(Int($0)) }
+                            get: { Double(vm.omatilesGapInner) },
+                            set: { vm.setOmatilesGapInner(Int($0)) }
                         ), range: 0...24, step: 2, suffix: "px")
                         Divider().overlay(OC.divider)
-                        SliderRow(title: "Outer gap", description: "Space between tiled windows and the screen edge.", value: Binding(
-                            get: { Double(vm.tilingGapOuter) },
-                            set: { vm.setTilingGapOuter(Int($0)) }
+                        SliderRow(title: "Outer gap", description: "Space between tiled windows and the screen edge (plus the Omabar on its edge).", value: Binding(
+                            get: { Double(vm.omatilesGapOuter) },
+                            set: { vm.setOmatilesGapOuter(Int($0)) }
                         ), range: 0...32, step: 2, suffix: "px")
+                        Divider().overlay(OC.divider)
+                        ToggleRow(title: "Key bindings", description: "Global ⌘⌥ shortcuts for tiling and focus (see below).", isOn: Binding(
+                            get: { vm.omatilesBindings },
+                            set: { _ in vm.toggleOmatilesBindings() }
+                        ))
+                        Divider().overlay(OC.divider)
+                        ToggleRow(title: "Watch windows", description: "Automatically re-apply the layout when the set of windows on screen changes.", isOn: Binding(
+                            get: { vm.omatilesWatch },
+                            set: { _ in vm.toggleOmatilesWatch() }
+                        ))
                     }
                 }
 
-                TilingSection(title: "Setup rules", subtitle: "Apps that stay pinned in place instead of tiling.") {
+                OmatilesSection(title: "Floating apps", subtitle: "Bundle IDs whose windows are never tiled (dialogs, system panels, overlays). One per line.") {
                     CardBox {
-                        InfoRow(label: "3 floating apps", value: "Finder · Settings · Activity Monitor")
+                        TextEditor(text: $floatingText)
+                            .font(OFont.mono(12, weight: .regular))
+                            .scrollContentBackground(.hidden)
+                            .frame(minHeight: 110)
+                            .padding(12)
                         Divider().overlay(OC.divider)
-                        InfoRow(label: "Terminals → workspace T", value: "Ghostty · Terminal")
+                        HStack {
+                            BorderedButton(title: "Reload", icon: "arrow.clockwise") { loadFloatingText() }
+                            Spacer()
+                            SoftFilledButton(title: "Save floating apps") { saveFloatingText() }
+                        }
+                        .padding(14)
+                    }
+                }
+                .onAppear { loadFloatingText() }
+
+                OmatilesSection(title: "Shortcuts", subtitle: "Global bindings. Press…") {
+                    CardBox {
+                        ShortcutRow(keys: "⌘⌥ T", action: "Tile every window now")
                         Divider().overlay(OC.divider)
-                        InfoRow(label: "Chrome → workspace B", value: "Browser pinned to B")
+                        ShortcutRow(keys: "⌘⌥ J", action: "Focus the previous window")
                         Divider().overlay(OC.divider)
-                        InfoRow(label: "Messaging → workspace I", value: "Slack · Discord · Notes")
+                        ShortcutRow(keys: "⌘⌥ K", action: "Focus the next window")
+                        Divider().overlay(OC.divider)
+                        ShortcutRow(keys: "⌘⌥ L", action: "Cycle layout: tiles → columns → rows → accordion")
                     }
                 }
 
-                TilingSection(title: "Shortcuts", subtitle: "The vim-style keymap. Hold ⌥ (Option) and press…") {
+                OmatilesSection(title: "Get started", subtitle: "Tiling repositions windows through the Accessibility API, so Omanix needs your permission (granted once).") {
                     CardBox {
-                        ShortcutRow(keys: "⌥ H J K L", action: "Focus window left / down / up / right")
+                        InfoRow(label: "Accessibility permission", value: accessibilityGranted ? "Granted" : "Not granted")
                         Divider().overlay(OC.divider)
-                        ShortcutRow(keys: "⌥⇧ H J K L", action: "Move the focused window")
-                        Divider().overlay(OC.divider)
-                        ShortcutRow(keys: "⌥ 1 … 9, A–Z", action: "Jump to workspace")
-                        Divider().overlay(OC.divider)
-                        ShortcutRow(keys: "⌥⇧ 1 … 9", action: "Move window to workspace")
-                        Divider().overlay(OC.divider)
-                        ShortcutRow(keys: "⌥ F", action: "Toggle fullscreen")
-                        Divider().overlay(OC.divider)
-                        ShortcutRow(keys: "⌥ Space", action: "Open the Omanix Store")
-                        Divider().overlay(OC.divider)
-                        ShortcutRow(keys: "⌥ /", action: "Layout tiles / accordion")
-                        Divider().overlay(OC.divider)
-                        ShortcutRow(keys: "⌥ − / +", action: "Resize the focused window")
+                        HStack {
+                            BorderedButton(title: accessibilityGranted ? "Re-check" : "Grant Access", icon: accessibilityGranted ? "checkmark.shield" : "lock.shield") {
+                                _ = OmatilesEngine.ensureAccessibility()
+                            }
+                            SoftFilledButton(title: "Tile now") { vm.tileNow() }
+                            Spacer()
+                            if vm.omatilesRunning {
+                                BorderedButton(title: "Stop module", icon: "stop.fill") { vm.stopOmatiles() }
+                            } else {
+                                BorderedButton(title: "Launch module", icon: "play.fill") { vm.launchOmatiles() }
+                            }
+                        }
+                        .padding(14)
                     }
                 }
             }
@@ -98,15 +128,29 @@ struct TilingView: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             StatusBar(
-                left: "Window Tiling · omanix.tiling",
-                rightText: "\(vm.tilingGapInner)px / \(vm.tilingGapOuter)px gaps",
-                rightDotColor: OC.green
+                left: "Omatiles · omanix.omatiles",
+                rightText: vm.omatilesRunning ? "\(vm.omatilesTiledCount) windows tiled" : "Stopped",
+                rightDotColor: vm.omatilesRunning ? OC.green : (vm.omatilesEnabled ? OC.orange : OC.red)
             )
         }
     }
+
+    private var accessibilityGranted: Bool {
+        AXIsProcessTrusted()
+    }
+
+    private func loadFloatingText() {
+        floatingText = vm.omatilesFloatingApps.joined(separator: "\n")
+    }
+
+    private func saveFloatingText() {
+        let lines = floatingText.components(separatedBy: .newlines)
+        vm.setOmatilesFloatingApps(lines)
+        loadFloatingText()
+    }
 }
 
-// MARK: - Layout preview (tiles / accordion / floating)
+// MARK: - Layout preview (tiles / columns / rows / accordion)
 
 private struct LayoutPreview: View {
     let layout: String
@@ -116,8 +160,6 @@ private struct LayoutPreview: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             GeometryReader { geo in
-                let w = geo.size.width
-                let h = geo.size.height
                 ZStack(alignment: .topLeading) {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(OC.pageBackground)
@@ -126,26 +168,41 @@ private struct LayoutPreview: View {
                                 .stroke(OC.cyan.opacity(0.35), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
                         )
 
-                    switch layout {
-                    case "accordion":
-                        pane(width: w - CGFloat(gapOuter) * 0 - 24, height: h - 20, label: "A", color: OC.cyan)
-                            .offset(x: 12, y: 10)
-                    case "floating":
-                        pane(width: w * 0.42, height: h * 0.46, label: "1", color: OC.orange.opacity(0.55))
-                            .offset(x: w * 0.30, y: 18)
-                        pane(width: w * 0.42, height: h * 0.46, label: "2", color: OC.purple.opacity(0.55))
-                            .offset(x: w * 0.34, y: 34)
-                    default: // tiles
-                        LazyVGrid(columns: [GridItem(.flexible(), spacing: CGFloat(gapInner)), GridItem(.flexible(), spacing: CGFloat(gapInner))], spacing: CGFloat(gapInner)) {
+                    VStack(spacing: CGFloat(gapInner)) {
+                        switch layout {
+                        case "columns":
+                            HStack(spacing: CGFloat(gapInner)) {
+                                pane(label: "1", color: OC.cyan)
+                                pane(label: "2", color: OC.purple)
+                                pane(label: "3", color: OC.orange)
+                            }
+                        case "rows":
                             pane(label: "1", color: OC.cyan)
                             pane(label: "2", color: OC.purple)
+                            pane(label: "3", color: OC.orange)
+                        case "accordion":
                             HStack(spacing: CGFloat(gapInner)) {
-                                pane(label: "3", color: OC.orange)
-                                pane(label: "4", color: OC.green)
+                                pane(label: "A", color: OC.cyan)
+                                VStack(spacing: CGFloat(gapInner)) {
+                                    pane(label: "B", color: OC.purple)
+                                    pane(label: "C", color: OC.orange)
+                                }
+                            }
+                        default: // tiles
+                            VStack(spacing: CGFloat(gapInner)) {
+                                HStack(spacing: CGFloat(gapInner)) {
+                                    pane(label: "1", color: OC.cyan)
+                                    pane(label: "2", color: OC.purple)
+                                }
+                                HStack(spacing: CGFloat(gapInner)) {
+                                    pane(label: "3", color: OC.orange)
+                                    pane(label: "4", color: OC.green)
+                                }
                             }
                         }
-                        .padding(CGFloat(gapOuter))
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(CGFloat(gapOuter))
                 }
             }
             .frame(height: 190)
@@ -159,18 +216,14 @@ private struct LayoutPreview: View {
     }
 
     private func pane(label: String, color: Color) -> some View {
-        pane(width: nil, height: nil, label: label, color: color)
-    }
-
-    private func pane(width: CGFloat?, height: CGFloat?, label: String, color: Color) -> some View {
         RoundedRectangle(cornerRadius: 6)
             .fill(color)
-            .frame(width: width, height: height)
             .overlay(
                 Text(label)
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(.white)
             )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func previewChip(text: String) -> some View {
@@ -186,7 +239,7 @@ private struct LayoutPreview: View {
 
 // MARK: - Layout helpers (local to this page)
 
-private struct TilingSection<Content: View>: View {
+private struct OmatilesSection<Content: View>: View {
     let title: String
     let subtitle: String
     @ViewBuilder var content: () -> Content
@@ -244,7 +297,7 @@ private struct SegmentRow: View {
                 }
             }
             .pickerStyle(.segmented)
-            .frame(width: 260)
+            .frame(width: 280)
         }
         .padding(16)
     }
@@ -319,7 +372,7 @@ private struct ShortcutRow: View {
 }
 
 #Preview {
-    TilingView()
+    OmatilesView()
         .environmentObject(OmanixViewModel())
         .frame(width: 1100, height: 760)
 }

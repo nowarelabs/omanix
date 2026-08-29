@@ -62,27 +62,38 @@ struct WidgetItem: Identifiable {
     var isEnabled: Bool
 }
 
-// MARK: - Menu Bar (SketchyBar) state
+// MARK: - Omabar (native menu bar) state
 
-/// Mirrors `omanix.bar.*` from configuration.nix.
-struct BarState: Equatable {
+/// Mirrors `omanix.omabar.*` from configuration.nix.
+struct OmabarState: Equatable {
     var enable = true
     var position = "top"
+    var height = 40
     var transparent = false
     var blur = true
-    var blurRadius = 30
     var style = "default"
-    var height = 40
+    var colorScheme = "auto"
+    var showClock = true
+    var showBattery = true
+    var showVolume = true
+    var showWifi = true
 }
 
-// MARK: - Window tiling (AeroSpace) state
+// MARK: - Omatiles (window tiling) state
 
-/// Mirrors `omanix.tiling.*` from configuration.nix.
-struct TilingState: Equatable {
+/// Mirrors `omanix.omatiles.*` from configuration.nix.
+struct OmatilesState: Equatable {
     var enable = true
     var layout = "tiles"
     var gapInner = 8
     var gapOuter = 10
+    var bindings = true
+    var watch = false
+    var floatingApps: [String] = [
+        "com.apple.finder",
+        "com.apple.systempreferences",
+        "com.apple.ActivityMonitor"
+    ]
 }
 
 // MARK: - Theme
@@ -146,7 +157,7 @@ struct SourceItem: Identifiable {
 
 /// The pages reachable from the sidebar.
 enum SidebarItem: String, CaseIterable, Identifiable {
-    case browse, installed, widgets, tiling, menubar, themes, settings
+    case browse, installed, widgets, omatiles, omabar, themes, settings
     var id: String { rawValue }
 
     var title: String {
@@ -154,8 +165,8 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .browse: return "Browse"
         case .installed: return "Installed"
         case .widgets: return "Widgets"
-        case .tiling: return "Tiling"
-        case .menubar: return "Menu Bar"
+        case .omatiles: return "Omatiles"
+        case .omabar: return "Omabar"
         case .themes: return "Themes"
         case .settings: return "Settings"
         }
@@ -166,8 +177,8 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .browse: return "square.grid.2x2"
         case .installed: return "checkmark.circle"
         case .widgets: return "archivebox"
-        case .tiling: return "rectangle.3.group"
-        case .menubar: return "rectangle.topthird.inset.filled"
+        case .omatiles: return "rectangle.3.group"
+        case .omabar: return "rectangle.topthird.inset.filled"
         case .themes: return "tag"
         case .settings: return "gearshape"
         }

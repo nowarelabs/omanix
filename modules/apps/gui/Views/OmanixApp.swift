@@ -1,11 +1,19 @@
 // Views/OmanixApp.swift
 // Omanix — main app entry point. Creates the ViewModel once and injects it.
+// Also acts as the Omabar / Omatiles module host: launchd starts this same binary
+// with "--omabar" or "--omatiles" (see modules/darwin/omabar.nix, omatiles.nix),
+// and normal launches start whichever modules are enabled in configuration.
 
 import SwiftUI
+import AppKit
 
 @main
 struct OmanixApp: App {
     @StateObject private var viewModel = OmanixViewModel()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
+    /// True when launched by a launchd agent with a "--omabar" / "--omatiles" flag.
+    static let moduleMode = CommandLine.arguments.contains { $0.hasPrefix("--") }
 
     var body: some Scene {
         WindowGroup {
@@ -17,8 +25,28 @@ struct OmanixApp: App {
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified(showsTitle: false))
         .defaultSize(width: 1280, height: 840)
+        .defaultLaunchBehavior(Self.moduleMode ? .suppressed : .automatic)
         .commands {
             CommandGroup(replacing: .newItem) { }
+        }
+    }
+}
+
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        if OmanixApp.moduleMode {
+            // Launchd module run: no Dock icon, no window.
+            NSApp.setActivationPolicy(.accessory)
+        } else {
+            // Normal GUI launch: start the enabled desktop modules so the screen
+            // matches configuration without needing a rebuild.
+            let bar = RuntimeSettings.Omabar.load()
+            if bar.enable { _ = OmabarManager.shared.start(settings: bar) }
+
+            let tiles = RuntimeSettings.Omatiles.load()
+            if tiles.enable { OmatilesEngine.shared.start(settings: tiles) }
         }
     }
 }
