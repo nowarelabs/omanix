@@ -67,20 +67,6 @@
         # Vite+
         . "$HOME/.vite-plus/env" 2>/dev/null || true
 
-        # Jump host function
-        function jumphost() {
-            if [[ -z "$1" ]]; then
-              echo "Usage: jumphost <configName>. Example: jumphost lithosphere.prod"
-              return
-            fi
-            hostname=$(curl -s "https://repo.sj.lithium.com/config/value?key=rc.jumphost&name=$1" | jq -r '.value')
-            if [[ "$hostname" == "null" ]]; then
-              echo "No compatible jump host found for specified configName."
-              return
-            fi
-            ssh $hostname
-        }
-
         # Prompts
         eval "$(starship init zsh)"
         eval "$(direnv hook zsh)"

@@ -3,7 +3,7 @@
 { config, ... }: {
   system.stateVersion = 5;
 
-  nixpkgs.hostPlatform = "aarch64-darwin"; # from inventory.json — per-host override in hosts/*/default.nix
+  nixpkgs.hostPlatform = "aarch64-darwin";
 
   system.defaults = {
     NSGlobalDomain = {
