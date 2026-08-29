@@ -52,7 +52,7 @@ in {
     system.activationScripts.postActivation.text = lib.mkAfter ''
       mkdir -p "$HOME/.config/omanix" 2>/dev/null || mkdir -p "/Users/${user}/.config/omanix" 2>/dev/null || true
       cat > "/Users/${user}/.config/omanix/theme.json" <<'THEMEJSON'
-      ${builtins.toJSON { name = config.omanix.theme; colors = colors; perApp = { ghostty = ghosttyColors; }; }}
+      ${builtins.toJSON { name = config.omanix.theme; mode = colors.mode or "dark"; colors = colors; perApp = { ghostty = ghosttyColors; }; }}
       THEMEJSON
       chown ${user}:staff "/Users/${user}/.config/omanix/theme.json" 2>/dev/null || true
     '';

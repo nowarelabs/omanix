@@ -71,4 +71,23 @@ enum Desktop {
         var seen = Set<String>()
         return snapshot(excludingOwnPID: ownPID).map(\.owner).filter { seen.insert($0).inserted }
     }
+
+    /// A running app on screen, keyed by pid so multiple windows of the same app
+    /// collapse into one pill (the Omabar shows apps, not windows).
+    struct VisibleApp {
+        let pid: pid_t
+        let name: String
+    }
+
+    /// Distinct on-screen apps (highest window first), each with its pid.
+    static func visibleApps(excludingOwnPID ownPID: Int32 = ProcessInfo.processInfo.processIdentifier) -> [VisibleApp] {
+        var seen = Set<pid_t>()
+        var result: [VisibleApp] = []
+        for window in snapshot(excludingOwnPID: ownPID) {
+            guard !seen.contains(window.pid) else { continue }
+            seen.insert(window.pid)
+            result.append(VisibleApp(pid: window.pid, name: window.owner))
+        }
+        return result
+    }
 }

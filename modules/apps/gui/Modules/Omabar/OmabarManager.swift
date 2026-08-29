@@ -48,6 +48,9 @@ final class OmabarManager {
     /// Re-renders a running bar from new declarative settings (no rebuild needed).
     func apply(settings: RuntimeSettings.Omabar) {
         guard isRunning, let panel else { return }
+        // The theme may have changed with the settings — reload the palette so the
+        // re-rendered bar picks up the new mode/accent.
+        model.refreshPalette()
         positionPanel(panel, settings: settings)
         panel.contentView = makeContentView(settings: settings)
     }
@@ -102,15 +105,27 @@ final class OmabarManager {
     }
 
     private func makeContentView(settings: RuntimeSettings.Omabar) -> NSHostingView<OmabarContentView> {
-        NSHostingView(
+        let insets = notchInsets(settings: settings)
+        return NSHostingView(
             rootView: OmabarContentView(
                 model: model,
                 settings: settings,
+                leadingInset: insets.leading,
+                trailingInset: insets.trailing,
                 onAppleClick: {
                     NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Omanix.app"))
                 }
             )
         )
+    }
+
+    /// Horizontal safe-area insets (points) from the notch/rounded-corners of the
+    /// screen the bar sits on. Only applies to the top bar — a bottom bar lives in
+    /// a plain rectangle with nothing to avoid.
+    private func notchInsets(settings: RuntimeSettings.Omabar) -> (leading: CGFloat, trailing: CGFloat) {
+        guard settings.position == "top", let screen = NSScreen.main else { return (0, 0) }
+        let insets = screen.safeAreaInsets
+        return (insets.left, insets.right)
     }
 
     private func installScreenObserver() {

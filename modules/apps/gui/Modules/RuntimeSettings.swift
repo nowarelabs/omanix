@@ -118,9 +118,12 @@ enum RuntimeSettings {
 
     // MARK: - Theme palette
 
-    /// The active Omanix palette (from theme.json's `colors` object). Kept as plain
-    /// RGBA so runtime modules never need SwiftUI to stay color-aware.
-    struct Palette {
+    /// The active Omanix palette (from theme.json's `colors` object plus its
+    /// `mode`). Kept as plain RGBA so runtime modules never need SwiftUI to stay
+    /// color-aware.
+    struct Palette: Equatable {
+        var name = ""
+        var mode = "dark" // "light" | "dark" — themes/<name>/colors.toml `mode`
         var accent: (r: Double, g: Double, b: Double)
         var background: (r: Double, g: Double, b: Double)
         var foreground: (r: Double, g: Double, b: Double)
@@ -128,8 +131,33 @@ enum RuntimeSettings {
         var selection: (r: Double, g: Double, b: Double)
         var red: (r: Double, g: Double, b: Double)
 
+        static func == (lhs: Palette, rhs: Palette) -> Bool {
+            lhs.name == rhs.name
+                && lhs.mode == rhs.mode
+                && lhs.accent.r == rhs.accent.r
+                && lhs.accent.g == rhs.accent.g
+                && lhs.accent.b == rhs.accent.b
+                && lhs.background.r == rhs.background.r
+                && lhs.background.g == rhs.background.g
+                && lhs.background.b == rhs.background.b
+                && lhs.foreground.r == rhs.foreground.r
+                && lhs.foreground.g == rhs.foreground.g
+                && lhs.foreground.b == rhs.foreground.b
+                && lhs.muted.r == rhs.muted.r
+                && lhs.muted.g == rhs.muted.g
+                && lhs.muted.b == rhs.muted.b
+                && lhs.selection.r == rhs.selection.r
+                && lhs.selection.g == rhs.selection.g
+                && lhs.selection.b == rhs.selection.b
+                && lhs.red.r == rhs.red.r
+                && lhs.red.g == rhs.red.g
+                && lhs.red.b == rhs.red.b
+        }
+
         static func fallback() -> Palette {
             Palette(
+                name: "omanix",
+                mode: "light",
                 accent: (0.04, 0.49, 1.0),
                 background: (0.98, 0.98, 0.99),
                 foreground: (0.11, 0.11, 0.12),
@@ -138,6 +166,15 @@ enum RuntimeSettings {
                 red: (1.0, 0.23, 0.19)
             )
         }
+
+        /// Estimated perceived luminance of `background` (0…1). Used to pick a
+        /// safe text color when `mode` is missing from theme.json.
+        var backgroundLuminance: Double {
+            let r = background.r, g = background.g, b = background.b
+            return 0.2126 * r + 0.7152 * g + 0.0722 * b
+        }
+
+        var isDark: Bool { mode == "dark" || backgroundLuminance < 0.5 }
 
         static func load() -> Palette {
             guard let data = FileManager.default.contents(atPath: themeJSONPath),
@@ -157,15 +194,18 @@ enum RuntimeSettings {
                 )
             }
 
-            let fallback = Palette.fallback()
-            return Palette(
-                accent: rgb("accent") ?? fallback.accent,
-                background: rgb("background") ?? fallback.background,
-                foreground: rgb("foreground") ?? fallback.foreground,
-                muted: rgb("muted") ?? fallback.muted,
-                selection: rgb("selection") ?? fallback.selection,
-                red: rgb("red") ?? fallback.red
-            )
+            var palette = Palette.fallback()
+            palette.name = (obj["name"] as? String) ?? palette.name
+            if let mode = obj["mode"] as? String, mode == "light" || mode == "dark" {
+                palette.mode = mode
+            }
+            palette.accent = rgb("accent") ?? palette.accent
+            palette.background = rgb("background") ?? palette.background
+            palette.foreground = rgb("foreground") ?? palette.foreground
+            palette.muted = rgb("muted") ?? palette.muted
+            palette.selection = rgb("selection") ?? palette.selection
+            palette.red = rgb("red") ?? palette.red
+            return palette
         }
     }
 }

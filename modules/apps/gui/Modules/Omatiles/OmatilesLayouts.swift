@@ -19,9 +19,10 @@ enum OmatilesLayout: String, CaseIterable {
 enum OmatilesLayouts {
 
     /// Distributes `count` panes inside `workArea` with `gapInner` spacing.
-    /// - tiles:    strict grid (≈ 2×2, 3×2, …)
-    /// - columns:  equal vertical splits
-    /// - rows:     equal horizontal stacks
+    /// - tiles:     balanced grid — rows differ by at most one pane, so no cell
+    ///              is ever left empty (3 → 2+1, 5 → 3+2, 7 → 3+2+2, …)
+    /// - columns:   equal vertical splits
+    /// - rows:      equal horizontal stacks
     /// - accordion: one large master pane + a side stack
     static func compute(layout: String, count: Int, workArea: CGRect, gapInner: CGFloat) -> [CGRect] {
         guard count > 0 else { return [] }
@@ -67,20 +68,22 @@ enum OmatilesLayouts {
             }
             return frames
 
-        default: // tiles — strict grid
+        default: // tiles — balanced grid, never leaves an empty cell
+            guard w > 0, h > 0 else { return [] }
             let cols = max(1, Int(ceil(sqrt(Double(count)))))
             let rows = max(1, Int(ceil(Double(count) / Double(cols))))
-            let cw = (w - gap * CGFloat(cols - 1)) / CGFloat(cols)
-            let rh = (h - gap * CGFloat(rows - 1)) / CGFloat(rows)
+            let rowH = max(0, (h - gap * CGFloat(rows - 1)) / CGFloat(rows))
+            let base = count / rows
+            let extra = count % rows
             var frames: [CGRect] = []
-            var placed = 0
             for r in 0..<rows {
-                for c in 0..<cols where placed < count {
-                    frames.append(CGRect(x: workArea.minX + CGFloat(c) * (cw + gap),
-                                         y: workArea.minY + CGFloat(r) * (rh + gap),
-                                         width: cw,
-                                         height: rh))
-                    placed += 1
+                let itemsInRow = max(1, base + (r < extra ? 1 : 0))
+                let rowW = max(0, (w - gap * CGFloat(itemsInRow - 1)) / CGFloat(itemsInRow))
+                for c in 0..<itemsInRow {
+                    frames.append(CGRect(x: workArea.minX + CGFloat(c) * (rowW + gap),
+                                         y: workArea.minY + CGFloat(r) * (rowH + gap),
+                                         width: rowW,
+                                         height: rowH))
                 }
             }
             return frames
