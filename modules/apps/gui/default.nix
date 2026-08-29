@@ -50,8 +50,11 @@ log "INFO" "starting Omanix GUI build"
 
 # Copy source files from config directory (not nix store, which is cached)
 CONFIG_DIR="/Users/${user}/.omanix"
+# Purge stale copies first: activation runs as root, so $STORE_DIR is
+# /var/root/.omanix and may hold files deleted from the flake since.
+rm -rf "$STORE_DIR/gui"
 if [ -d "$CONFIG_DIR/modules/apps/gui" ]; then
-  cp -R "$CONFIG_DIR/modules/apps/gui" "$STORE_DIR/"
+  cp -R "$CONFIG_DIR/modules/apps/gui" "$STORE_DIR/gui"
   log "INFO" "copied gui sources from config directory"
 else
   cp -R ${gui-src} "$STORE_DIR/gui"
