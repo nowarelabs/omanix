@@ -186,7 +186,7 @@ in {
           sketchybar --add event aerospace_focus_change
 
           sketchybar --add item omanix.apple left \
-            --set omanix.apple icon="􀣺" icon.font="$SYMBOL_FONT" icon.color="$ACCENT_HEX" label.drawing=off background.color="$SELECTION_HEX" background.drawing=on background.corner_radius=6 click_script="open -a 'Omanix'"
+            --set omanix.apple icon="🍎" icon.color="$ACCENT_HEX" label.drawing=off background.color="$SELECTION_HEX" background.drawing=on background.corner_radius=6 click_script="open -a 'Omanix'"
 
           for sid in ${lib.concatStringsSep " " spaces}; do
             sketchybar --add item space.$sid left \
@@ -199,7 +199,7 @@ in {
           sketchybar --add item clock right --set clock update_freq=10 icon="󰥔" icon.font="$NERD_FONT" icon.color="$FG_HEX" label.color="$FG_HEX" background.color="$SELECTION_HEX" background.drawing=on script="$HOME/.config/sketchybar/plugins/clock.sh"
           sketchybar --add item battery right --set battery update_freq=30 icon.font="$NERD_FONT" icon.color="$FG_HEX" label.color="$FG_HEX" background.color="$SELECTION_HEX" background.drawing=on script="$HOME/.config/sketchybar/plugins/battery.sh" --subscribe battery system_woke power_source_change
           sketchybar --add item volume right --set volume icon.font="$NERD_FONT" icon.color="$FG_HEX" label.color="$FG_HEX" background.color="$SELECTION_HEX" background.drawing=on script="$HOME/.config/sketchybar/plugins/volume.sh" --subscribe volume volume_change
-          sketchybar --add item wifi right --set wifi icon="" icon.font="$NERD_FONT" icon.color="$FG_HEX" label.drawing=off background.color="$SELECTION_HEX" background.drawing=on script="$HOME/.config/sketchybar/plugins/wifi.sh"
+          sketchybar --add item wifi right --set wifi icon="📶" icon.color="$FG_HEX" label.drawing=off background.color="$SELECTION_HEX" background.drawing=on script="$HOME/.config/sketchybar/plugins/wifi.sh"
 
           sketchybar --default popup.background.color="$BG_HEX" popup.background.border_color="$MUTED_HEX" popup.background.corner_radius=10 popup.blur_radius=${barBlurRadius}
           ${if bar.style == "minimal" then ''sketchybar --add item separator right --set separator icon="│" icon.font="SF Pro:Regular:14.0" icon.color="$MUTED_HEX" label.drawing=off background.drawing=off'' else ''
@@ -254,9 +254,9 @@ in {
           if [ -n "$ICON" ]; then
             sketchybar --set $NAME icon="$ICON" icon.font="''${APP_FONT:-sketchybar-app-font:Regular:16.0}"
           else
-            # No app-specific glyph mapped: fall back to a generic app icon in the
-            # Nerd Font rather than an app-font key that doesn't exist ("" = nf-fa-window).
-            sketchybar --set $NAME icon="" icon.font="''${NERD_FONT:-JetBrainsMono Nerd Font:Regular:14.0}"
+            # No app-specific glyph mapped: fall back to an emoji, which always
+            # renders regardless of which Nerd Font build is installed.
+            sketchybar --set $NAME icon="🖥️"
           fi
         fi
       '';
@@ -296,8 +296,8 @@ in {
       text = ''
         #!/bin/bash
         WIFI=$(networksetup -getairportnetwork en0 2>/dev/null | sed 's/You are not associated.*//')
-        if [ -n "$WIFI" ]; then ICON=""; else ICON=""; fi
-        sketchybar --set $NAME icon="$ICON" icon.font="''${NERD_FONT:-JetBrainsMono Nerd Font:Regular:14.0}" label.drawing=off
+        if [ -n "$WIFI" ]; then ICON="📶"; else ICON="🚫"; fi
+        sketchybar --set $NAME icon="$ICON" label.drawing=off
       '';
     };
   };
