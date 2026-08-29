@@ -21,7 +21,7 @@ Philosophy: **If it was bash that wrote a file to `~/.config` at runtime, it sho
 
 A generic Linux approach treats the Mac as generic hardware hardware: Asahi Alarm repartitions, BTRFS, `m1n1 → u-boot → GRUB`. Omanix treats the Mac as a Mac:
 
-- **Quartz is the compositor.** AeroSpace tiles within Quartz; SketchyBar draws on Quartz. The notch is not an obstacle — the bar is split around it (`hero.jpg` is a promise).
+- **Quartz is the compositor.** The Omanix app tiles windows (Omatiles) and draws the menu bar (Omabar) natively on Quartz. The notch is not an obstacle — the bar is split around it (`hero.jpg` is a promise).
 - **APFS + FileVault is the filesystem.** No BTRFS migration.
 - **The keyboard is the keyboard.** Media keys, `fnmode`, trackpad haptics are Apple-native.
 
@@ -36,8 +36,8 @@ Philosophy: **If Linux has a macOS counterpart the user expects, use the counter
 Omanix extends that to mean: **you do not go into `.toml`, `.tpl`, or `~/.config` to make stuff work.** If you need to, the option is missing — we add a Nix option, not a wiki page.
 
 - Want `tokyo-night`? Set `omanix.theme = "tokyo-night"` — don't edit `themes/tokyo-night/colors.toml`.
-- Want bar on bottom, transparent? `omanix.bar.position = "bottom"; omanix.bar.transparent = true;` — don't open `sketchybarrc` or `default/themed/*.tpl`.
-- Want a new keybinding? `desktop.aerospace.bindings."cmd-1" = "workspace 1"` — don't edit `default/hypr/bindings.lua`.
+- Want bar on bottom, transparent? `omanix.omabar.position = "bottom"; omanix.omabar.transparent = true;` — don't open a sketchybar-style config or `default/themed/*.tpl`.
+- Want a new keybinding? `omanix.omatiles.bindings = true;` (or set `layout`) — don't edit `default/hypr/bindings.lua`.
 
 `themes/`, `default/themed/*.tpl`, `config/` are internal build inputs. The flake is the config; `~/.config` is a build artifact in `/nix/store`. You do not go into those files; Nix goes into them for you.
 
@@ -70,9 +70,9 @@ omanix.theme = "tokyo-night";           # rebuild to change, rolls back with gen
 omanix.widgets.pomodoro.enable = true; # not `omarchy-plugin-add pomodoro` at runtime
 ```
 
-The pomodoro example matters: on Omarchy, someone used AI to create a pomodoro plugin and it appeared as a widget. On Mac, you'd have installed a Mac app. Omanix makes those the same thing: a **Nix-native widget/app** — a derivation that may be a SketchyBar item (`modules/widgets/pomodoro.nix`), a `launchd` agent (`launchd.user.agents.pomodoro`), or a Swift app bundle (`packages/pomodoro-app` → `/Applications/Pomodoro.app`). It is enabled by flipping a Nix bool, not by `git clone` at login. It appears instantly after rebuild and disappears completely after `omanix.widgets.pomodoro.enable = false` + rebuild.
+The pomodoro example matters: on Omarchy, someone used AI to create a pomodoro plugin and it appeared as a widget. On Mac, you'd have installed a Mac app. Omanix makes those the same thing: a **Nix-native widget/app** — a derivation that may be a `launchd` agent (`launchd.user.agents.pomodoro`), a Swift app bundle (`packages/pomodoro-app` → `/Applications/Pomodoro.app`), or a bar item registered with the native Omabar module. It is enabled by flipping a Nix bool, not by `git clone` at login. It appears instantly after rebuild and disappears completely after `omanix.widgets.pomodoro.enable = false` + rebuild.
 
-If you want live feedback while hacking a widget, `nix develop` gives you SketchyBar live-reload against the store path — not a mutated home directory.
+If you want live feedback while hacking a widget, `omanix rebuild --preview` hot-reloads it via `launchctl` against the store path — not a mutated home directory.
 
 Philosophy: **A widget is an app with a Nix hash. If it cannot be `nix why-depends`'d, it is not a widget.**
 
@@ -82,7 +82,7 @@ Philosophy: **A widget is an app with a Nix hash. If it cannot be `nix why-depen
 
 A good CLI is delightful: `omarchy menu`, `omarchy launch`, `omarchy capture`. Omanix keeps the vocabulary — but as typed shims, not bash plugins:
 
-- If the concept maps (e.g., `omarchy-hyprland-focus-app` → `aerospace focus`), the shim translates.
+- If the concept maps (e.g., `omarchy-hyprland-focus-app` → Omanix global bindings), the shim translates.
 - If it does not (e.g., `omarchy-system-btrfs-migrate`, `omarchy-refresh-pacman-mirrorlist`), the shim is deleted and prints `not available on Darwin — see docs/porting.md`.
 - No shim sources bash from a plugin repo. Widgets/apps are not bash; they are Nix modules + Swift/launchd (Principle 10).
 
@@ -94,7 +94,7 @@ Philosophy: **Keep the words, replace the mechanism with something Nix can see.*
 
 A large legacy system is 444 bin commands, 23 themes, 36 `default/*` trees. Omanix ships a small core that boots, then typed edges:
 
-- **Core (v1):** AeroSpace + SketchyBar + `tokyo-night`/`catppuccin`/`matte-black`, `foot`/`ghostty`, `starship`, `tmux`, `nvim`, and the daily-driver services (postgres/redis). Enough to pass `darwin-rebuild switch`.
+- **Core (v1):** Omabar + Omatiles (native modules in the Omanix app), `tokyo-night`/`catppuccin`/`matte-black`, `foot`/`ghostty`, `starship`, `tmux`, `nvim`, and the daily-driver services (postgres/redis). Enough to pass `darwin-rebuild switch`.
 - **Edges (typed):** `capture` → `screencapture` shim, `install dev env` → `extraPackages`, `hw` → Mac detection. Each edge is a Nix option + test.
 
 But edges must also be **fast to get and fast to lose** — because `search.nixos` and Homebrew are the registry, not us:
@@ -113,9 +113,9 @@ Philosophy: **Help the user get applications quickly and reliably, and remove th
 
 If `hero.jpg` shows workspaces flowing around the notch, the bar better flow around it. Theme tokens (`accent #7aa2f7`, `background #1a1b26` in `tokyo-night/colors.toml`) are the design system; the bar is the proof.
 
-Widgets extend that contract: a pomodoro widget is not a floating bash window — it is a SketchyBar item with `colors.toml` tokens, a `launchd` timer that fires `osascript` or Swift code, and optionally a Swift menubar app that shares the same Nix-built assets. It looks like a Mac app because it _is_ a Mac app — but one whose source is in the flake and whose binary is in `/nix/store`.
+Widgets extend that contract: a pomodoro widget is not a floating bash window — it is designed against the `color.toml` tokens (delivered to SwiftUI via `~/.config/omanix/theme.json`), a `launchd` timer that fires Swift code, and optionally a Swift menubar app that shares the same Nix-built assets. It looks like a Mac app because it _is_ a Mac app — but one whose source is in the flake and whose binary is in `/nix/store`.
 
-Philosophy: **If it looks like a Mac app, it should be built like a Nix derivation and behave like a SketchyBar token.**
+Philosophy: **If it looks like a Mac app, it should be built like a Nix derivation and behave like a native Omabar item.**
 
 ---
 
@@ -149,9 +149,9 @@ Philosophy: **The Store is the terminal rendered as a GUI, and it is itself a Ni
 
 ## 12. AI Should Write Nix, Not Bash — Ready by Skill, Fast by Preview, Safe by Rebuild
 
-Friend's pomodoro magic — _tell Claude, it just appears_ — is the right delight, but friend's substrate is NixOS + Quickshell QML + `--impure` Home Manager forever. Omanix is darwin-native (SketchyBar + `launchd` + Swift, systemd + Quickshell on future Linux) and must keep build-time purity for rollback.
+Friend's pomodoro magic — _tell Claude, it just appears_ — is the right delight, but friend's substrate is NixOS + Quickshell QML + `--impure` Home Manager forever. Omanix is darwin-native (native Omabar/Omatiles SwiftUI modules + `launchd` + Swift, systemd + Quickshell on future Linux) and must keep build-time purity for rollback.
 
-Philosophy: **Give the agent a typed Nix contract (`lib/mkWidget`/`lib/mkApp` with `${theme.colors.*}` injection), a machine-readable skill (`skills/omanix/SKILL.md` → `~/.claude/skills/omanix/SKILL.md` with `statix`/`nix fmt`/`nix-instantiate --parse` in PATH), and a two-phase build: _preview_ (impure overlay, instant, no generation) then _commit_ (pure `configuration.nix` + `flake.lock`, generation).** The agent drafts to `overlays/pomodoro/{default.nix, Sources/*.swift}`, lints, runs `omanix rebuild --preview` (evaluates `overlays/*` via impure overlay, hot-reloads `sketchybar --reload` + `launchctl load` on mac / `quickshell ipc` on linux), asks "keep?" then `omanix add` promotes to `omanix.widgets.pomodoro.enable`. Same delight as friend's `dbus-send` to Quickshell, but mac-native and commit is pure, rollbackable, and visible in the Store toggle the green user already understands. If the agent wrote bash to `~/.config`, it failed the skill.
+Philosophy: **Give the agent a typed Nix contract (`lib/mkWidget`/`lib/mkApp` with `${theme.colors.*}` injection), a machine-readable skill (`skills/omanix/SKILL.md` → `~/.claude/skills/omanix/SKILL.md` with `statix`/`nix fmt`/`nix-instantiate --parse` in PATH), and a two-phase build: _preview_ (impure overlay, instant, no generation) then _commit_ (pure `configuration.nix` + `flake.lock`, generation).** The agent drafts to `overlays/pomodoro/{default.nix, Sources/*.swift}`, lints, runs `omanix rebuild --preview` (evaluates `overlays/*` via impure overlay, hot-reloads via `launchctl kickstart` on mac / `quickshell ipc` on linux), asks "keep?" then `omanix add` promotes to `omanix.widgets.pomodoro.enable`. Same delight as friend's `dbus-send` to Quickshell, but mac-native and commit is pure, rollbackable, and visible in the Store toggle the green user already understands. If the agent wrote bash to `~/.config`, it failed the skill.
 
 ---
 

@@ -1,12 +1,13 @@
 # lib/mkWidget.nix — SDK for creating Omanix widgets
-# Takes { name, sketchybarConfig, launchdConfig, ... } → module
-# Branches on isDarwin → launchd.user.agents + sketchybar item
+# Takes { name, launchdConfig, systemdConfig, ... } → module
+# Branches on isDarwin → launchd.user.agents
 # Theme tokens ${colors.accent} injected at eval
+# The macOS menu bar and window tiling are native modules inside the Omanix app
+# (Modules/Omabar, Modules/Omatiles) — no sketchybar item generation here.
 # See conventions.md:5 and principles.md:10
 { lib, pkgs, config }:
 
 { name
-, sketchybarConfig ? {}
 , launchdConfig ? {}
 , systemdConfig ? {}
 , swiftSrc ? null
@@ -14,25 +15,9 @@
 }:
 let
   isDarwin = pkgs.stdenv.isDarwin;
-  colors = import ../lib/themed.nix { inherit lib; }.getThemeColors config;
-  user = config.omanix.user;
 in {
-  # SketchyBar item (darwin) or Quickshell item (linux)
-  home-manager.users.${user}.xdg.configFile = lib.optionalAttrs isDarwin {
-    "sketchybar/plugins/${name}.sh" = {
-      text = ''
-        #!/bin/bash
-        sketchybar --set $NAME \
-          icon="${sketchybarConfig.icon or ""}" \
-          label="${sketchybarConfig.label or ""}" \
-          icon.color="${colors.accent}" \
-          label.color="${colors.foreground}"
-      '';
-      executable = true;
-    };
-  };
-
-  # Launchd agent (darwin) or systemd service (linux)
+  # Launchd agent (mac) — the widget body itself. Usually paired with a Swift app
+  # via lib/mkApp (swiftSrc) or a bar item registered with the native Omabar module.
   launchd.user.agents = lib.optionalAttrs isDarwin {
     "omanix.${name}" = {
       serviceConfig = {

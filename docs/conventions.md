@@ -22,17 +22,18 @@ omanix/                              # flake root — cloned to ~/.omanix (begin
 │   └── common.nix                   # shared between darwin + future linux (theme, widgets, add/remove helpers)
 ├── modules/
 │   ├── core/                        # shared: nix.enable, home-manager, fonts — you never touch
-│   ├── darwin/                      # mac-only: homebrew (pristine), pam Touch ID, system.defaults, desktop
+│   ├── darwin/                      # mac-only: homebrew (pristine), pam Touch ID, system.defaults, omabar, omatiles
 │   │   ├── homebrew.nix
-│   │   ├── desktop.nix              # picks aerospace + sketchybar (Hyprland lua compiles via lib/hypr-to-aerospace.nix)
+│   │   ├── omabar.nix               # native SwiftUI menu bar (launchd agent om.omanix.omabar → Omanix.app --omabar)
+│   │   ├── omatiles.nix             # native window tiling (launchd agent om.omanix.omatiles → Omanix.app --omatiles)
 │   │   └── pam.nix
 │   ├── linux/                       # future linux: hyprland, quickshell, sddm — not evaluated on darwin, same omanix.theme/widgets
 │   │   ├── hyprland.nix
 │   │   └── quickshell.nix
-│   ├── desktop/                     # branch: if isDarwin then darwin/desktop.nix else linux/hyprland.nix — you just set omanix.theme
+│   ├── desktop/                     # branch: if isDarwin then darwin/omabar.nix + omatiles.nix else linux/hyprland.nix — you just set omanix.theme
 │   ├── theme/                       # themed.nix: themes/*/colors.toml + default/themed/*.tpl → /nix/store
 │   ├── widgets/                     # omanix.widgets.* — pomodoro etc. (launchd on mac, systemd on linux via same option)
-│   │   ├── pomodoro.nix             # uses lib/mkWidget: sketchybar item + launchd timer
+│   │   ├── pomodoro.nix             # uses lib/mkWidget: launchd timer + optional Swift app
 │   │   └── clock.nix
 │   ├── apps/                        # Swift apps on mac, GTK/Electron on linux — via lib/mkApp, appear as native apps
 │   │   ├── store/                   # Omanix Store — SwiftUI on mac (GTK on linux) via lib/mkApp, itself a widget (omanix.widgets.store)
@@ -40,7 +41,7 @@ omanix/                              # flake root — cloned to ~/.omanix (begin
 │   │   └── pomodoro-app/
 ├── lib/
 │   ├── mkSystem.nix                 # if system == "aarch64-darwin" or "x86_64-darwin" → darwinSystem else → nixosSystem
-│   ├── mkWidget.nix                 # { name, sketchybarConfig|hyprlandConfig, launchdOrSystemd, swiftOrGtkSrc } → module + derivation
+│   ├── mkWidget.nix                 # { name, launchdConfig|systemdConfig, swiftOrGtkSrc } → module + derivation
 │   ├── mkApp.nix                    # { name, bundleId/desktopFile, src } → /Applications/*.app or /usr/share/applications
 │   └── themed.nix                   # colors.toml + *.tpl → store (user never touches tpl)
 ├── themes/                          # Omanix themes (colors.toml) — build-time only
@@ -78,14 +79,14 @@ omanix/                              # flake root — cloned to ~/.omanix (begin
 {
   # ~/.omanix/flake.nix — the only file you edit
   omanix.theme = "tokyo-night";                 # not themes/tokyo-night/colors.toml
-  desktop.aerospace.gaps.inner = 8;              # not aerospace.toml
-  desktop.sketchybar.position = "top";           # not sketchybarrc
+  omanix.omatiles.gapInner = 8;                  # not a tiling config file
+  omanix.omabar.position = "top";                # not a sketchybarrc / remote process
   omanix.widgets.pomodoro.enable = true;        # not git clone manifest.json
   omanix.widgets.pomodoro.enable = true;        # Swift app → /Applications/Pomodoro.app via lib/mkApp (launchd on mac, systemd on linux)
 }
 ```
 
-No `xdg.configFile."aerospace/aerospace.toml".text` raw escape hatch in normal use. If you need it, the option is missing — add the option, don't document a raw edit. This is linted: `tests/cli` fails if a home config contains `xdg.configFile.*.text` that duplicates an existing `omarchy`/`desktop` option.
+No raw escape hatch for the desktop in normal use: bar/tiling are `omanix.omabar.*` / `omanix.omatiles.*` options consumed by the native modules. If you need a raw file to make something work, the option is missing — add the option, don't document a raw edit. This is linted: `tests/cli` fails if a home config contains `xdg.configFile.*.text` that duplicates an existing `omarchy`/`omanix` option.
 
 Installer (`curl | sh`):
 
@@ -112,30 +113,31 @@ esac
 
 ---
 
-## 3. Native Mapping — Hyprland → AeroSpace (Single File)
+## 3. Native Modules — Omatiles + Omabar (No External Binaries)
 
-`lib/hypr-to-aerospace.nix` is the only mapping. No scattered translations.
+Hyprland tiling is rebuilt as the native **Omatiles** Swift module (`Modules/Omatiles/OmatilesEngine.swift`); the Quickshell bar as native **Omabar** (`Modules/Omabar/`). No `lib/hypr-to-aerospace.nix`, no `aerospace`, no `sketchybar` process — the launchd agents run the Omanix app binary itself.
 
-| Omarchy (Hyprland) | Omanix (AeroSpace) |
+| Omarchy (Hyprland) | Omanix (native module) |
 |---|---|
-| `bind = SUPER, 1, workspace, 1` | `mods = "cmd", key = "1"` |
-| `windowrulev2` | `workspace-to-monitor-force-assignment` |
-| `gaps/borders` (`looknfeel.lua` + `colors.toml` accent `#7aa2f7`) | `gaps.inner`, `gaps.outer`, `border_active` |
+| `bind = SUPER, 1, workspace, 1` | `omanix.omatiles.bindings = true` → ⌘⌥T tile, ⌘⌥J/K focus, ⌘⌥L cycle layout |
+| `windowrulev2` | `omanix.omatiles.floatingApps` bundle IDs |
+| `hyprctl dispatch workspace` | `OmatilesLayouts.swift` CGRect math + AX API |
 
-If no AeroSpace equivalent, delete shim and document in `docs/porting.md`.
+If no native equivalent, delete shim and document in `docs/porting.md`.
 
 ---
 
-## 4. SketchyBar — Quickshell Tokens, No Raw .tpl
+## 4. Omabar + Omatiles — Native SwiftUI, Themed from the Flake
 
-`lib/themed.nix` reads `themes/<name>/colors.toml` (`accent`, `background`, `foreground`…) and renders `default/themed/*.tpl` (`{{ accent }}`) at build time. Output is `/nix/store/.../share/omanix/themed/*` symlinked via `xdg.configFile` — but the user toggles it via:
+`lib/themed.nix` reads `themes/<name>/colors.toml` (`accent`, `background`, `foreground`…) and writes `~/.config/omanix/theme.json` (full palette for SwiftUI) at build time. The user toggles the modules via options — the bar/tiling render inside the Omanix app, not via a themed config file:
 
 ```nix
 omanix.theme = "tokyo-night";
-omanix.bar = { position = "top"; transparent = false; layout.left = ["omanix.menu" "omanix.workspaces"]; };
+omanix.omabar = { position = "top"; transparent = false; blur = true; };
+omanix.omatiles = { layout = "tiles"; gapInner = 8; gapOuter = 10; };
 ```
 
-Not via `default/themed/*.tpl`. `shell/` QML is never executed; its tokens are the reference for SketchyBar plugin reimplementation in `modules/desktop/sketchybar/plugins/*.nix`.
+`shell/` QML is never executed; its tokens are the reference for the Omabar item reimplementation in `Modules/Omabar/OmabarContentView.swift`. No `sketchybar/plugins/*.nix` exists anymore.
 
 ---
 
@@ -143,7 +145,7 @@ Not via `default/themed/*.tpl`. `shell/` QML is never executed; its tokens are t
 
 This is the **pomodoro contract**. Community lets someone AI-generate a pomodoro bash plugin and it appears as a widget. Omanix lets someone AI-generate a pomodoro *Nix widget* and it appears as if you installed a Mac app — because you did (a Nix-built one).
 
-**Approved: Both — prescriptive SDK + auto-wrap.** Authors can publish a proper flake with `omanixWidgets.<name>` using the SDK, *or* a user can `omanix add github:you/pomodoro-swift` with a single `Sources/*.swift` file and Omanix auto-wraps it (detects Swift, builds via `swift build`/`xcodebuild`, generates `launchd` plist + SketchyBar item).
+**Approved: Both — prescriptive SDK + auto-wrap.** Authors can publish a proper flake with `omanixWidgets.<name>` using the SDK, *or* a user can `omanix add github:you/pomodoro-swift` with a single `Sources/*.swift` file and Omanix auto-wraps it (detects Swift, builds via `swift build`/`xcodebuild`, generates the `launchd` plist + registers it as a native app / Omabar item).
 
 **Helpers — `lib/mkWidget.nix` and `lib/mkApp.nix`:**
 
@@ -152,7 +154,6 @@ This is the **pomodoro contract**. Community lets someone AI-generate a pomodoro
 { lib, pkgs, config, ... }:
 let widget = inputs.lib.mkOmanixWidget {
   name = "pomodoro";
-  sketchybarConfig = { icon = "󰔟"; label = "25:00"; colorsFromTheme = true; };
   launchdConfig = { StartInterval = 60; ProgramArguments = [ "${pkgs.pomodoro}/bin/pomodoro-tick" ]; };
   # or swiftSrc = ./pomodoro-app/Sources — built via xcodebuild, yields /Applications/Pomodoro.app
 };
@@ -175,7 +176,7 @@ Rules:
 - No `manifest.json`. No `omarchy-plugin-add` git clone. No `home.activation` bash that `mkdir -p ~/.config/omarchy/plugins && git clone`.
 - Publishing: author publishes a flake with `omanixWidgets.pomodoro` or `packages.pomodoro`. User adds `inputs.pomodoro.url = "github:you/pomodoro-omanix"` and enables `omanix.widgets.pomodoro.enable = true` + rebuild. `omanix add pomodoro` can automate the `inputs` edit (see 6).
 - Build uses `nixpkgs` Swift toolchain or `xcodebuild` wrapper; result is a derivation in `/nix/store/...-Pomodoro.app`, symlinked to `/Applications/Pomodoro.app` via activation. Uninstall unlinks it (Pristine, Principles 12).
-- SketchyBar items and `launchd` plists are similarly generated — never hand-written to `~/Library/LaunchAgents`.
+- `launchd` plists are similarly generated — never hand-written to `~/Library/LaunchAgents`. (Bar items, when added, live inside the native Omabar module, not as sketchybar plugins.)
 
 ---
 
@@ -246,9 +247,9 @@ New `brews`/`casks` need comment ` # not in nixpkgs: <reason>`. `brew install` o
 
 ## 9. Config Injection — No One Opens a .config to Understand
 
-`default/themed/*.tpl` is not a user surface. User never edits `foot/foot.ini` or `aerospace.toml`. They set `programs.foot.settings` or `desktop.aerospace` options that `lib/themed.nix` renders.
+`default/themed/*.tpl` is not a user surface. User never edits a tpl or a generated bar/tiling file — bar and tiling options (`omanix.omabar.*`, `omanix.omatiles.*`) are set in Nix and read by the Omanix app (via `RuntimeSettings` + `theme.json`).
 
-**Approved: Forbid duplicates (strict).** `xdg.configFile."...".text` is a privileged escape hatch for truly novel software with no Omanix abstraction. `tests/cli` **fails** (not warns) if a raw config duplicates an existing `omarchy`/`desktop` option. If you need a raw file to make it work, add the typed option — don't document a raw edit.
+**Approved: Forbid duplicates (strict).** `xdg.configFile."...".text` is a privileged escape hatch for truly novel software with no Omanix abstraction. `tests/cli` **fails** (not warns) if a raw config duplicates an existing `omarchy`/`omanix` option. If you need a raw file to make it work, add the typed option — don't document a raw edit.
 
 ---
 
@@ -298,8 +299,8 @@ The Store is `modules/apps/store/` → `lib/mkApp` SwiftUI (mac, `mkApp` GTK on 
 **UX contract:**
 - **Browse:** Nix packages (`nix search` cached JSON) + brew casks/brews + `omanix.widgets` gallery + `omanix.theme` picker. Search box debounces, shows `search.nixos.org` description + `brew info` cask.
 - **Install/Remove:** Buttons call `libexec/omanix-add.sh` / `libexec/omanix-remove.sh` helpers that edit `configuration.nix` (adds `environment.systemPackages` or `homebrew.casks`), run `nix flake check` dry, show diff preview, then `omanix rebuild` with progress bar. No terminal. On failure, shows `nix` log + `Rollback` button.
-- **Widgets:** Toggles `omanix.widgets.pomodoro.enable` etc., previews live via `sketchybar --reload` (mac) / `quickshell ipc` (linux) without full rebuild — `Store` writes to `overlays/store-preview.nix` then `omanix rebuild --preview`.
-- **OS settings:** Sliders for `system.defaults.dock`, `desktop.aerospace.gaps`, Touch ID toggle — all `omanix.*` options, never raw `defaults write`.
+- **Widgets:** Toggles `omanix.widgets.pomodoro.enable` etc., previews live via `launchctl kickstart -k gui/$UID/om.omanix.omabar` (mac) / `quickshell ipc` (linux) without full rebuild — `Store` writes to `overlays/store-preview.nix` then `omanix rebuild --preview`.
+- **OS settings:** Sliders for `system.defaults.dock`, `omanix.omatiles.gapInner`, Touch ID toggle — all `omanix.*` options, never raw `defaults write`.
 - **Entry points:** `Super → Omanix Store`, `open -a "Omanix Store"`, `omanix store` CLI. Green user never types `omanix add`.
 
 **Contributor rule:** Store edits `configuration.nix` via structured helpers (`nix edit`-like `yq` for Nix), not `echo` or `sed`. All Store-initiated changes must be `omanix rebuild --rollback`able in 30s and appear as a `git diff` in `~/.omanix`.
@@ -312,18 +313,18 @@ Omanix is ready for `Claude Code`/`OpenCode` to drop a pomodoro that *just appea
 
 **Skill — `skills/omanix/SKILL.md` (auto-installed, linters ready):**
 - Installed by `home.file."~/.omanix/skills/omanix/SKILL.md"` and symlinked to `~/.claude/skills/omanix/SKILL.md` + `~/.opencode/skills/omanix/SKILL.md` on activation. **Approved:** `bin/omanix install` auto-installs `statix` + `nixfmt` + `nixd` into agent PATH ( `nix develop` also provides them) — agents lint without manual setup.
-- Contains: typed contract `lib/mkWidget { name, sketchybarConfig|hyprlandConfig, launchdOrSystemd, swiftOrGtkSrc, dependencies, theme }` + `lib/mkApp`, theme tokens `config.lib.omanixTheme.colors.*`, `omanix.widgets.*` examples (pomodoro `Sources/ContentView.swift` on mac, `widget.qml` on linux), lint commands (`statix check`, `nix fmt`, `nix-instantiate --parse`), and the two-phase flow.
+- Contains: typed contract `lib/mkWidget { name, launchdConfig|systemdConfig, swiftOrGtkSrc, dependencies, theme }` + `lib/mkApp`, theme tokens `config.lib.omanixTheme.colors.*`, `omanix.widgets.*` examples (pomodoro `Sources/ContentView.swift` on mac, `widget.qml` on linux), lint commands (`statix check`, `nix fmt`, `nix-instantiate --parse`), and the two-phase flow.
 - Agents must run `statix` + `nix fmt` + `nix-instantiate --parse overlays/<name>/default.nix` before any `omanix rebuild`.
 
 **Two-phase build — same delight as friend's map, mac-native, now with permanent impure allowed:**
 1. **Draft (no build):** Agent writes `~/.omanix/overlays/pomodoro/{default.nix, Sources/ContentView.swift}` (or `widget.qml` on linux) — `overlays/` is `git-ignored` by default, impure, not in `flake.lock`.
-2. **Preview (impure, instant, no generation):** `omanix rebuild --preview` — `configuration.nix` imports `overlays/*/default.nix` via `builtins.readDir ../overlays` (impure, `lib/mkSystem` handles branch), builds `/nix/store/...-pomodoro`, hot-reloads `sketchybar --reload` + `launchctl load` (mac) / `quickshell ipc` + `systemctl --user daemon-reload` (linux) via IPC. Widget appears, theme-injected, no generation bump.
+2. **Preview (impure, instant, no generation):** `omanix rebuild --preview` — `configuration.nix` imports `overlays/*/default.nix` via `builtins.readDir ../overlays` (impure, `lib/mkSystem` handles branch), builds `/nix/store/...-pomodoro`, hot-reloads via `launchctl kickstart -k gui/$UID/om.omanix.omabar` + `launchctl load` (mac) / `quickshell ipc` + `systemctl --user daemon-reload` (linux) via IPC. Widget appears, theme-injected, no generation bump.
 3. **Commit OR keep impure (user chooses, approved: allow permanent impure):**
    - **Pure commit (default, tracked, Store-visible):** `omanix add pomodoro --from-overlay overlays/pomodoro` moves overlay to `inputs.pomodoro` + `omanix.widgets.pomodoro.enable` in `configuration.nix`, `nix flake lock --update-input`, `nix flake check`, `omanix rebuild` (pure, new generation). `overlays/` cleared. Green user sees toggle in Store.
    - **Permanent impure (fast, no lock, instant, no generation):** Keep `overlays/pomodoro/` and `omanix rebuild` (no `--preview` flag needed after approval) — `configuration.nix` keeps importing `overlays/*` impurely every rebuild, no `flake.lock` entry, no generation beyond overlay file existence. Agent documents `overlays/pomodoro/README.md: impure — delete folder to remove`. Allowed for throwaway AI experiments; `omanix uninstall` still deletes `overlays/` so pristine holds, but `rollback` is `rm -rf overlays/pomodoro && omanix rebuild --preview`.
 4. **Undo:** Pure: `omanix rebuild --rollback` or `omanix remove pomodoro`; impure: `rm -rf overlays/pomodoro && omanix rebuild --preview`.
 
-**Why not friend's *only* `--impure` forever:** We keep preview speed but make persistence a choice — pure for teams/Store visibility/rollback, impure for rapid AI iteration where lock churn is unwanted. Linters are ready day one, so agent never writes invalid Nix. Linux path reuses same `SKILL.md` but picks `qmlSrc` + `systemd` branch — `lib/mkWidget` abstracts `sketchybar` vs `quickshell`.
+**Why not friend's *only* `--impure` forever:** We keep preview speed but make persistence a choice — pure for teams/Store visibility/rollback, impure for rapid AI iteration where lock churn is unwanted. Linters are ready day one, so agent never writes invalid Nix. Linux path reuses same `SKILL.md` but picks `qmlSrc` + `systemd` branch — `lib/mkWidget` abstracts `launchd` vs `systemd`. Bar/tiling modules are native Swift only (mac); future Linux uses Quickshell.
 
 **Contributor rule for agent authors:** Use `pkgs` deps (`pkgs.libnotify`, `pkgs.mpv`), not `which mpv`; use `${config.lib.omanixTheme.colors.accent}`, not hardcoded `#7aa2f7`; never write to `/nix/store` or `~/.config` outside `overlays/`.
 
@@ -341,7 +342,7 @@ Frontier handles heavy (full Swift `mkApp`); local `qwen2.5:7b`/`qwen3:8b` via `
 { "type": "object", "properties": { "action": {"enum": ["setTheme","toggleWidget","addPackage","mkWidget"]}, "theme": {"enum": ["tokyo-night","catppuccin"]}, "widget": {"type": "string"}, "package": {"type": "string"} } }
 ```
 
-+ 2 few-shots: `{"action":"setTheme","theme":"matte-black"}` → `omanix.theme = "matte-black"`; `{"action":"mkWidget","widget":"pomodoro"}` → `lib/mkWidget { name="pomodoro"; sketchybarConfig={icon="󰔟";}; launchdConfig={StartInterval=60;}; }` (template fill, approved). No full Swift/QML `lib/mkApp` generation — local fills a fixed `mkWidget` template only, frontier does full Swift.
++ 2 few-shots: `{"action":"setTheme","theme":"matte-black"}` → `omanix.theme = "matte-black"`; `{"action":"mkWidget","widget":"pomodoro"}` → `lib/mkWidget { name="pomodoro"; launchdConfig={StartInterval=60;}; }` (template fill, approved). No full Swift/QML `lib/mkApp` generation — local fills a fixed `mkWidget` template only, frontier does full Swift.
 
 **Tools (constrained):** Local agent PATH has only `omanix add|remove|search`, `omanix widgets toggle`, `omanix theme set`, `nix fmt`, `statix check`. No `swift build`, no `xcodebuild`, no raw `echo` to `configuration.nix` — it calls `omanix add` helpers that edit `configuration.nix` structured, same as Store. If `statix` fails, local falls back to `omanix ask --local --dry-run` showing the `configuration.nix` diff, never writes.
 

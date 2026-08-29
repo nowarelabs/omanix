@@ -7,10 +7,12 @@
 
 You are building for Omanix, a declarative desktop for macOS (and future Linux).
 Everything is a Nix derivation. You write Nix modules, not bash scripts.
+The macOS menu bar and window tiling are NATIVE modules inside the Omanix app
+(`Modules/Omabar/*`, `Modules/Omatiles/*`) — never add a sketchybar/aerospace config.
 
 ### Core Helpers
 
-- `lib/mkWidget { name, sketchybarConfig, launchdConfig, swiftSrc, dependencies }` → module
+- `lib/mkWidget { name, launchdConfig, systemdConfig, swiftSrc, dependencies }` → module (launchd on mac, systemd on future linux)
 - `lib/mkApp { name, bundleId, src, plistConfig }` → /Applications/*.app derivation
 - `lib/mkSystem { system, modules }` → darwinSystem or nixosSystem (branches on isDarwin)
 
@@ -22,21 +24,14 @@ Never hardcode `#7aa2f7` — always use `${config.lib.omanixTheme.colors.accent}
 
 ### Widget Pattern
 
+Widgets are `launchd` agents on mac (systemd on future linux) — optionally a Swift app via `lib/mkApp` or a bar item via the native Omabar module. Bar/tiling items are NOT sketchybar plugins.
+
 ```nix
 { config, lib, pkgs, ... }:
 let
   enabled = config.omanix.widgets.pomodoro.enable;
-  themed = import ../../lib/themed.nix { inherit lib; };
-  colors = themed.getThemeColors config;
 in {
   config = lib.mkIf enabled {
-    xdg.configFile."sketchybar/plugins/pomodoro.sh" = {
-      text = ''
-        #!/bin/bash
-        sketchybar --set pomodoro icon="󰔟" label="25:00"
-      '';
-      executable = true;
-    };
     launchd.user.agents.omanix-pomodoro = {
       serviceConfig = {
         ProgramArguments = [ "${pkgs.bash}/bin/bash" "-c" "echo tick" ];
@@ -50,7 +45,7 @@ in {
 ### Two-Phase Build (Preview → Commit)
 
 1. **Draft (no build):** Write `overlays/pomodoro/{default.nix}` (impure, git-ignored)
-2. **Preview (impure, instant):** `omanix rebuild --preview` — builds overlay, hot-reloads sketchybar
+2. **Preview (impure, instant):** `omanix rebuild --preview` — builds overlay, hot-reloads via `launchctl kickstart -k gui/$UID/om.omanix.omabar` (mac) / `quickshell ipc` (linux)
 3. **Commit (pure):** `omanix add pomodoro --from-overlay overlays/pomodoro` → moves to `configuration.nix`
 4. **Undo:** `omanix rebuild --rollback` or `rm -rf overlays/pomodoro && omanix rebuild --preview`
 
