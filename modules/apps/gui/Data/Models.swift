@@ -62,6 +62,29 @@ struct WidgetItem: Identifiable {
     var isEnabled: Bool
 }
 
+// MARK: - Menu Bar (SketchyBar) state
+
+/// Mirrors `omanix.bar.*` from configuration.nix.
+struct BarState: Equatable {
+    var enable = true
+    var position = "top"
+    var transparent = false
+    var blur = false
+    var blurRadius = 50
+    var style = "default"
+    var height = 32
+}
+
+// MARK: - Window tiling (AeroSpace) state
+
+/// Mirrors `omanix.tiling.*` from configuration.nix.
+struct TilingState: Equatable {
+    var enable = true
+    var layout = "tiles"
+    var gapInner = 8
+    var gapOuter = 10
+}
+
 // MARK: - Theme
 
 struct ThemeItem: Identifiable {
@@ -123,7 +146,7 @@ struct SourceItem: Identifiable {
 
 /// The pages reachable from the sidebar.
 enum SidebarItem: String, CaseIterable, Identifiable {
-    case browse, installed, widgets, themes, settings
+    case browse, installed, widgets, tiling, menubar, themes, settings
     var id: String { rawValue }
 
     var title: String {
@@ -131,6 +154,8 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .browse: return "Browse"
         case .installed: return "Installed"
         case .widgets: return "Widgets"
+        case .tiling: return "Tiling"
+        case .menubar: return "Menu Bar"
         case .themes: return "Themes"
         case .settings: return "Settings"
         }
@@ -141,6 +166,8 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .browse: return "square.grid.2x2"
         case .installed: return "checkmark.circle"
         case .widgets: return "archivebox"
+        case .tiling: return "rectangle.3.group"
+        case .menubar: return "rectangle.topthird.inset.filled"
         case .themes: return "tag"
         case .settings: return "gearshape"
         }

@@ -290,6 +290,65 @@ final class OmanixStore {
     func setBarTransparent(_ v: Bool) throws { try setBarOption("transparent", v ? "true" : "false") }
     func setBarBlur(_ v: Bool) throws { try setBarOption("blur", v ? "true" : "false") }
     func setBarStyle(_ style: String) throws { try setBarOption("style", "\"\(style)\"") }
+    func setBarEnabled(_ v: Bool) throws { try setBarOption("enable", v ? "true" : "false") }
+    func setBarHeight(_ h: Int) throws { try setBarOption("height", "\(h)") }
+
+    func setTilingOption(_ key: String, _ value: String) throws {
+        try rewriteOption("omanix.tiling.\(key)", toLiteral: value, in: configPath)
+    }
+
+    func setTilingEnabled(_ v: Bool) throws { try setTilingOption("enable", v ? "true" : "false") }
+    func setTilingLayout(_ layout: String) throws { try setTilingOption("layout", "\"\(layout)\"") }
+    func setTilingGapInner(_ gap: Int) throws { try setTilingOption("gapInner", "\(gap)") }
+    func setTilingGapOuter(_ gap: Int) throws { try setTilingOption("gapOuter", "\(gap)") }
+
+    // MARK: - Config state readers (bar + tiling)
+
+    /// Reads a literal `option = value;` from configuration.nix.
+    func readOption(_ option: String) -> String? {
+        guard let text = try? String(contentsOfFile: configPath, encoding: .utf8) else { return nil }
+        guard let range = text.range(
+            of: #"\#(NSRegularExpression.escapedPattern(for: option))\s*=\s*([^;]+);"#,
+            options: .regularExpression
+        ) else { return nil }
+        let line = String(text[range])
+        guard let eq = line.firstIndex(of: "=") else { return nil }
+        let value = line[line.index(after: eq)...].trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+    }
+
+    func readBoolOption(_ option: String) -> Bool? {
+        guard let v = readOption(option) else { return nil }
+        return v == "true"
+    }
+
+    func readIntOption(_ option: String) -> Int? {
+        guard let v = readOption(option) else { return nil }
+        return Int(v)
+    }
+
+    /// Reads the current `omanix.bar.*` values with defaults for anything unset.
+    func currentBarState() -> BarState {
+        BarState(
+            enable: readBoolOption("omanix.bar.enable") ?? true,
+            position: readOption("omanix.bar.position") ?? "top",
+            transparent: readBoolOption("omanix.bar.transparent") ?? false,
+            blur: readBoolOption("omanix.bar.blur") ?? false,
+            blurRadius: readIntOption("omanix.bar.blurRadius") ?? 50,
+            style: readOption("omanix.bar.style") ?? "default",
+            height: readIntOption("omanix.bar.height") ?? 32
+        )
+    }
+
+    /// Reads the current `omanix.tiling.*` values with defaults for anything unset.
+    func currentTilingState() -> TilingState {
+        TilingState(
+            enable: readBoolOption("omanix.tiling.enable") ?? true,
+            layout: readOption("omanix.tiling.layout") ?? "tiles",
+            gapInner: readIntOption("omanix.tiling.gapInner") ?? 8,
+            gapOuter: readIntOption("omanix.tiling.gapOuter") ?? 10
+        )
+    }
 
     /// Rewrites `option = ...;` in a Nix config file, appending if absent.
     private func rewriteOption(_ option: String, toLiteral value: String, in path: String) throws {

@@ -29,6 +29,10 @@ struct ContentView: View {
                         InstalledView()
                     case .widgets:
                         WidgetsView()
+                    case .tiling:
+                        TilingView()
+                    case .menubar:
+                        MenuBarView()
                     case .themes:
                         ThemesView()
                     case .settings:

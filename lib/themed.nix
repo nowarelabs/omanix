@@ -30,6 +30,8 @@ rec {
     in base // filtered;
 
   getGhosttyColors = config: getAppColors config "ghostty";
+  getSketchyBarColors = config: getAppColors config "sketchybar";
+  getAerospaceColors = config: getAppColors config "aerospace";
 
   # List all available themes (from themes/ directory)
   availableThemes = builtins.attrNames (builtins.readDir ../themes);

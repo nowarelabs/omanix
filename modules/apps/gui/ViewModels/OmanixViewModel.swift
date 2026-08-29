@@ -193,8 +193,23 @@ final class OmanixViewModel: ObservableObject {
     // MARK: - Widgets
 
     func loadWidgets() {
+        let barState = store.currentBarState()
+        let tilingState = store.currentTilingState()
+        barEnabled = barState.enable
+        barPosition = barState.position
+        barTransparent = barState.transparent
+        barBlur = barState.blur
+        barStyle = barState.style
+        barHeight = barState.height
+        tilingEnabled = tilingState.enable
+        tilingLayout = tilingState.layout
+        tilingGapInner = tilingState.gapInner
+        tilingGapOuter = tilingState.gapOuter
+
         widgets = [
             WidgetItem(id: "store", name: "Omanix", icon: "bag", isEnabled: true),
+            WidgetItem(id: "menubar", name: "Menu Bar", icon: "rectangle.topthird.inset.filled", isEnabled: barEnabled),
+            WidgetItem(id: "tiling", name: "Window Tiling", icon: "rectangle.3.group", isEnabled: tilingEnabled),
             WidgetItem(id: "pomodoro", name: "Pomodoro Timer", icon: "timer", isEnabled: false),
             WidgetItem(id: "clock", name: "Clock", icon: "clock", isEnabled: false),
         ]
@@ -202,6 +217,20 @@ final class OmanixViewModel: ObservableObject {
 
     func toggleWidget(_ widget: WidgetItem) {
         guard let i = widgets.firstIndex(where: { $0.id == widget.id }) else { return }
+        // Menu Bar + Window Tiling are desktop features (omanix.bar./omanix.tiling.),
+        // handled here so you can switch them on/off right from the Widgets page.
+        switch widget.id {
+        case "menubar":
+            setBarEnabled(!widgets[i].isEnabled)
+            widgets[i].isEnabled = barEnabled
+            return
+        case "tiling":
+            setTilingEnabled(!widgets[i].isEnabled)
+            widgets[i].isEnabled = tilingEnabled
+            return
+        default:
+            break
+        }
         widgets[i].isEnabled.toggle()
         do {
             try store.setWidgetEnabled(widget.id, widgets[i].isEnabled)
@@ -214,11 +243,17 @@ final class OmanixViewModel: ObservableObject {
 
     // MARK: - Bar appearance (mirrors omanix.bar.*)
 
+    @Published var barEnabled: Bool = true
     @Published var barPosition: String = "top"
     @Published var barTransparent: Bool = false
     @Published var barBlur: Bool = false
     @Published var barStyle: String = "default"
+    @Published var barHeight: Int = 32
 
+    func setBarEnabled(_ enabled: Bool) {
+        barEnabled = enabled
+        do { try store.setBarEnabled(enabled); needsRebuild = true } catch { barEnabled = !enabled; showMessage("Could not set menu bar: \(error.localizedDescription)", .error) }
+    }
     func setBarPosition(_ pos: String) {
         barPosition = pos
         do { try store.setBarPosition(pos); needsRebuild = true } catch { showMessage("Could not set bar position: \(error.localizedDescription)", .error) }
@@ -234,6 +269,34 @@ final class OmanixViewModel: ObservableObject {
     func setBarStyle(_ style: String) {
         barStyle = style
         do { try store.setBarStyle(style); needsRebuild = true } catch { showMessage("Could not set style: \(error.localizedDescription)", .error) }
+    }
+    func setBarHeight(_ height: Int) {
+        barHeight = height
+        do { try store.setBarHeight(height); needsRebuild = true } catch { showMessage("Could not set bar height: \(error.localizedDescription)", .error) }
+    }
+
+    // MARK: - Window tiling (mirrors omanix.tiling.*)
+
+    @Published var tilingEnabled: Bool = true
+    @Published var tilingLayout: String = "tiles"
+    @Published var tilingGapInner: Int = 8
+    @Published var tilingGapOuter: Int = 10
+
+    func setTilingEnabled(_ enabled: Bool) {
+        tilingEnabled = enabled
+        do { try store.setTilingEnabled(enabled); needsRebuild = true } catch { tilingEnabled = !enabled; showMessage("Could not set tiling: \(error.localizedDescription)", .error) }
+    }
+    func setTilingLayout(_ layout: String) {
+        tilingLayout = layout
+        do { try store.setTilingLayout(layout); needsRebuild = true } catch { showMessage("Could not set tiling layout: \(error.localizedDescription)", .error) }
+    }
+    func setTilingGapInner(_ gap: Int) {
+        tilingGapInner = gap
+        do { try store.setTilingGapInner(gap); needsRebuild = true } catch { showMessage("Could not set inner gap: \(error.localizedDescription)", .error) }
+    }
+    func setTilingGapOuter(_ gap: Int) {
+        tilingGapOuter = gap
+        do { try store.setTilingGapOuter(gap); needsRebuild = true } catch { showMessage("Could not set outer gap: \(error.localizedDescription)", .error) }
     }
 
     // MARK: - Themes (13 — mirrors themes/*/colors.toml via lib/themed.nix, omanix = signature Omakase light)

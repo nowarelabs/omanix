@@ -5,7 +5,8 @@
 #   omanix.host                 — machine hostname (`scutil --get LocalHostName`)
 #   omanix.user                 — primary user (`whoami`)
 #   omanix.theme                — bar+terminal+app theme (see `ls themes/` and `omanix theme list`)
-#   omanix.bar.*                — bar position, transparency, blur, style, colorScheme
+#   omanix.bar.*                — menu bar (SketchyBar): position, transparency, blur, style, height, colorScheme
+#   omanix.tiling.*             — window tiling (AeroSpace): enable, layout, gaps, floating apps, workspace rules
 #   omanix.themeOverrides.*     — global per-color overrides (accent, background, etc.)
 #   omanix.perApp.*             — per-application overrides (ghostty) — alias theme.perApp.*
 #   Use Store GUI (Super → Omanix Store → Themes) or `omanix theme set <name>` + `omanix rebuild`
