@@ -47,7 +47,7 @@ struct MenuBarView: View {
                             set: { vm.setBarPosition($0) }
                         ))
                         Divider().overlay(OC.divider)
-                        SegmentRow(title: "Style", description: "Glass forces blur + transparency; minimal hides separators.", options: [("default", "Default"), ("glass", "Glass"), ("modern", "Modern"), ("minimal", "Minimal")], selection: Binding(
+                        SegmentRow(title: "Style", description: "Glass forces transparency; modern rounds the workspace pills.", options: [("default", "Default"), ("glass", "Glass"), ("modern", "Modern"), ("minimal", "Minimal")], selection: Binding(
                             get: { vm.barStyle },
                             set: { vm.setBarStyle($0) }
                         ))

@@ -28,16 +28,16 @@
 
     blur = lib.mkOption {
       type = lib.types.bool;
-      default = false;
-      description = "Enable blur behind the menu bar (SketchyBar blur_radius). Requires transparent = true for the glass effect.";
-      example = true;
+      default = true;
+      description = "Enable blur behind the menu bar (SketchyBar blur_radius), the classic frosted-glass look.";
+      example = false;
     };
 
     blurRadius = lib.mkOption {
       type = lib.types.ints.unsigned;
-      default = 50;
+      default = 30;
       description = "Blur radius for the menu bar when blur = true (0-100).";
-      example = 30;
+      example = 50;
     };
 
     style = lib.mkOption {
@@ -49,9 +49,9 @@
 
     height = lib.mkOption {
       type = lib.types.ints.unsigned;
-      default = 32;
-      description = "Menu bar height in points.";
-      example = 28;
+      default = 40;
+      description = "Menu bar height in points. 40 is the classic SketchyBar height.";
+      example = 32;
     };
 
     colorScheme = lib.mkOption {

@@ -333,10 +333,10 @@ final class OmanixStore {
             enable: readBoolOption("omanix.bar.enable") ?? true,
             position: readOption("omanix.bar.position") ?? "top",
             transparent: readBoolOption("omanix.bar.transparent") ?? false,
-            blur: readBoolOption("omanix.bar.blur") ?? false,
-            blurRadius: readIntOption("omanix.bar.blurRadius") ?? 50,
+            blur: readBoolOption("omanix.bar.blur") ?? true,
+            blurRadius: readIntOption("omanix.bar.blurRadius") ?? 30,
             style: readOption("omanix.bar.style") ?? "default",
-            height: readIntOption("omanix.bar.height") ?? 32
+            height: readIntOption("omanix.bar.height") ?? 40
         )
     }
 

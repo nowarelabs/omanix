@@ -69,10 +69,10 @@ struct BarState: Equatable {
     var enable = true
     var position = "top"
     var transparent = false
-    var blur = false
-    var blurRadius = 50
+    var blur = true
+    var blurRadius = 30
     var style = "default"
-    var height = 32
+    var height = 40
 }
 
 // MARK: - Window tiling (AeroSpace) state

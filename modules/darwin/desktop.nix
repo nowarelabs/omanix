@@ -18,24 +18,23 @@ let
   barIsGlass = bar.style == "glass";
   barTransparent = bar.transparent || barIsGlass;
   barBlur = bar.blur || barIsGlass;
-  barCornerRadius = if bar.style == "glass" then "10" else if bar.style == "modern" then "8" else "0";
-  barBorderWidth = if bar.style == "minimal" then "0" else "1";
-  barColor = if barTransparent then "0x00000000" else "0xff${lib.removePrefix "#" sketchyColors.background}";
-  barBorderColor = "0xff${lib.removePrefix "#" sketchyColors.muted}";
+  # Reference-style bar: dark translucent base (0x40-alpha black) so white JetBrainsMono
+  # glyphs pop over any wallpaper, with blur on by default. Fully transparent when
+  # `omanix.bar.transparent` is set. Theme still drives accent + plugins via colors.sh.
+  barColor = if barTransparent then "0x00000000" else "0x40000000";
   barBlurRadius = if barBlur then toString bar.blurRadius else "0";
+  barPillCorner = if bar.style == "glass" then "10" else if bar.style == "modern" then "8" else "5";
 
-  # Fonts used for glyphs in the bar. These MUST be registered via `fonts.packages`
-  # (system-level, CoreText/Font Book) — declaring them only in a program's
-  # `extraPackages` puts the binary on $PATH but does NOT install the font, which is
-  # why every glyph (including the Apple logo) was rendering as a "missing glyph" box.
-  nerdFontName = "JetBrainsMono Nerd Font";
-  nerdFont = "${nerdFontName}:Regular:14.0";
-  appFontName = "sketchybar-app-font";
-  appFont = "${appFontName}:Regular:16.0";
-  symbolFont = "SF Pro:Semibold:14.0";
-
-  # Workspace pills shown in the bar: numeric 1-9 + every workspace named in omanix.tiling.workspaceApps
-  spaces = [ "1" "2" "3" "4" "5" "6" "7" "8" "9" ] ++ lib.unique (lib.attrValues tiling.workspaceApps);
+  # Fonts for the bar. JetBrainsMono Nerd Font (pkgs.nerd-fonts.jetbrains-mono) carries all
+  # icons + labels, matching the classic reference config. NOTE: the nixpkgs build registers
+  # the family as "JetBrainsMono Nerd Font" (NOT "JetBrainsMono NF") — use that name for
+  # CoreText to resolve glyphs. sketchybar-app-font covers per-app icons in front_app.
+  # Both fonts are installed system-wide via `fonts.packages` below (CoreText/Font Book),
+  # not just a program's extraPackages (which only adds to $PATH, so glyphs render as boxes).
+  nerdFont = "JetBrainsMono Nerd Font:Regular:14.0";
+  iconFont = "JetBrainsMono Nerd Font:Bold:17.0";
+  labelFont = "JetBrainsMono Nerd Font:Bold:14.0";
+  appFont = "sketchybar-app-font:Regular:16.0";
 
   # AeroSpace on-window-detected rules
   floatingRules = map (app: { "if".app-id = app; run = "layout floating"; }) tiling.floatingApps;
@@ -116,9 +115,12 @@ in {
       config = {
         text = ''
           #!/bin/bash
-          # Omanix SketchyBar — macOS menu bar replacement, generated from omanix.bar + lib/themed.nix
-          # Theme: ${config.omanix.theme} | ${sketchyColors.background} -> ${sketchyColors.foreground} | accent ${sketchyColors.accent}
-          # Matches the GUI app palette: page #FBFBFC, card white, border #E6E6EA, text #1D1D1F
+          # Omanix SketchyBar — macOS menu bar replacement, modeled on the classic reference config.
+          # Theme: ${config.omanix.theme} | accent ${sketchyColors.accent} | JetBrainsMono Nerd Font
+          # Dark translucent bar + blur so white JetBrainsMono NF glyphs pop over any wallpaper.
+          # Generated from omanix.bar.* + lib/themed.nix. Fonts from pkgs.nerd-fonts.jetbrains-mono.
+
+          PLUGIN_DIR="$HOME/.config/sketchybar/plugins"
 
           if [ -f "$HOME/.config/sketchybar/colors.sh" ]; then
             source "$HOME/.config/sketchybar/colors.sh"
@@ -133,79 +135,99 @@ in {
 
           to_hex() { echo "0xff''${1#\#}"; }
           ACCENT_HEX=$(to_hex "$OMANIX_ACCENT")
-          BG_HEX=$(to_hex "$OMANIX_BACKGROUND")
-          FG_HEX=$(to_hex "$OMANIX_FOREGROUND")
-          MUTED_HEX=$(to_hex "$OMANIX_MUTED")
-          SELECTION_HEX=$(to_hex "$OMANIX_SELECTION")
 
-          # Fonts. NERD_FONT covers all Nerd Font glyph icons (clock/battery/volume/wifi/
-          # notification). APP_FONT covers per-app icons in the front_app item. SYMBOL_FONT
-          # is used only for the Apple logo and workspace-number pills, which are plain SF
-          # Pro glyphs. These must match the fonts registered in fonts.packages (system.nix).
           export NERD_FONT="${nerdFont}"
           export APP_FONT="${appFont}"
-          export SYMBOL_FONT="${symbolFont}"
 
-          # Bar — menu-bar replacement, ${toString bar.height}px at ${bar.position} edge
+          # Bar — ${toString bar.height}px at the ${bar.position} edge, reference look
           sketchybar --bar \
             position="${bar.position}" \
             height=${toString bar.height} \
-            color="${barColor}" \
-            border_width=${barBorderWidth} \
-            border_color="${barBorderColor}" \
-            corner_radius=${barCornerRadius} \
             blur_radius=${barBlurRadius} \
-            padding_left=10 \
-            padding_right=10 \
-            margin=0 \
-            y_offset=0 \
-            notch_width=200 \
+            color="${barColor}" \
             display=main \
             sticky=on \
             topmost=on
 
-          sketchybar --default \
-            icon.color="$FG_HEX" \
-            icon.font="$SYMBOL_FONT" \
-            label.color="$FG_HEX" \
-            label.font="SF Pro:Semibold:13.0" \
-            background.color="$SELECTION_HEX" \
-            background.corner_radius=8 \
-            background.height=${toString (lib.max 24 (bar.height - 6))} \
-            background.border_width=0 \
-            background.drawing=off \
-            icon.padding_left=8 \
-            icon.padding_right=6 \
-            label.padding_left=6 \
-            label.padding_right=8 \
-            padding_left=6 \
-            padding_right=6
+          # Shared defaults: JetBrainsMono NF icons + labels, white on translucent black
+          default=(
+            padding_left=5
+            padding_right=5
+            icon.font="${iconFont}"
+            label.font="${labelFont}"
+            icon.color=0xffffffff
+            label.color=0xffffffff
+            icon.padding_left=4
+            icon.padding_right=4
+            label.padding_left=4
+            label.padding_right=4
+          )
+          sketchybar --default "''${default[@]}"
 
+          ${if tiling.enable then ''
+          # Workspace pills built from AeroSpace's live workspace list
           sketchybar --add event aerospace_workspace_change
-          sketchybar --add event change-window-workspace
-          sketchybar --add event aerospace_focus_change
+          AEROSPACE_BIN=$(command -v aerospace 2>/dev/null || echo "/opt/homebrew/bin/aerospace")
 
-          sketchybar --add item omanix.apple left \
-            --set omanix.apple icon="🍎" icon.color="$ACCENT_HEX" label.drawing=off background.color="$SELECTION_HEX" background.drawing=on background.corner_radius=6 click_script="open -a 'Omanix'"
-
-          for sid in ${lib.concatStringsSep " " spaces}; do
+          for sid in $("$AEROSPACE_BIN" list-workspaces --all 2>/dev/null); do
             sketchybar --add item space.$sid left \
-              --subscribe space.$sid aerospace_workspace_change change-window-workspace \
-              --set space.$sid icon="$sid" icon.font="SF Pro:Bold:13.0" icon.color="$FG_HEX" label.drawing=off background.color="$SELECTION_HEX" background.corner_radius=6 background.height=${toString (lib.max 24 (bar.height - 8))} background.border_width=0 background.drawing=off padding_left=3 padding_right=3 click_script="aerospace workspace $sid" script="$HOME/.config/sketchybar/plugins/aerospace.sh $sid"
+              --subscribe space.$sid aerospace_workspace_change \
+              --set space.$sid \
+              background.color=0x40ffffff \
+              background.corner_radius=${barPillCorner} \
+              background.height=25 \
+              background.drawing=off \
+              icon="$sid" \
+              icon.padding_left=7 \
+              icon.padding_right=7 \
+              label.drawing=off \
+              click_script="$AEROSPACE_BIN workspace $sid" \
+              script="$PLUGIN_DIR/aerospace.sh $sid"
           done
+          '' else ''
+          # No AeroSpace: static workspace pills 1-9
+          SPACE_ICONS=("1" "2" "3" "4" "5" "6" "7" "8" "9")
+          for i in "''${!SPACE_ICONS[@]}"; do
+            sid="$(($i+1))"
+            sketchybar --add item space.$sid left \
+              --set space.$sid \
+              background.color=0x40ffffff \
+              background.corner_radius=${barPillCorner} \
+              background.height=25 \
+              background.drawing=off \
+              icon="''${SPACE_ICONS[i]}" \
+              icon.padding_left=7 \
+              icon.padding_right=7 \
+              label.drawing=off
+          done
+          ''}
 
-          sketchybar --add item front_app left --set front_app icon.drawing=on icon.font="$APP_FONT" label.color="$FG_HEX" icon.color="$ACCENT_HEX" script="$HOME/.config/sketchybar/plugins/front_app.sh" --subscribe front_app front_app_switched
+          ##### Adding Left Items #####
+          # Apple → Omanix launcher, then chevron + front app
+          sketchybar --add item omanix.apple left \
+            --set omanix.apple icon="🍎" icon.color="$ACCENT_HEX" label.drawing=off \
+            --add item chevron left \
+            --set chevron icon="" label.drawing=off \
+            --add item front_app left \
+            --set front_app icon.drawing=off script="$PLUGIN_DIR/front_app.sh" \
+            --subscribe front_app front_app_switched
 
-          sketchybar --add item clock right --set clock update_freq=10 icon="󰥔" icon.font="$NERD_FONT" icon.color="$FG_HEX" label.color="$FG_HEX" background.color="$SELECTION_HEX" background.drawing=on script="$HOME/.config/sketchybar/plugins/clock.sh"
-          sketchybar --add item battery right --set battery update_freq=30 icon.font="$NERD_FONT" icon.color="$FG_HEX" label.color="$FG_HEX" background.color="$SELECTION_HEX" background.drawing=on script="$HOME/.config/sketchybar/plugins/battery.sh" --subscribe battery system_woke power_source_change
-          sketchybar --add item volume right --set volume icon.font="$NERD_FONT" icon.color="$FG_HEX" label.color="$FG_HEX" background.color="$SELECTION_HEX" background.drawing=on script="$HOME/.config/sketchybar/plugins/volume.sh" --subscribe volume volume_change
-          sketchybar --add item wifi right --set wifi icon="📶" icon.color="$FG_HEX" label.drawing=off background.color="$SELECTION_HEX" background.drawing=on script="$HOME/.config/sketchybar/plugins/wifi.sh"
+          ##### Adding Right Items #####
+          # Clock ticks every 10s; volume + battery react to system events
+          sketchybar --add item clock right \
+            --set clock update_freq=10 icon="" script="$PLUGIN_DIR/clock.sh" \
+            --add item volume right \
+            --set volume script="$PLUGIN_DIR/volume.sh" \
+            --subscribe volume volume_change \
+            --add item battery right \
+            --set battery update_freq=120 script="$PLUGIN_DIR/battery.sh" \
+            --subscribe battery system_woke power_source_change \
+            --add item wifi right \
+            --set wifi icon="" label.drawing=off script="$PLUGIN_DIR/wifi.sh" \
+            --add item omanix.notification right \
+            --set omanix.notification icon="" icon.color="0xff${lib.removePrefix "#" colors.red}" label.drawing=off drawing=off
 
-          sketchybar --default popup.background.color="$BG_HEX" popup.background.border_color="$MUTED_HEX" popup.background.corner_radius=10 popup.blur_radius=${barBlurRadius}
-          ${if bar.style == "minimal" then ''sketchybar --add item separator right --set separator icon="│" icon.font="SF Pro:Regular:14.0" icon.color="$MUTED_HEX" label.drawing=off background.drawing=off'' else ''
-          sketchybar --add bracket barBracket "/space\..*/" --set barBracket background.color="$BG_HEX" background.border_color="$MUTED_HEX" background.corner_radius=6
-          sketchybar --add bracket rightBracket clock battery volume wifi --set rightBracket background.color="$BG_HEX" background.border_color="$MUTED_HEX" background.corner_radius=6''}
-          sketchybar --add item omanix.notification right --set omanix.notification icon="󰂚" icon.font="$NERD_FONT" icon.color="0xff${lib.removePrefix "#" colors.red}" label.color="$FG_HEX" background.color="$SELECTION_HEX" drawing=off
+          sketchybar --default popup.background.color=0xcc262626 popup.background.border_color=0xff555555 popup.background.corner_radius=10 popup.blur_radius=${barBlurRadius}
 
           # Omanix widgets — nix → sketchybar --trigger event system (lib/mkWidget / lib/mkBarItem)
           for plugin in "$HOME/.config/sketchybar/plugins/"omanix-*.sh "$HOME/.config/sketchybar/plugins/"pomodoro.sh "$HOME/.config/sketchybar/plugins/"clock.sh; do
@@ -221,20 +243,17 @@ in {
       executable = true;
       text = ''
         #!/bin/bash
-        # Omanix aerospace workspace indicator — theme-aware, high contrast
+        # Omanix aerospace workspace pill highlight — focused = theme accent, rest = translucent white
         if [ -f "$HOME/.config/sketchybar/colors.sh" ]; then source "$HOME/.config/sketchybar/colors.sh"; fi
         to_hex() { echo "0xff''${1#\#}"; }
         ACCENT_HEX=$(to_hex "''${OMANIX_ACCENT:-#0A7CFF}")
-        FG_HEX=$(to_hex "''${OMANIX_FOREGROUND:-#1D1D1F}")
-        MUTED_HEX=$(to_hex "''${OMANIX_MUTED:-#AEAEB4}")
-        SELECTION_HEX=$(to_hex "''${OMANIX_SELECTION:-#E6E6EA}")
         if [ "$1" = "$FOCUSED_WORKSPACE" ]; then
-          sketchybar --set $NAME background.drawing=on background.color="$ACCENT_HEX" background.border_width=0 icon.color="0xffffffff" icon.font="SF Pro:Bold:14.0"
+          sketchybar --set $NAME background.drawing=on background.color="$ACCENT_HEX" icon.color=0xffffffff icon.font="''${NERD_FONT:-JetBrainsMono Nerd Font:Regular:14.0}"
         else
           if [ "$1" = "$TARGET_WORKSPACE" ] && [ -n "$TARGET_WORKSPACE" ]; then
-            sketchybar --set $NAME background.drawing=on background.color="$MUTED_HEX" background.border_width=0 icon.color="0xffffffff" icon.font="SF Pro:Semibold:13.0"
+            sketchybar --set $NAME background.drawing=on background.color=0x80ffffff icon.color=0xffffffff
           else
-            sketchybar --set $NAME background.drawing=on background.color="$SELECTION_HEX" background.border_width=0 icon.color="$FG_HEX" icon.font="SF Pro:Semibold:13.0"
+            sketchybar --set $NAME background.drawing=on background.color=0x40ffffff icon.color=0xffffffff icon.font="''${NERD_FONT:-JetBrainsMono Nerd Font:Regular:14.0}"
           fi
         fi
       '';
@@ -266,7 +285,7 @@ in {
       executable = true;
       text = ''
         #!/bin/bash
-        sketchybar --set $NAME label="$(date '+%a %d %b %H:%M')" icon="󰥔" icon.font="''${NERD_FONT:-JetBrainsMono Nerd Font:Regular:14.0}"
+        sketchybar --set $NAME label="$(date '+%a %d %b %H:%M')" icon="" icon.font="''${NERD_FONT:-JetBrainsMono Nerd Font:Regular:14.0}"
       '';
     };
 
