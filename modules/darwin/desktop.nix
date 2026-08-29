@@ -24,9 +24,6 @@ let
   barBorderColor = "0xff${lib.removePrefix "#" sketchyColors.muted}";
   barBlurRadius = if barBlur then toString bar.blurRadius else "0";
 
-  gapOuterTop = if bar.position == "top" then bar.height else tiling.gapOuter;
-  gapOuterBottom = if bar.position == "bottom" then bar.height else tiling.gapOuter;
-
   # Fonts used for glyphs in the bar. These MUST be registered via `fonts.packages`
   # (system-level, CoreText/Font Book) — declaring them only in a program's
   # `extraPackages` puts the binary on $PATH but does NOT install the font, which is
@@ -175,8 +172,7 @@ in {
             background.color="$SELECTION_HEX" \
             background.corner_radius=8 \
             background.height=${toString (lib.max 24 (bar.height - 6))} \
-            background.border_width=1 \
-            background.border_color="$MUTED_HEX" \
+            background.border_width=0 \
             background.drawing=off \
             icon.padding_left=8 \
             icon.padding_right=6 \
@@ -195,7 +191,7 @@ in {
           for sid in ${lib.concatStringsSep " " spaces}; do
             sketchybar --add item space.$sid left \
               --subscribe space.$sid aerospace_workspace_change change-window-workspace \
-              --set space.$sid icon="$sid" icon.font="SF Pro:Bold:13.0" icon.color="$FG_HEX" label.drawing=off background.color="$SELECTION_HEX" background.corner_radius=8 background.height=${toString (lib.max 24 (bar.height - 6))} background.border_width=1 background.border_color="$MUTED_HEX" background.drawing=off padding_left=2 padding_right=2 click_script="aerospace workspace $sid" script="$HOME/.config/sketchybar/plugins/aerospace.sh $sid"
+              --set space.$sid icon="$sid" icon.font="SF Pro:Bold:13.0" icon.color="$FG_HEX" label.drawing=off background.color="$SELECTION_HEX" background.corner_radius=6 background.height=${toString (lib.max 24 (bar.height - 8))} background.border_width=0 background.drawing=off padding_left=3 padding_right=3 click_script="aerospace workspace $sid" script="$HOME/.config/sketchybar/plugins/aerospace.sh $sid"
           done
 
           sketchybar --add item front_app left --set front_app icon.drawing=on icon.font="$APP_FONT" label.color="$FG_HEX" icon.color="$ACCENT_HEX" script="$HOME/.config/sketchybar/plugins/front_app.sh" --subscribe front_app front_app_switched
@@ -203,7 +199,7 @@ in {
           sketchybar --add item clock right --set clock update_freq=10 icon="󰥔" icon.font="$NERD_FONT" icon.color="$FG_HEX" label.color="$FG_HEX" background.color="$SELECTION_HEX" background.drawing=on script="$HOME/.config/sketchybar/plugins/clock.sh"
           sketchybar --add item battery right --set battery update_freq=30 icon.font="$NERD_FONT" icon.color="$FG_HEX" label.color="$FG_HEX" background.color="$SELECTION_HEX" background.drawing=on script="$HOME/.config/sketchybar/plugins/battery.sh" --subscribe battery system_woke power_source_change
           sketchybar --add item volume right --set volume icon.font="$NERD_FONT" icon.color="$FG_HEX" label.color="$FG_HEX" background.color="$SELECTION_HEX" background.drawing=on script="$HOME/.config/sketchybar/plugins/volume.sh" --subscribe volume volume_change
-          sketchybar --add item wifi right --set wifi icon="󰖩" icon.font="$NERD_FONT" icon.color="$FG_HEX" label.drawing=off background.color="$SELECTION_HEX" background.drawing=on script="$HOME/.config/sketchybar/plugins/wifi.sh"
+          sketchybar --add item wifi right --set wifi icon="" icon.font="$NERD_FONT" icon.color="$FG_HEX" label.drawing=off background.color="$SELECTION_HEX" background.drawing=on script="$HOME/.config/sketchybar/plugins/wifi.sh"
 
           sketchybar --default popup.background.color="$BG_HEX" popup.background.border_color="$MUTED_HEX" popup.background.corner_radius=10 popup.blur_radius=${barBlurRadius}
           ${if bar.style == "minimal" then ''sketchybar --add item separator right --set separator icon="│" icon.font="SF Pro:Regular:14.0" icon.color="$MUTED_HEX" label.drawing=off background.drawing=off'' else ''
@@ -233,12 +229,12 @@ in {
         MUTED_HEX=$(to_hex "''${OMANIX_MUTED:-#AEAEB4}")
         SELECTION_HEX=$(to_hex "''${OMANIX_SELECTION:-#E6E6EA}")
         if [ "$1" = "$FOCUSED_WORKSPACE" ]; then
-          sketchybar --set $NAME background.drawing=on background.color="$ACCENT_HEX" background.border_color="$ACCENT_HEX" icon.color="0xffffffff" icon.font="SF Pro:Bold:14.0"
+          sketchybar --set $NAME background.drawing=on background.color="$ACCENT_HEX" background.border_width=0 icon.color="0xffffffff" icon.font="SF Pro:Bold:14.0"
         else
           if [ "$1" = "$TARGET_WORKSPACE" ] && [ -n "$TARGET_WORKSPACE" ]; then
-            sketchybar --set $NAME background.drawing=on background.color="$MUTED_HEX" background.border_color="$MUTED_HEX" icon.color="0xffffffff" icon.font="SF Pro:Semibold:13.0"
+            sketchybar --set $NAME background.drawing=on background.color="$MUTED_HEX" background.border_width=0 icon.color="0xffffffff" icon.font="SF Pro:Semibold:13.0"
           else
-            sketchybar --set $NAME background.drawing=on background.color="$SELECTION_HEX" background.border_color="$MUTED_HEX" icon.color="$FG_HEX" icon.font="SF Pro:Semibold:13.0"
+            sketchybar --set $NAME background.drawing=on background.color="$SELECTION_HEX" background.border_width=0 icon.color="$FG_HEX" icon.font="SF Pro:Semibold:13.0"
           fi
         fi
       '';
@@ -251,10 +247,16 @@ in {
         # Front app — shows focused app's icon (sketchybar-app-font) + name label
         if [ "$SENDER" = "front_app_switched" ]; then
           sketchybar --set $NAME label="$INFO"
+          ICON=""
           if command -v icon_map.sh >/dev/null 2>&1; then
             ICON=$(icon_map.sh "$INFO" 2>/dev/null)
-            [ -z "$ICON" ] && ICON=":default:"
+          fi
+          if [ -n "$ICON" ]; then
             sketchybar --set $NAME icon="$ICON" icon.font="''${APP_FONT:-sketchybar-app-font:Regular:16.0}"
+          else
+            # No app-specific glyph mapped: fall back to a generic app icon in the
+            # Nerd Font rather than an app-font key that doesn't exist ("" = nf-fa-window).
+            sketchybar --set $NAME icon="" icon.font="''${NERD_FONT:-JetBrainsMono Nerd Font:Regular:14.0}"
           fi
         fi
       '';
@@ -284,7 +286,7 @@ in {
       text = ''
         #!/bin/bash
         VOL=$(osascript -e 'output volume of (get volume settings)' 2>/dev/null || echo 50)
-        if [ "$VOL" = "0" ] || [ "$(osascript -e 'output muted of (get volume settings)' 2>/dev/null)" = "true" ]; then ICON="󰸈"; else ICON="󰕾"; fi
+        if [ "$VOL" = "0" ] || [ "$(osascript -e 'output muted of (get volume settings)' 2>/dev/null)" = "true" ]; then ICON=""; else ICON=""; fi
         sketchybar --set $NAME icon="$ICON" icon.font="''${NERD_FONT:-JetBrainsMono Nerd Font:Regular:14.0}" label="''${VOL}%"
       '';
     };
@@ -294,7 +296,7 @@ in {
       text = ''
         #!/bin/bash
         WIFI=$(networksetup -getairportnetwork en0 2>/dev/null | sed 's/You are not associated.*//')
-        if [ -n "$WIFI" ]; then ICON="󰖩"; else ICON="󰖪"; fi
+        if [ -n "$WIFI" ]; then ICON=""; else ICON=""; fi
         sketchybar --set $NAME icon="$ICON" icon.font="''${NERD_FONT:-JetBrainsMono Nerd Font:Regular:14.0}" label.drawing=off
       '';
     };
