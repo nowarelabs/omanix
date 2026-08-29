@@ -268,25 +268,27 @@ in {
   };
 
   # Goodies: hide the native Mac menu bar so SketchyBar is the only bar, remove window launcher friction,
-  # and one-click Accessibility grant for AeroSpace. Gated by the omanix.bar/omanix.tiling enables.
-  system.activationScripts.postActivation.text = lib.mkAfter ''
-    # --- Hide native Mac menu bar so Omanix's SketchyBar is the only bar (no competition) ---
-    if [ "${if bar.enable then "true" else "false"}" = "true" ]; then
+  # and one-click Accessibility grant for AeroSpace. Built conditionally at eval time so the
+  # generated activation script has no constant conditionals (shellcheck SC2050 → build failure).
+  system.activationScripts.postActivation.text = lib.mkAfter (
+    (lib.optionalString bar.enable ''
+      # Hide native Mac menu bar so Omanix's SketchyBar is the only bar (no competition)
       defaults write NSGlobalDomain _HIHideMenuBar -bool true 2>/dev/null || true
       defaults write NSGlobalDomain NSAutomaticWindowAnimationsEnabled -bool false 2>/dev/null || true
       defaults write -g NSWindowShouldDragOnGesture -bool true 2>/dev/null || true
       defaults write com.apple.spaces spans-displays -bool true 2>/dev/null || true
       killall ControlCenter 2>/dev/null || true
-    fi
+    '') +
     # Disable competing swipe/sidebar navigation regardless of tiling state
-    defaults write -g AppleEnableSwipeNavigateWithScrolls -bool false 2>/dev/null || true
-    defaults write NSGlobalDomain AppleEnableSwipeNavigateWithScrolls -bool false 2>/dev/null || true
-    defaults write com.apple.dock expose-group-by-app -bool false 2>/dev/null || true
-    killall SystemUIServer 2>/dev/null || true
-    killall Dock 2>/dev/null || true
-
-    # --- AeroSpace Accessibility: one-click grant when tiling is enabled ---
-    if [ "${if tiling.enable then "true" else "false"}" = "true" ]; then
+    ''
+      defaults write -g AppleEnableSwipeNavigateWithScrolls -bool false 2>/dev/null || true
+      defaults write NSGlobalDomain AppleEnableSwipeNavigateWithScrolls -bool false 2>/dev/null || true
+      defaults write com.apple.dock expose-group-by-app -bool false 2>/dev/null || true
+      killall SystemUIServer 2>/dev/null || true
+      killall Dock 2>/dev/null || true
+    '' +
+    (lib.optionalString tiling.enable ''
+      # AeroSpace Accessibility: one-click grant when tiling is enabled
       AEROSPACE_BIN=$(command -v aerospace 2>/dev/null || echo "/opt/homebrew/bin/aerospace")
       if [ -x "$AEROSPACE_BIN" ]; then
         if ! "$AEROSPACE_BIN" list-workspaces --all >/dev/null 2>&1; then
@@ -306,6 +308,6 @@ in {
           echo "AeroSpace Accessibility: OK"
         fi
       fi
-    fi
-  '';
+    '')
+  );
 }
