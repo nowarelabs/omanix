@@ -54,6 +54,7 @@ private func openSettingsPane(_ pane: String) {
 final class ClockRenderer: OmanixMenubarRenderer {
     private var item: NSStatusItem?
     weak var host: (any OmanixMenubarHost)?
+    private var eventToken: AnyObject?
 
     var primaryAction: Selector? { nil }
     var actionTarget: AnyObject? { self }
@@ -65,17 +66,23 @@ final class ClockRenderer: OmanixMenubarRenderer {
         status.button?.action = #selector(clockClicked(_:))
         status.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
         item = status
-        refresh()
+        eventToken = SystemEvents.observeClock { [weak self] date in
+            self?.render(date: date)
+        }
     }
 
     func refresh() {
+        render(date: Date())
+    }
+
+    private func render(date: Date) {
         let prefs = PluginStore.shared.menuBarPrefs()
         item?.button?.image = nil
 
         if prefs.clockFormat == "analog" {
             item?.button?.title = ""
             item?.button?.image = templateImage("clock")
-            item?.button?.toolTip = dateString(prefs: prefs)
+            item?.button?.toolTip = dateString(prefs: prefs, date: date)
             return
         }
 
@@ -86,18 +93,22 @@ final class ClockRenderer: OmanixMenubarRenderer {
         } else {
             f.dateFormat = prefs.showDate ? "EEE d MMM  h:mm a" : "h:mm a"
         }
-        item?.button?.title = f.string(from: Date())
-        item?.button?.toolTip = dateString(prefs: prefs)
+        item?.button?.title = f.string(from: date)
+        item?.button?.toolTip = dateString(prefs: prefs, date: date)
     }
 
-    private func dateString(prefs: MenubarPrefs) -> String {
+    private func dateString(prefs: MenubarPrefs, date: Date) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = prefs.showDate ? "EEEE, MMMM d" : "EEEE, MMMM d, yyyy"
-        return f.string(from: Date())
+        return f.string(from: date)
     }
 
     func uninstall() {
+        if let token = eventToken {
+            SystemEvents.unobserveClock(token)
+            eventToken = nil
+        }
         if let item { NSStatusBar.system.removeStatusItem(item) }
         item = nil
     }
@@ -126,8 +137,10 @@ final class ClockRenderer: OmanixMenubarRenderer {
 final class BatteryRenderer: OmanixMenubarRenderer {
     private var item: NSStatusItem?
     weak var host: (any OmanixMenubarHost)?
-    private var text = "—"
+    private var percent = -1
     private var charging = false
+    private var onAC = false
+    private var eventToken: AnyObject?
 
     var primaryAction: Selector? { nil }
     var actionTarget: AnyObject? { self }
@@ -139,30 +152,45 @@ final class BatteryRenderer: OmanixMenubarRenderer {
         status.button?.action = #selector(openMenu(_:))
         status.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
         item = status
-        refresh()
+        eventToken = SystemEvents.observeBattery { [weak self] state in
+            self?.render(state)
+        }
     }
 
     func refresh() {
-        let out = PluginShell.run("/usr/bin/pmset", ["-g", "batt"])
-        guard let raw = out.split(separator: "\n").first(where: { $0.contains("%") }) else { return }
-        let clean = String(raw).replacingOccurrences(of: "\t", with: " ")
-        guard let token = clean.split(separator: " ").first(where: { $0.hasSuffix("%") }) else { return }
-        text = String(token)
-        charging = clean.contains("charging") || clean.contains("AC attached")
-        if clean.contains("charged") { text = "100%" }
+        render(BatteryMonitor.shared.readState())
+    }
+
+    func uninstall() {
+        if let token = eventToken {
+            SystemEvents.unobserveBattery(token)
+            eventToken = nil
+        }
+        if let item { NSStatusBar.system.removeStatusItem(item) }
+        item = nil
+    }
+
+    private func render(_ state: BatteryState) {
+        percent = state.percent
+        charging = state.charging
+        onAC = state.onAC
+        let text: String
+        if state.percent < 0 {
+            text = "—"
+        } else if state.onAC && !state.charging {
+            text = "100%"
+        } else {
+            text = "\(max(0, state.percent))%"
+        }
         let showPercent = PluginStore.shared.menuBarPrefs().showBatteryPercent
         item?.button?.image = templateImage(charging ? "bolt.fill" : "battery.75percent")
         item?.button?.title = showPercent ? text : ""
         item?.button?.toolTip = "Battery \(text)\(charging ? " — charging" : "")"
     }
 
-    func uninstall() {
-        if let item { NSStatusBar.system.removeStatusItem(item) }
-        item = nil
-    }
-
     @objc private func openMenu(_ sender: NSStatusBarButton) {
         let menu = NSMenu()
+        let text = percent < 0 ? "—" : "\(max(0, percent))%"
         let header = NSMenuItem(title: "Battery — \(text)", action: nil, keyEquivalent: "")
         header.isEnabled = false
         menu.addItem(header)
@@ -257,6 +285,7 @@ final class WifiRenderer: OmanixMenubarRenderer {
     weak var host: (any OmanixMenubarHost)?
     private var on = true
     private var name = ""
+    private var eventToken: AnyObject?
 
     var primaryAction: Selector? { nil }
     var actionTarget: AnyObject? { self }
@@ -268,31 +297,29 @@ final class WifiRenderer: OmanixMenubarRenderer {
         status.button?.action = #selector(openMenu(_:))
         status.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
         item = status
-        refresh()
+        eventToken = SystemEvents.observeWifi { [weak self] state in
+            self?.render(state)
+        }
     }
 
     func refresh() {
-        on = true
-        name = ""
-        for interface in ["en0", "en1"] {
-            let power = PluginShell.run("/usr/sbin/networksetup", ["-getairportpower", interface])
-            if power.lowercased().contains("on") {
-                let out = PluginShell.run("/usr/sbin/networksetup", ["-getairportnetwork", interface])
-                if let line = out.split(separator: "\n").first(where: { $0.contains("Current Wi-Fi Network:") }),
-                   let colon = line.firstIndex(of: ":") {
-                    let tail = line[line.index(after: colon)...].trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !tail.isEmpty { name = String(tail); break }
-                }
-            } else if power.lowercased().contains("off") {
-                on = false
-            }
-        }
-        item?.button?.image = templateImage(on ? "wifi" : "wifi.slash")
+        render(WifiMonitor.shared.readState())
     }
 
     func uninstall() {
+        if let token = eventToken {
+            SystemEvents.unobserveWifi(token)
+            eventToken = nil
+        }
         if let item { NSStatusBar.system.removeStatusItem(item) }
         item = nil
+    }
+
+    private func render(_ state: WifiState) {
+        on = state.powerOn
+        name = state.ssid
+        item?.button?.image = templateImage(on ? "wifi" : "wifi.slash")
+        item?.button?.toolTip = on ? (name.isEmpty ? "Wi-Fi: On" : "Wi-Fi: \(name)") : "Wi-Fi: Off"
     }
 
     @objc private func openMenu(_ sender: NSStatusBarButton) {
@@ -311,8 +338,7 @@ final class WifiRenderer: OmanixMenubarRenderer {
     }
 
     @objc private func toggleWifi() {
-        _ = PluginShell.run("/usr/sbin/networksetup", ["-setairportpower", "en0", on ? "off" : "on"])
-        refresh()
+        SystemEvents.setWifiPowerOn(!on)
     }
     @objc private func openWifi() { openSettingsPane("com.apple.settings.Wi-Fi") }
 }

@@ -35,4 +35,41 @@ enum SystemEvents {
     static func setVolumeMuted(_ muted: Bool) {
         volumeMonitor.setMuted(muted)
     }
+
+    // MARK: - Battery
+
+    @discardableResult
+    static func observeBattery(_ onChange: @escaping (BatteryState) -> Void) -> AnyObject {
+        BatteryMonitor.shared.subscribe(queue: .main, onChange: onChange)
+    }
+
+    static func unobserveBattery(_ token: AnyObject) {
+        BatteryMonitor.shared.cancel(token)
+    }
+
+    // MARK: - Wi-Fi
+
+    @discardableResult
+    static func observeWifi(_ onChange: @escaping (WifiState) -> Void) -> AnyObject {
+        WifiMonitor.shared.subscribe(queue: .main, onChange: onChange)
+    }
+
+    static func unobserveWifi(_ token: AnyObject) {
+        WifiMonitor.shared.cancel(token)
+    }
+
+    static func setWifiPowerOn(_ powerOn: Bool) {
+        WifiMonitor.shared.setPowerOn(powerOn)
+    }
+
+    // MARK: - Clock
+
+    @discardableResult
+    static func observeClock(_ onChange: @escaping (Date) -> Void) -> AnyObject {
+        ClockTicker.shared.subscribe(queue: .main, onChange: onChange)
+    }
+
+    static func unobserveClock(_ token: AnyObject) {
+        ClockTicker.shared.cancel(token)
+    }
 }
