@@ -511,27 +511,27 @@ final class OmanixViewModel: ObservableObject {
     }
 
     /// macOS tiling preferences are declared in configuration.nix (darwin/omatiles.nix)
-    /// AND applied live to com.apple.WindowManager so the change works immediately,
-    /// regardless of when a rebuild next runs.
+    /// AND applied live via the Nix-owned `omanix state apply omatiles` path, so the
+    /// change works immediately, regardless of when a rebuild next runs.
     func setOmatilesEdgeDrag(_ enabled: Bool) {
         omatilesEdgeDrag = enabled
         do {
             try store.setOmatilesEdgeDrag(enabled); needsRebuild = true
-            WindowManagerDefaults.apply(edgeDrag: enabled)
+            try store.applyOmatilesLive()
         } catch { omatilesEdgeDrag = !enabled; showMessage("Could not set drag-to-edge tiling: \(error.localizedDescription)", .error) }
     }
     func setOmatilesKeyboardShortcuts(_ enabled: Bool) {
         omatilesKeyboardShortcuts = enabled
         do {
             try store.setOmatilesKeyboardShortcuts(enabled); needsRebuild = true
-            WindowManagerDefaults.apply(accelerator: enabled)
+            try store.applyOmatilesLive()
         } catch { omatilesKeyboardShortcuts = !enabled; showMessage("Could not set system tiling shortcuts: \(error.localizedDescription)", .error) }
     }
     func setOmatilesMargins(_ enabled: Bool) {
         omatilesMargins = enabled
         do {
             try store.setOmatilesMargins(enabled); needsRebuild = true
-            WindowManagerDefaults.apply(margins: enabled)
+            try store.applyOmatilesLive()
         } catch { omatilesMargins = !enabled; showMessage("Could not set tiled margins: \(error.localizedDescription)", .error) }
     }
     func toggleOmatilesBindings() {

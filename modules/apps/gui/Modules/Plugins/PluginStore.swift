@@ -42,8 +42,13 @@ final class PluginStore {
 
     static let shared = PluginStore()
 
-    private let fileURL = URL(fileURLWithPath: NSHomeDirectory() + "/.config/omanix/plugins.json")
-    private let prefsURL = URL(fileURLWithPath: NSHomeDirectory() + "/.config/omanix/menubar.json")
+    /// On-disk location of the plugin registry (watched by module runtimes).
+    static var configDir: String {
+        NSHomeDirectory() + "/.config/omanix"
+    }
+
+    private let fileURL = URL(fileURLWithPath: PluginStore.configDir + "/plugins.json")
+    private let prefsURL = URL(fileURLWithPath: PluginStore.configDir + "/menubar.json")
 
     /// Persisted records; a plugin missing from this list falls back to its default.
     private(set) var records: [PluginRecord] = []
@@ -52,6 +57,14 @@ final class PluginStore {
     private(set) var prefs: MenubarPrefs = .default
 
     init() {
+        load()
+        loadPrefs()
+    }
+
+    /// Re-reads plugins.json + menubar.json from disk. Module runtimes call this
+    /// when their file watcher fires so GUI toggles (which write these files)
+    /// take effect in the standalone --omabar/--omatiles processes without a restart.
+    func reload() {
         load()
         loadPrefs()
     }

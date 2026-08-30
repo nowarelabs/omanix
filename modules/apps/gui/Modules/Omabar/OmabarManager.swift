@@ -9,9 +9,16 @@
 // A plugin becomes a status item by returning an OmanixMenubarRenderer from its
 // `menubarRenderer()`; the manager installs, refreshes, and tears it down via the
 // OmanixMenubarHost surface. Nothing here knows about a specific plugin.
+//
+// Live updates: the manager watches ~/.config/omanix (plugins.json + menubar.json).
+// The GUI writes those files when the user toggles a plugin or reorders the bar.
+// The standalone launchd --omabar process is a separate instance that would never
+// notice those files otherwise, so the watcher reloads PluginStore and re-applies
+// the bar members/format immediately.
 
 import AppKit
 import Combine
+import Dispatch
 
 @MainActor
 final class OmabarManager: NSObject, OmanixMenubarHost {
@@ -22,6 +29,9 @@ final class OmabarManager: NSObject, OmanixMenubarHost {
 
     /// id -> live renderer for every enabled plugin currently shown.
     private var renderers: [String: any OmanixMenubarRenderer] = [:]
+
+    /// File-system watcher for ~/.config/omanix (plugin enable/order + bar prefs).
+    private var watcher: DispatchSourceFileSystemObject?
 
     private override init() {
         super.init()
@@ -34,6 +44,7 @@ final class OmabarManager: NSObject, OmanixMenubarHost {
         guard !isRunning else { return true }
         isRunning = true
         installAll()
+        startWatching()
         return true
     }
 
@@ -44,6 +55,8 @@ final class OmabarManager: NSObject, OmanixMenubarHost {
     }
 
     func stop() {
+        watcher?.cancel()
+        watcher = nil
         removeAll()
         isRunning = false
     }
@@ -60,6 +73,37 @@ final class OmabarManager: NSObject, OmanixMenubarHost {
         for renderer in renderers.values {
             renderer.refresh()
         }
+    }
+
+    // MARK: - File watching (live GUI -> module-sync)
+
+    /// Watches the plugin registry directory and re-applies the bar whenever the GUI
+    /// (or anything else) writes plugins.json / menubar.json. Idempotent.
+    private func startWatching() {
+        guard watcher == nil else { return }
+        let fd = open(PluginStore.configDir, O_EVTONLY)
+        guard fd >= 0 else { return }
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: fd,
+            eventMask: [.write, .rename, .delete],
+            queue: .main
+        )
+        source.setEventHandler { [weak self] in
+            // The GUI writes atomically (tmp + rename): give it a beat, then re-read.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self?.registryChanged()
+            }
+        }
+        source.setCancelHandler {
+            close(fd)
+        }
+        source.resume()
+        watcher = source
+    }
+
+    private func registryChanged() {
+        PluginStore.shared.reload()
+        refresh()
     }
 
     // MARK: - Host surface for renderers

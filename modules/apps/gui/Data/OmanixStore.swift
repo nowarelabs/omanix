@@ -38,6 +38,9 @@ final class OmanixStore {
     }
 
     var configPath: String { "\(omanixDir)/configuration.nix" }
+    /// Machine-produced option values written by `omanix state set`. configuration.nix
+    /// imports this file; the GUI reads it for current values, never editing config.nix.
+    var stateFilePath: String { "\(omanixDir)/state.nix" }
 
     // MARK: - Installed (declared) packages
 
@@ -252,17 +255,25 @@ final class OmanixStore {
         return Date().timeIntervalSince(last) > 7 * 24 * 3600
     }
 
-    // MARK: - Configuration edits
+    // MARK: - Configuration edits (via `omanix state set` — Nix-owned mutation)
 
-    /// Toggles a widget option in configuration.nix.
+    /// Writes a validated option through the `omanix state set` CLI. The CLI owns the
+    /// schema + type checking and writes only the generated state.nix — never
+    /// configuration.nix — so the GUI performs no free-form Nix text surgery.
+    private func setState(_ option: String, _ value: String) throws {
+        let path = findOmanixBinary()
+        let output = runSync([path, "state", "set", option, value])
+        guard output.terminationStatus == 0 else {
+            throw OmanixError.commandFailed(output.stderr.isEmpty ? output.stdout : output.stderr)
+        }
+    }
+
     func setWidgetEnabled(_ id: String, _ enabled: Bool) throws {
-        let option = "omanix.widgets.\(id).enable"
-        let value = enabled ? "true" : "false"
-        try rewriteOption(option, toLiteral: value, in: configPath)
+        try setState("omanix.widgets.\(id).enable", enabled ? "true" : "false")
     }
 
     func setTheme(_ id: String) throws {
-        try rewriteOption("omanix.theme", toLiteral: "\"\(id)\"", in: configPath)
+        try setState("omanix.theme", id)
     }
 
     func currentThemeId() -> String {
@@ -271,19 +282,13 @@ final class OmanixStore {
         if let data = FileManager.default.contents(atPath: themeJSON),
            let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let name = obj["name"] as? String { return name }
-        // 2. Fallback: parse configuration.nix
-        if let text = try? String(contentsOfFile: configPath, encoding: .utf8),
-           let range = text.range(of: #"omanix\.theme\s*=\s*"([^"]+)""#, options: .regularExpression) {
-            let substr = String(text[range])
-            if let q1 = substr.firstIndex(of: "\""), let q2 = substr.lastIndex(of: "\""), q1 != q2 {
-                return String(substr[substr.index(after: q1)..<q2])
-            }
-        }
+        // 2. Fallback: state.nix (machine-written) then configuration.nix (human-written)
+        if let name = readOption("omanix.theme") { return name }
         return "tokyo-night"
     }
 
     func setOmabarOption(_ key: String, _ value: String) throws {
-        try rewriteOption("omanix.omabar.\(key)", toLiteral: value, in: configPath)
+        try setState("omanix.omabar.\(key)", value)
     }
 
     func setOmabarEnabled(_ v: Bool) throws { try setOmabarOption("enable", v ? "true" : "false") }
@@ -294,7 +299,7 @@ final class OmanixStore {
     func setOmabarShowApps(_ v: Bool) throws { try setOmabarOption("showApps", v ? "true" : "false") }
 
     func setOmatilesOption(_ key: String, _ value: String) throws {
-        try rewriteOption("omanix.omatiles.\(key)", toLiteral: value, in: configPath)
+        try setState("omanix.omatiles.\(key)", value)
     }
 
     func setOmatilesEnabled(_ v: Bool) throws { try setOmatilesOption("enable", v ? "true" : "false") }
@@ -303,19 +308,38 @@ final class OmanixStore {
     func setOmatilesKeyboardShortcuts(_ v: Bool) throws { try setOmatilesOption("enableKeyboardShortcuts", v ? "true" : "false") }
     func setOmatilesMargins(_ v: Bool) throws { try setOmatilesOption("enableMargins", v ? "true" : "false") }
 
+    /// Applies the resolved omatiles declarative state to the live system via the
+    /// Nix-owned `omanix state apply omatiles` path (mirrors the activation script).
+    /// Best-effort — throws only if the CLI itself fails.
+    func applyOmatilesLive() throws {
+        let path = findOmanixBinary()
+        let output = runSync([path, "state", "apply", "omatiles"])
+        guard output.terminationStatus == 0 else {
+            throw OmanixError.commandFailed(output.stderr.isEmpty ? output.stdout : output.stderr)
+        }
+    }
+
     // MARK: - Config state readers (bar + tiling)
 
-    /// Reads a literal `option = value;` from configuration.nix.
+    /// Reads a literal `option = value;` from state.nix first (machine-written), then
+    /// configuration.nix (human-written). State wins because it is the newer source for
+    /// app-toggled options.
     func readOption(_ option: String) -> String? {
-        guard let text = try? String(contentsOfFile: configPath, encoding: .utf8) else { return nil }
-        guard let range = text.range(
-            of: #"\#(NSRegularExpression.escapedPattern(for: option))\s*=\s*([^;]+);"#,
-            options: .regularExpression
-        ) else { return nil }
-        let line = String(text[range])
-        guard let eq = line.firstIndex(of: "=") else { return nil }
-        let value = line[line.index(after: eq)...].trimmingCharacters(in: .whitespacesAndNewlines)
-        return value.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+        if let v = literalOption(option, inFile: stateFilePath) { return v }
+        return literalOption(option, inFile: configPath)
+    }
+
+    /// Reads a literal `option = value;` assignment from a single Nix file.
+    private func literalOption(_ option: String, inFile path: String) -> String? {
+        guard let text = try? String(contentsOfFile: path, encoding: .utf8) else { return nil }
+        let pattern = #"\#(NSRegularExpression.escapedPattern(for: option))\s*=\s*([^;]+);"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let ns = text as NSString
+        guard let match = regex.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)) else { return nil }
+        let value = ns.substring(with: match.range(at: 1))
+        return value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
     }
 
     func readBoolOption(_ option: String) -> Bool? {
@@ -346,33 +370,42 @@ final class OmanixStore {
         )
     }
 
-    /// Rewrites `option = ...;` in a Nix config file.
-    /// In-place when the assignment already exists; otherwise inserts the new
-    /// option just before the module's final `}` — never at end of file, so a
-    /// top-level `option = value;` syntax error is impossible. Any stray lines
-    /// already sitting after the final `}` (from an older build) are dropped.
-    private func rewriteOption(_ option: String, toLiteral value: String, in path: String) throws {
-        var original = try String(contentsOfFile: path, encoding: .utf8)
+    /// Locates the `omanix` CLI for Nix-owned state mutations, preferring the flake
+    /// dir then PATH.
+    private func findOmanixBinary() -> String {
+        let local = "\(omanixDir)/bin/omanix"
+        if FileManager.default.isExecutableFile(atPath: local) { return local }
+        return "omanix"
+    }
 
-        // 1. Existing assignment: rewrite its value in place.
-        let pair = "\(option) = \(value);"
-        if let range = original.range(of: "\(option) = .*;", options: .regularExpression) {
-            original.replaceSubrange(range, with: pair)
-        } else {
-            // 2. Missing: insert inside the module, just above its closing brace.
-            let lines = original.components(separatedBy: "\n")
-            if let close = lines.lastIndex(where: { $0.trimmingCharacters(in: .whitespaces) == "}" }) {
-                var kept = Array(lines[..<close])
-                kept.append("  \(option) = \(value);")
-                kept.append(lines[close])
-                original = kept.joined(separator: "\n") + "\n"
-            } else {
-                // No module found — best effort so we never silently drop a setting.
-                if !original.hasSuffix("\n") { original += "\n" }
-                original += "  \(option) = \(value);\n"
-            }
+    /// Synchronous process runner: executes a command and returns stdout, stderr, and
+    /// the exit status. Only used for tiny, fast CLI mutations (omanix state set), so
+    /// blocking is acceptable.
+    private func runSync(_ arguments: [String]) -> (terminationStatus: Int32, stdout: String, stderr: String) {
+        let launchPath = arguments.first ?? "omanix"
+        let args = Array(arguments.dropFirst())
+        let process = Process()
+        let stdout = Pipe()
+        let stderr = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = [launchPath] + args
+        process.environment = ProcessInfo.processInfo.environment.merging(
+            ["PATH": processPATH, "FLAKE_DIR": omanixDir]
+        ) { _, new in new }
+        process.standardOutput = stdout
+        process.standardError = stderr
+
+        do { try process.run() } catch {
+            return (1, "", "Failed to launch \(launchPath): \(error.localizedDescription)")
         }
-        try original.write(toFile: path, atomically: true, encoding: .utf8)
+        process.waitUntilExit()
+        let outData = stdout.fileHandleForReading.readDataToEndOfFile()
+        let errData = stderr.fileHandleForReading.readDataToEndOfFile()
+        return (
+            process.terminationStatus,
+            String(data: outData, encoding: .utf8) ?? "",
+            String(data: errData, encoding: .utf8) ?? ""
+        )
     }
 
     // MARK: - Process helpers

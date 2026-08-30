@@ -15,6 +15,10 @@
 # Contributor rule: packages/ is ONLY for Omanix adapters. Before any packages/foo.nix,
 # nix search + brew search miss must be pasted in PR description (conventions.md:6).
 { pkgs, ... }: {
+  # Machine-produced option values (written by the Omanix GUI / `omanix state set`).
+  # This file is generated and validated — the app never hand-edits this config directly.
+  imports = [ ./state.nix ];
+
   omanix.host = "Vances-MacBook-Pro"; # `scutil --get LocalHostName`
   omanix.user = "vanceworks"; # `whoami` — also system.primaryUser
   omanix.theme = "omanix"; # signature Omakase light — see `ls themes/` and docs/themes.md (13 themes: omanix + 12)

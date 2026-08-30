@@ -47,6 +47,7 @@ Commands:
   theme new <name>     Scaffold new theme (community)
   theme per-app <app> <key> <val>  Per-app color override
   open                 Open Omanix app
+  state                Read/write declarative state (omanix state set <opt> <val>)
   ask <prompt>         Ask AI (frontier Claude)
   ask --local <prompt> Ask AI (local Qwen, offline)
   version              Print version
@@ -76,6 +77,7 @@ case "$cmd" in
   list-apps)        exec "$FLAKE_DIR/libexec/omanix-list-apps.sh" "$@" ;;
   list-packages)    exec "$FLAKE_DIR/libexec/omanix-list-packages.sh" "$@" ;;
   open)             exec "$FLAKE_DIR/libexec/omanix-open.sh" "$@" ;;
+  state)            exec "$FLAKE_DIR/libexec/omanix-state.sh" "$@" ;;
   ask)              exec "$FLAKE_DIR/libexec/omanix-ask.sh" "$@" ;;
   version)          exec "$FLAKE_DIR/libexec/omanix-version.sh" "$@" ;;
   help|--help|-h|"") usage ;;

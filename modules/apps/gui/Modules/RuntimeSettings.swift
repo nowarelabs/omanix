@@ -1,8 +1,9 @@
 // Modules/RuntimeSettings.swift
 // Runtime reads of the declarative `omanix.omabar.*` / `omanix.omatiles.*` options
-// from ~/.omanix/configuration.nix. The GUI Settings pages write these same options
-// through OmanixStore; this module is what lets the Omabar/Omatiles runtimes obey
-// them without a rebuild (and what launchd module-mode uses directly).
+// from ~/.omanix/state.nix (machine-written) then configuration.nix. The GUI writes
+// these options through `omanix state set` -> state.nix; this module is what lets the
+// Omabar/Omatiles runtimes obey them without a rebuild (and what launchd module-mode
+// uses directly).
 //
 // Omabar now hosts status items in the NATIVE macOS menu bar, and Omatiles now
 // bridges onto macOS Sequoia's built-in tiling — so neither needs theme color
@@ -14,27 +15,36 @@ import Foundation
 
 enum RuntimeSettings {
 
-    private static let configPath = NSHomeDirectory() + "/.omanix/configuration.nix"
+    private static let omanixDir = NSHomeDirectory() + "/.omanix"
+    private static let configPath = omanixDir + "/configuration.nix"
+    private static let statePath = omanixDir + "/state.nix"
 
     // MARK: - Configuration reading
 
-    /// Raw text of configuration.nix (nil when unreadable).
-    private static func configText() -> String? {
-        try? String(contentsOfFile: configPath, encoding: .utf8)
+    /// Raw text of a Nix file (nil when unreadable).
+    private static func nixText(_ path: String) -> String? {
+        try? String(contentsOfFile: path, encoding: .utf8)
     }
 
-    /// Reads a literal `option = value;` from configuration.nix, stripping quotes.
+    /// Reads a literal `option = value;` from state.nix first (machine-written,
+    /// newer source), then configuration.nix (human-written), stripping quotes.
     static func option(_ path: String) -> String? {
-        guard let text = configText() else { return nil }
+        for file in [statePath, configPath] {
+            if let v = literal(path, inFile: file) { return v }
+        }
+        return nil
+    }
+
+    /// Extracts the value of one `option = value;` assignment from a Nix file.
+    private static func literal(_ path: String, inFile file: String) -> String? {
+        guard let text = nixText(file) else { return nil }
         let escaped = NSRegularExpression.escapedPattern(for: path)
-        guard let range = text.range(
-            of: #"\#(escaped)\s*=\s*([^;]+);"#,
-            options: .regularExpression
-        ) else { return nil }
-        let line = String(text[range])
-        guard let eq = line.firstIndex(of: "=") else { return nil }
-        let value = line[line.index(after: eq)...].trimmingCharacters(in: .whitespacesAndNewlines)
-        return value.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+        guard let regex = try? NSRegularExpression(pattern: #"\#(escaped)\s*=\s*([^;]+);"#) else { return nil }
+        let ns = text as NSString
+        guard let match = regex.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)) else { return nil }
+        return ns.substring(with: match.range(at: 1))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
     }
 
     static func bool(_ path: String, default defaultVal: Bool) -> Bool {
