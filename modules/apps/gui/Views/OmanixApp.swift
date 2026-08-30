@@ -56,6 +56,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             let tiles = RuntimeSettings.Omatiles.load()
             if tiles.enable { OmatilesEngine.shared.start(settings: tiles) }
+
+            // Bring the live macOS WindowManager tiling prefs in line with the current
+            // declarative config even if no rebuild has run yet (so ⌃⌥+arrow works now).
+            let state = OmanixStore().currentOmatilesState()
+            WindowManagerDefaults.apply(
+                edgeDrag: state.enableEdgeDrag,
+                accelerator: state.enableKeyboardShortcuts,
+                margins: state.enableMargins
+            )
         }
     }
 }

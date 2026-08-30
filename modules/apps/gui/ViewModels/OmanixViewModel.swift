@@ -510,22 +510,29 @@ final class OmanixViewModel: ObservableObject {
         catch { omatilesEnabled = !enabled; showMessage("Could not set Omatiles: \(error.localizedDescription)", .error) }
     }
 
-    /// macOS tiling preferences are applied by the activation script (darwin/omatiles.nix),
-    /// so each change marks the system for rebuild.
+    /// macOS tiling preferences are declared in configuration.nix (darwin/omatiles.nix)
+    /// AND applied live to com.apple.WindowManager so the change works immediately,
+    /// regardless of when a rebuild next runs.
     func setOmatilesEdgeDrag(_ enabled: Bool) {
         omatilesEdgeDrag = enabled
-        do { try store.setOmatilesEdgeDrag(enabled); needsRebuild = true }
-        catch { omatilesEdgeDrag = !enabled; showMessage("Could not set drag-to-edge tiling: \(error.localizedDescription)", .error) }
+        do {
+            try store.setOmatilesEdgeDrag(enabled); needsRebuild = true
+            WindowManagerDefaults.apply(edgeDrag: enabled)
+        } catch { omatilesEdgeDrag = !enabled; showMessage("Could not set drag-to-edge tiling: \(error.localizedDescription)", .error) }
     }
     func setOmatilesKeyboardShortcuts(_ enabled: Bool) {
         omatilesKeyboardShortcuts = enabled
-        do { try store.setOmatilesKeyboardShortcuts(enabled); needsRebuild = true }
-        catch { omatilesKeyboardShortcuts = !enabled; showMessage("Could not set system tiling shortcuts: \(error.localizedDescription)", .error) }
+        do {
+            try store.setOmatilesKeyboardShortcuts(enabled); needsRebuild = true
+            WindowManagerDefaults.apply(accelerator: enabled)
+        } catch { omatilesKeyboardShortcuts = !enabled; showMessage("Could not set system tiling shortcuts: \(error.localizedDescription)", .error) }
     }
     func setOmatilesMargins(_ enabled: Bool) {
         omatilesMargins = enabled
-        do { try store.setOmatilesMargins(enabled); needsRebuild = true }
-        catch { omatilesMargins = !enabled; showMessage("Could not set tiled margins: \(error.localizedDescription)", .error) }
+        do {
+            try store.setOmatilesMargins(enabled); needsRebuild = true
+            WindowManagerDefaults.apply(margins: enabled)
+        } catch { omatilesMargins = !enabled; showMessage("Could not set tiled margins: \(error.localizedDescription)", .error) }
     }
     func toggleOmatilesBindings() {
         omatilesBindings.toggle()
