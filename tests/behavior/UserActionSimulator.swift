@@ -113,10 +113,12 @@ enum UserActionSimulator {
         try proc.run()
         proc.waitUntilExit()
         // Give the window a moment to appear and find its PID.
-        Thread.sleep(forTimeInterval: 0.5)
+        Thread.sleep(forTimeInterval: 0.8)
         guard let found = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier?.contains(app) == true || $0.localizedName == app }) else {
             throw UserActionError.failed("Could not find \(app) after launch")
         }
+        found.activate(options: [.activateIgnoringOtherApps])
+        Thread.sleep(forTimeInterval: 0.5)
         return found.processIdentifier
     }
 
