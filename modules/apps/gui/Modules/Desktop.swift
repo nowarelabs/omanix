@@ -66,14 +66,8 @@ enum Desktop {
         return windows
     }
 
-    /// Distinct app owner names currently on screen, in draw order.
-    static func visibleAppNames(excludingOwnPID ownPID: Int32 = ProcessInfo.processInfo.processIdentifier) -> [String] {
-        var seen = Set<String>()
-        return snapshot(excludingOwnPID: ownPID).map(\.owner).filter { seen.insert($0).inserted }
-    }
-
     /// A running app on screen, keyed by pid so multiple windows of the same app
-    /// collapse into one pill (the Omabar shows apps, not windows).
+    /// collapse into one menu entry (the Omabar app switcher shows apps, not windows).
     struct VisibleApp {
         let pid: pid_t
         let name: String

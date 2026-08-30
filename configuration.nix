@@ -5,8 +5,8 @@
 #   omanix.host                 — machine hostname (`scutil --get LocalHostName`)
 #   omanix.user                 — primary user (`whoami`)
 #   omanix.theme                — terminal+app theme (see `ls themes/` and `omanix theme list`)
-#   omanix.omabar.*             — native menu bar (Omabar): position, transparency, blur, style, height, items
-#   omanix.omatiles.*           — native window tiling (Omatiles): enable, layout, gaps, bindings, floating apps
+#   omanix.omabar.*             — status items inside the NATIVE menu bar (Omabar): enable, showClock/Battery/Volume/Wifi/Apps
+#   omanix.omatiles.*           — macOS Sequoia window tiling (Omatiles): enable, bindings, enableEdgeDrag/KeyboardShortcuts/Margins
 #   omanix.themeOverrides.*     — global per-color overrides (accent, background, etc.)
 #   omanix.perApp.*             — per-application overrides (ghostty) — alias theme.perApp.*
 #   Use Store GUI (Super → Omanix Store → Themes) or `omanix theme set <name>` + `omanix rebuild`

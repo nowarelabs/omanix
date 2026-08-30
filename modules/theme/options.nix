@@ -1,141 +1,93 @@
 # modules/theme/options.nix — theme, bar, and tiling options (the green user surface)
-# Extends core omanix.theme enum with per-theme overrides and the native SwiftUI menu bar
-# (Omabar) + window-tiling (Omatiles) modules running inside the Omanix app.
+# Extends core omanix.theme enum with per-theme overrides and the native-macOS
+# Omabar (status items in Apple's menu bar) + Omatiles (bridge onto macOS's own
+# Sequoia window tiling). Both build on the OS instead of replacing it.
 # See docs/themes.md and principles.md:3
 { lib, ... }: {
-  # --- Omabar: native macOS menu bar replacement (SwiftUI module inside the Omanix app) ---
+  # --- Omabar: Omanix items INSIDE the native macOS menu bar (status items) ---
   options.omanix.omabar = {
     enable = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Draw the Omanix menu bar with the native SwiftUI Omabar module (replaces the native macOS menu bar).";
+      description = "Install the Omabar status items (clock, battery, volume, Wi-Fi, running apps) into the native macOS menu bar.";
       example = false;
-    };
-
-    position = lib.mkOption {
-      type = lib.types.enum [ "top" "bottom" ];
-      default = "top";
-      description = "Menu bar position on screen. Flows around the notch on MacBook Pro.";
-      example = "bottom";
-    };
-
-    height = lib.mkOption {
-      type = lib.types.ints.unsigned;
-      default = 40;
-      description = "Menu bar height in points.";
-      example = 48;
-    };
-
-    transparent = lib.mkOption {
-      type = lib.types.bool;
-      default = false;
-      description = "Whether the menu bar background is fully transparent (no dark tint).";
-      example = true;
-    };
-
-    blur = lib.mkOption {
-      type = lib.types.bool;
-      default = true;
-      description = "Enable frosted-glass blur behind the menu bar.";
-      example = false;
-    };
-
-    style = lib.mkOption {
-      type = lib.types.enum [ "default" "glass" "modern" "minimal" ];
-      default = "default";
-      description = "Omabar visual style. 'glass' forces transparent+blur, 'modern' rounds the workspace pills, 'minimal' drops item backgrounds.";
-      example = "glass";
-    };
-
-    colorScheme = lib.mkOption {
-      type = lib.types.enum [ "auto" "dark" "light" ];
-      default = "auto";
-      description = "Appearance hint for the bar. 'auto' follows the theme mode (themes/*/colors.toml 'mode' field).";
-      example = "dark";
     };
 
     showClock = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Show the clock on the right side of the bar.";
+      description = "Show the clock as a menu bar status item (click opens Calendar).";
       example = false;
     };
 
     showBattery = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Show battery level on the right side of the bar.";
+      description = "Show battery level as a menu bar status item.";
       example = false;
     };
 
     showVolume = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Show system volume on the right side of the bar.";
+      description = "Show system volume as a menu bar status item.";
       example = false;
     };
 
     showWifi = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Show the current Wi-Fi network on the right side of the bar.";
+      description = "Show the current Wi-Fi network as a menu bar status item.";
       example = false;
+    };
+
+    showApps = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Show the frontmost app in the menu bar, with a menu of all on-screen apps to switch to.";
+      example = true;
     };
   };
 
-  # --- Omatiles: native window tiling manager (SwiftUI/AppKit module inside the Omanix app) ---
+  # --- Omatiles: a thin bridge onto macOS Sequoia's BUILT-IN window tiling ---
+  # No layout engine, no AX window moving: tiling itself is the OS's own feature
+  # (drag-to-edge, ⌃⌥+arrow keyboard tiling). Omatiles just flips the System
+  # Settings "Window management" switches declaratively (darwin/omatiles.nix) and
+  # re-binds our own ⌘⌥+arrow keys to the platform's tiling shortcuts.
   options.omanix.omatiles = {
     enable = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Tile windows with the native Omanix Omatiles engine (Accessibility API). Disable to restore macOS-native window management.";
+      description = "Enable the Omatiles module (registers the global ⌘⌥ tiling bindings when bindings is true).";
       example = false;
-    };
-
-    layout = lib.mkOption {
-      type = lib.types.enum [ "tiles" "columns" "rows" "accordion" ];
-      default = "tiles";
-      description = "Default layout. Tiles is a strict grid, columns splits vertically, rows stacks horizontally, accordion gives one large pane plus a stack.";
-      example = "accordion";
-    };
-
-    gapInner = lib.mkOption {
-      type = lib.types.ints.unsigned;
-      default = 8;
-      description = "Gap (in px) between tiled windows.";
-      example = 12;
-    };
-
-    gapOuter = lib.mkOption {
-      type = lib.types.ints.unsigned;
-      default = 10;
-      description = "Gap (in px) between tiled windows and the screen edge (increased by the Omabar height on its edge).";
-      example = 16;
     };
 
     bindings = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Enable global Omatiles keyboard bindings (⌘⌥T tile, ⌘⌥J/K focus prev/next, ⌘⌥L cycle layout).";
+      description = "Global bindings (⌘⌥←/→/↑/↓ half-tile, ⌘⌥Z untile) that invoke macOS's own ⌃⌥+arrow tiling.";
       example = false;
     };
 
-    watch = lib.mkOption {
+    enableEdgeDrag = lib.mkOption {
       type = lib.types.bool;
-      default = false;
-      description = "Live-tile: re-apply the layout automatically when the set of windows on screen changes.";
-      example = true;
+      default = true;
+      description = "macOS Sequoia: drag a window to a screen edge to tile it.";
+      example = false;
     };
 
-    floatingApps = lib.mkOption {
-      type = lib.types.listOf lib.types.str;
-      default = [
-        "com.apple.finder"
-        "com.apple.systempreferences"
-        "com.apple.ActivityMonitor"
-      ];
-      description = "Bundle IDs of apps whose windows are never tiled (dialogs, system panels, overlays).";
-      example = [ "com.apple.finder" ];
+    enableKeyboardShortcuts = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "macOS Sequoia: enable the system ⌃⌥+arrow tiling keyboard shortcuts.";
+      example = false;
+    };
+
+    enableMargins = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "macOS Sequoia: keep a margin between tiled windows.";
+      example = true;
     };
   };
 

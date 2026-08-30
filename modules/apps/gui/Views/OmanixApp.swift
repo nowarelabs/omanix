@@ -37,8 +37,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if OmanixApp.moduleMode {
-            // Launchd module run: no Dock icon, no window.
+            // Launchd module run: no Dock icon, no window. Start only the requested module.
             NSApp.setActivationPolicy(.accessory)
+            let args = CommandLine.arguments
+            if args.contains("--omabar") {
+                let bar = RuntimeSettings.Omabar.load()
+                if bar.enable { _ = OmabarManager.shared.start(settings: bar) }
+            }
+            if args.contains("--omatiles") {
+                let tiles = RuntimeSettings.Omatiles.load()
+                if tiles.enable { OmatilesEngine.shared.start(settings: tiles) }
+            }
         } else {
             // Normal GUI launch: start the enabled desktop modules so the screen
             // matches configuration without needing a rebuild.

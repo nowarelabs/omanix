@@ -35,28 +35,23 @@ Preview: `ls themes/<name>/preview.png` and `cat themes/<name>/colors.toml`.
   omanix.user = "yourname";
   omanix.theme = "kanagawa";          # pick any from above
   omanix.omabar = {
-    position = "top";                 # top | bottom (flows around the notch)
-    height = 40;                      # bar height in points
-    transparent = false;              # true = bar bg transparent
-    blur = true;                      # frosted-glass blur behind bar
-    style = "default";                # default | minimal | glass | modern
-    colorScheme = "auto";             # auto | dark | light (follows theme mode)
-    showClock = true;                 # clock on the right
+    enable = true;                    # show Omanix status items in the native menu bar
+    showClock = true;                 # clock item (hides the native Control Center clock)
     showBattery = true;               # battery level
     showVolume = true;                # system volume (click to mute)
     showWifi = true;                  # current Wi-Fi network
+    showApps = false;                 # running-apps menu
   };
   omanix.omatiles = {
-    layout = "tiles";                 # tiles | columns | rows | accordion
-    gapInner = 8;                     # px between tiled windows
-    gapOuter = 10;                    # px from windows to screen edge
-    bindings = true;                  # ⌘⌥T tile, ⌘⌥J/K focus, ⌘⌥L cycle layout
-    watch = false;                    # auto re-tile when open windows change
-    floatingApps = [ "com.apple.finder" "com.apple.systempreferences" ];
+    enable = true;                    # enable macOS Sequoia tiling + start the ⌘⌥ bindings
+    enableEdgeDrag = true;            # drag a window to an edge to tile it
+    enableKeyboardShortcuts = true;   # system ⌃⌥ + arrow shortcuts
+    enableMargins = false;            # gap between tiled windows
+    bindings = true;                  # ⌘⌥←/→/↑/↓ tile half, ⌘⌥Z untile
   };
 }
 ```
-Then: `omanix rebuild` — `Ghostty` + `Omabar` + `Omatiles` reload with new colors.
+Then: `omanix rebuild` — `Ghostty` + `Omabar` + `Omatiles` reload with new options.
 
 **Store GUI:** `Super → Omanix Store → Theme picker` shows live preview, no terminal.
 
@@ -83,29 +78,27 @@ All 24 keys overrideable: `accent`, `background`, `foreground`, `selection`, `mu
 
 ---
 
-## Bar Styling
+## Bar & Tiling Options
 
-Both `omanix.omabar.*` (menu bar) and `omanix.omatiles.*` (window tiling) are **native SwiftUI/AppKit modules inside the Omanix app** — launched by launchd agents (`om.omanix.omabar` / `om.omanix.omatiles`) that start the same `/Applications/Omanix.app` binary in `--omabar` / `--omatiles` mode. See `Modules/Omabar/*.swift` + `Modules/Omatiles/*.swift`.
+Both `omanix.omabar.*` (status items in the native menu bar) and `omanix.omatiles.*` (bridge onto macOS Sequoia's built-in tiling) are **native modules inside the Omanix app** — launched by launchd agents (`om.omanix.omabar` / `om.omanix.omatiles`) that start the same `/Applications/Omanix.app` binary in `--omabar` / `--omatiles` mode. See `Modules/Omabar/*.swift` + `Modules/Omatiles/*.swift`.
 
 | Option | Values | Effect |
 |---|---|---|
-| `omanix.omabar.position` | `top` / `bottom` | Bar placement, flows around the notch |
-| `omanix.omabar.height` | `int` | Bar height in points (default 40) |
-| `omanix.omabar.transparent` | `bool` | `true` → fully transparent bar, desktop shows through |
-| `omanix.omabar.blur` | `bool` | Frosted-glass vibrancy blur — best with transparent |
-| `omanix.omabar.style` | `default` `minimal` `glass` `modern` | `glass` = transparent+blur+12px radius; `modern` = rounded pills; `minimal` = no item backgrounds |
-| `omanix.omabar.colorScheme` | `auto` `dark` `light` | `auto` reads `themes/*/colors.toml:mode`; `dark`/`light` force the bar's `preferredColorScheme` |
-| `omanix.omabar.showClock` / `showBattery` / `showVolume` / `showWifi` | `bool` | Which items render on the right of the bar |
-| `omanix.omatiles.layout` | `tiles` `columns` `rows` `accordion` | Default window layout |
-| `omanix.omatiles.gapInner` / `gapOuter` | `int` | Gap between windows / window-to-screen-edge (`gapOuter` grows by bar height on the bar's edge) |
-| `omanix.omatiles.bindings` | `bool` | Global bindings (see table above) |
-| `omanix.omatiles.watch` | `bool` | Live re-tile when the open-window set changes |
-| `omanix.omatiles.floatingApps` | `[str]` | Bundle IDs never tiled (Finder, System Settings, Activity Monitor by default) |
+| `omanix.omabar.enable` | `bool` | Start the Omabar status items at login |
+| `omanix.omabar.showClock` | `bool` | Clock item (native Control Center clock hidden when shown) |
+| `omanix.omabar.showBattery` | `bool` | Battery item (native battery icon hidden when shown) |
+| `omanix.omabar.showVolume` | `bool` | Volume item (native volume icon hidden when shown) |
+| `omanix.omabar.showWifi` | `bool` | Wi-Fi item (native Wi-Fi icon hidden when shown) |
+| `omanix.omabar.showApps` | `bool` | Running-apps menu item |
+| `omanix.omatiles.enable` | `bool` | Enable the macOS Sequoia tiling system and start the ⌘⌥ bindings at login |
+| `omanix.omatiles.enableEdgeDrag` | `bool` | Drag a window to a screen edge to tile it |
+| `omanix.omatiles.enableKeyboardShortcuts` | `bool` | The system ⌃⌥ + arrow tiling shortcuts |
+| `omanix.omatiles.enableMargins` | `bool` | Gap between tiled window pairs |
+| `omanix.omatiles.bindings` | `bool` | Omatiles ⌘⌥ + arrow / Z bindings that forward to the system shortcuts |
 
 Examples:
-- Glass: `omanix.omabar.style = "glass"` (implies `transparent = true`, `blur = true`)
-- OLED: `theme = "matte-black"` + `omanix.omabar.transparent = false`
-- Minimal top: `omanix.omabar.style = "minimal"` + `omanix.omabar.position = "top"`
+- Clock + battery in the menu bar: `omanix.omabar.showClock = true; omanix.omabar.showBattery = true;`
+- Sequoia edge-drag tiling with margins: `omanix.omatiles.enableEdgeDrag = true; omanix.omatiles.enableMargins = true;`
 
 ---
 
@@ -132,9 +125,9 @@ modules/apps/gui/Modules/RuntimeSettings.swift — reads configuration.nix optio
 - `lib/themed.nix:11` `getThemeColors` — `base // overrides` (both `omanix.themeOverrides` and `omanix.theme.colors` supported)
 - `lib/themed.nix:93` `ghosttyConfig` — generates Ghostty `background/foreground/palette`
 - `modules/theme/theme.nix:27` — writes `omanix/theme.json` (full palette for SwiftUI) + `omanix/current-theme`
-- `modules/darwin/omabar.nix:15` — launchd agent only; the bar is the native `OmabarContentView.swift` `NSPanel`, themed from `theme.json` (no `sketchybarrc`)
-- `modules/apps/gui/Modules/Omabar/OmabarContentView.swift` — SwiftUI bar view (pills, clock, battery, volume, wifi)
-- `modules/apps/gui/Modules/Omatiles/OmatilesEngine.swift` — Swift/AppKit tiling engine (AX API, layouts, bindings, watch)
+- `modules/darwin/omabar.nix:15` — launchd agent only; the Omabar status items live inside the native menu bar via `NSStatusItem`, and the corresponding native Control Center items are hidden at activation (no `sketchybarrc`)
+- `modules/apps/gui/Modules/Omabar/OmabarManager.swift` — AppKit status-item host (clock, battery, volume, wifi, apps)
+- `modules/apps/gui/Modules/Omatiles/OmatilesEngine.swift` — Swift/AppKit bridge onto macOS' built-in tiling (posts the system ⌃⌥+arrow shortcuts)
 
 No `~/.config` is ever hand-edited (principles.md:3). `omanix rebuild --rollback` reverts theme in <30s via Nix generations.
 
@@ -244,7 +237,7 @@ omanix.transition.type = "crossfade"; # crossfade | slide | none
 # CLI: omanix theme transition on|off
 ```
 
-Implementation: `modules/theme/theme.nix` writes `~/.config/omanix/theme.json`; the running Omabar re-reads it on `main` and via live apply from the Store (`RuntimeSettings` reload), so a theme switch re-renders the bar instantly without a `sketchybar --reload`. Omatiles takes gaps from `configuration.nix` options directly. Disable (`enable = false`) for instant cut (useful for screenshots/tests). Nix path is `omanix.transition` because `omanix.theme` is a string enum (cannot nest); spec alias `theme.transition` also honoured. All are `<30s` rollbackable via generations.
+Implementation: `modules/theme/theme.nix` writes `~/.config/omanix/theme.json`; the running Omabar status items live inside the native menu bar, and the macOS tiling preferences are set declaratively by the activation scripts — no `sketchybar --reload` and no custom geometry. Disable (`enable = false`) for instant cut (useful for screenshots/tests). Nix path is `omanix.transition` because `omanix.theme` is a string enum (cannot nest); spec alias `theme.transition` also honoured. All are `<30s` rollbackable via generations.
 
 ---
 

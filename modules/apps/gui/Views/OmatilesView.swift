@@ -1,5 +1,5 @@
 // Views/OmatilesView.swift
-// "Omatiles" page — control the native Omanix window tiling engine.
+// "Omatiles" page — the Omanix bridge onto macOS' built-in window tiling.
 // Writes omanix.omatiles.* in configuration.nix via the view model; applies live.
 
 import SwiftUI
@@ -8,22 +8,13 @@ import ApplicationServices
 struct OmatilesView: View {
     @EnvironmentObject private var vm: OmanixViewModel
 
-    private let layouts: [(value: String, label: String)] = [
-        ("tiles", "Tiles"),
-        ("columns", "Columns"),
-        ("rows", "Rows"),
-        ("accordion", "Accordion"),
-    ]
-
-    @State private var floatingText = ""
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
                 PageHeader(
                     breadcrumb: "Library / Desktop",
                     title: "Omatiles",
-                    subtitle: "Native window tiling, built into Omanix — no external window manager. Tile on demand, cycle layouts, or watch windows automatically."
+                    subtitle: "The macOS Sequoia tiling system, configured and shortcut-driven by Omanix — the Operating System does the actual tiling."
                 ) {
                     if vm.needsRebuild {
                         FilledButton(title: "Rebuild", icon: "wrench.and.screwdriver.fill") { vm.rebuild() }
@@ -32,79 +23,50 @@ struct OmatilesView: View {
                     }
                 }
 
-                // Live layout preview
-                OmatilesSection(title: "Preview", subtitle: "How windows sit inside the screen at your current gaps.") {
+                OmatilesSection(title: "Tiling", subtitle: "macOS Sequoia window management, switched on from Omanix. These set the same System Settings → Desktop & Dock → Window Management switches at activation time.") {
                     CardBox {
-                        LayoutPreview(layout: vm.omatilesLayout, gapInner: vm.omatilesGapInner, gapOuter: vm.omatilesGapOuter)
-                            .padding(16)
-                    }
-                }
-
-                OmatilesSection(title: "Tiling", subtitle: "Behaviour of the tiling engine.") {
-                    CardBox {
-                        ToggleRow(title: "Enable tiling", description: "Start Omatiles at login and keep windows in the layout. Off restores native macOS window behaviour.", isOn: Binding(
+                        ToggleRow(title: "Enable tiling", description: "Turn on the macOS tiling system. Off restores the default window behaviour.", isOn: Binding(
                             get: { vm.omatilesEnabled },
                             set: { vm.setOmatilesEnabled($0) }
                         ))
                         Divider().overlay(OC.divider)
-                        SegmentRow(title: "Default layout", description: "Tiles strict-grid, columns vertical splits, rows horizontal stacks, accordion one master + stack.", options: layouts, selection: Binding(
-                            get: { vm.omatilesLayout },
-                            set: { vm.setOmatilesLayout($0) }
+                        ToggleRow(title: "Edge drag", description: "Drag a window against a screen edge to tile it. Requires macOS Sequoia.", isOn: Binding(
+                            get: { vm.omatilesEdgeDrag },
+                            set: { vm.setOmatilesEdgeDrag($0) }
                         ))
                         Divider().overlay(OC.divider)
-                        SliderRow(title: "Inner gap", description: "Space between tiled windows.", value: Binding(
-                            get: { Double(vm.omatilesGapInner) },
-                            set: { vm.setOmatilesGapInner(Int($0)) }
-                        ), range: 0...24, step: 2, suffix: "px")
+                        ToggleRow(title: "Keyboard shortcuts", description: "The system ⌃⌥ + arrow tiling shortcuts, plus our ⌘⌥ mapping on top.", isOn: Binding(
+                            get: { vm.omatilesKeyboardShortcuts },
+                            set: { vm.setOmatilesKeyboardShortcuts($0) }
+                        ))
                         Divider().overlay(OC.divider)
-                        SliderRow(title: "Outer gap", description: "Space between tiled windows and the screen edge (plus the Omabar on its edge).", value: Binding(
-                            get: { Double(vm.omatilesGapOuter) },
-                            set: { vm.setOmatilesGapOuter(Int($0)) }
-                        ), range: 0...32, step: 2, suffix: "px")
+                        ToggleRow(title: "Gaps between tiled windows", description: "Show a gap between windows when one is tiled next to another by the operating system.", isOn: Binding(
+                            get: { vm.omatilesMargins },
+                            set: { vm.setOmatilesMargins($0) }
+                        ))
                         Divider().overlay(OC.divider)
-                        ToggleRow(title: "Key bindings", description: "Global ⌘⌥ shortcuts for tiling and focus (see below).", isOn: Binding(
+                        ToggleRow(title: "Omatiles bindings", description: "⌘⌥ arrows and ⌘⌥ Z, which forward to the system's own tiling shortcuts.", isOn: Binding(
                             get: { vm.omatilesBindings },
                             set: { _ in vm.toggleOmatilesBindings() }
                         ))
-                        Divider().overlay(OC.divider)
-                        ToggleRow(title: "Watch windows", description: "Automatically re-apply the layout when the set of windows on screen changes.", isOn: Binding(
-                            get: { vm.omatilesWatch },
-                            set: { _ in vm.toggleOmatilesWatch() }
-                        ))
                     }
                 }
 
-                OmatilesSection(title: "Floating apps", subtitle: "Bundle IDs whose windows are never tiled (dialogs, system panels, overlays). One per line.") {
+                OmatilesSection(title: "Shortcuts", subtitle: "Each ⌘⌥ binding posts the operating system's own ⌃⌥ shortcut, so tiling behaves exactly like native macOS.") {
                     CardBox {
-                        TextEditor(text: $floatingText)
-                            .font(OFont.mono(12, weight: .regular))
-                            .scrollContentBackground(.hidden)
-                            .frame(minHeight: 110)
-                            .padding(12)
+                        ShortcutRow(keys: "⌘⌥ ←", action: "Tile on the left half")
                         Divider().overlay(OC.divider)
-                        HStack {
-                            BorderedButton(title: "Reload", icon: "arrow.clockwise") { loadFloatingText() }
-                            Spacer()
-                            SoftFilledButton(title: "Save floating apps") { saveFloatingText() }
-                        }
-                        .padding(14)
-                    }
-                }
-                .onAppear { loadFloatingText() }
-
-                OmatilesSection(title: "Shortcuts", subtitle: "Global bindings. Press…") {
-                    CardBox {
-                        ShortcutRow(keys: "⌘⌥ T", action: "Tile every window now")
+                        ShortcutRow(keys: "⌘⌥ →", action: "Tile on the right half")
                         Divider().overlay(OC.divider)
-                        ShortcutRow(keys: "⌘⌥ J", action: "Focus the previous window")
+                        ShortcutRow(keys: "⌘⌥ ↑", action: "Tile on the top half")
                         Divider().overlay(OC.divider)
-                        ShortcutRow(keys: "⌘⌥ K", action: "Focus the next window")
+                        ShortcutRow(keys: "⌘⌥ ↓", action: "Tile on the bottom half")
                         Divider().overlay(OC.divider)
-                        ShortcutRow(keys: "⌘⌥ L", action: "Cycle layout: tiles → columns → rows → accordion")
+                        ShortcutRow(keys: "⌘⌥ Z", action: "Untile the focused window")
                     }
                 }
 
-                OmatilesSection(title: "Get started", subtitle: "Tiling repositions windows through the Accessibility API, so Omanix needs your permission (granted once).") {
+                OmatilesSection(title: "Get started", subtitle: "Forwarding the shortcuts posts CGEvents, so Omanix needs Accessibility permission (granted once) plus macOS Sequoia's window management enabled.") {
                     CardBox {
                         InfoRow(label: "Accessibility permission", value: accessibilityGranted ? "Granted" : "Not granted")
                         Divider().overlay(OC.divider)
@@ -112,7 +74,7 @@ struct OmatilesView: View {
                             BorderedButton(title: accessibilityGranted ? "Re-check" : "Grant Access", icon: accessibilityGranted ? "checkmark.shield" : "lock.shield") {
                                 _ = OmatilesEngine.ensureAccessibility()
                             }
-                            SoftFilledButton(title: "Tile now") { vm.tileNow() }
+                            SoftFilledButton(title: "Try: tile left half") { vm.tileLeftHalf() }
                             Spacer()
                             if vm.omatilesRunning {
                                 BorderedButton(title: "Stop module", icon: "stop.fill") { vm.stopOmatiles() }
@@ -129,7 +91,7 @@ struct OmatilesView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             StatusBar(
                 left: "Omatiles · omanix.omatiles",
-                rightText: vm.omatilesRunning ? "\(vm.omatilesTiledCount) windows tiled" : "Stopped",
+                rightText: vm.omatilesRunning ? "Shortcuts active" : "Stopped",
                 rightDotColor: vm.omatilesRunning ? OC.green : (vm.omatilesEnabled ? OC.orange : OC.red)
             )
         }
@@ -137,103 +99,6 @@ struct OmatilesView: View {
 
     private var accessibilityGranted: Bool {
         AXIsProcessTrusted()
-    }
-
-    private func loadFloatingText() {
-        floatingText = vm.omatilesFloatingApps.joined(separator: "\n")
-    }
-
-    private func saveFloatingText() {
-        let lines = floatingText.components(separatedBy: .newlines)
-        vm.setOmatilesFloatingApps(lines)
-        loadFloatingText()
-    }
-}
-
-// MARK: - Layout preview (tiles / columns / rows / accordion)
-
-private struct LayoutPreview: View {
-    let layout: String
-    let gapInner: Int
-    let gapOuter: Int
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            GeometryReader { geo in
-                ZStack(alignment: .topLeading) {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(OC.pageBackground)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(OC.cyan.opacity(0.35), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                        )
-
-                    VStack(spacing: CGFloat(gapInner)) {
-                        switch layout {
-                        case "columns":
-                            HStack(spacing: CGFloat(gapInner)) {
-                                pane(label: "1", color: OC.cyan)
-                                pane(label: "2", color: OC.purple)
-                                pane(label: "3", color: OC.orange)
-                            }
-                        case "rows":
-                            pane(label: "1", color: OC.cyan)
-                            pane(label: "2", color: OC.purple)
-                            pane(label: "3", color: OC.orange)
-                        case "accordion":
-                            HStack(spacing: CGFloat(gapInner)) {
-                                pane(label: "A", color: OC.cyan)
-                                VStack(spacing: CGFloat(gapInner)) {
-                                    pane(label: "B", color: OC.purple)
-                                    pane(label: "C", color: OC.orange)
-                                }
-                            }
-                        default: // tiles
-                            VStack(spacing: CGFloat(gapInner)) {
-                                HStack(spacing: CGFloat(gapInner)) {
-                                    pane(label: "1", color: OC.cyan)
-                                    pane(label: "2", color: OC.purple)
-                                }
-                                HStack(spacing: CGFloat(gapInner)) {
-                                    pane(label: "3", color: OC.orange)
-                                    pane(label: "4", color: OC.green)
-                                }
-                            }
-                        }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(CGFloat(gapOuter))
-                }
-            }
-            .frame(height: 190)
-
-            HStack(spacing: 6) {
-                previewChip(text: "Layout: \(layout)")
-                previewChip(text: "Inner: \(gapInner)px")
-                previewChip(text: "Outer: \(gapOuter)px")
-            }
-        }
-    }
-
-    private func pane(label: String, color: Color) -> some View {
-        RoundedRectangle(cornerRadius: 6)
-            .fill(color)
-            .overlay(
-                Text(label)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.white)
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func previewChip(text: String) -> some View {
-        Text(text)
-            .font(OFont.mono(10.5, weight: .regular))
-            .foregroundColor(OC.textSecondary)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(OC.subtleFill)
-            .clipShape(RoundedRectangle(cornerRadius: 5))
     }
 }
 
@@ -278,63 +143,6 @@ private struct ToggleRow: View {
     }
 }
 
-private struct SegmentRow: View {
-    let title: String
-    let description: String
-    let options: [(value: String, label: String)]
-    @Binding var selection: String
-
-    var body: some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 13.5, weight: .semibold)).foregroundColor(OC.textPrimary)
-                Text(description).font(.system(size: 12)).foregroundColor(OC.textSecondary)
-            }
-            Spacer()
-            Picker(title, selection: $selection) {
-                ForEach(options, id: \.value) { option in
-                    Text(option.label).tag(option.value)
-                }
-            }
-            .pickerStyle(.segmented)
-            .frame(width: 280)
-        }
-        .padding(16)
-    }
-}
-
-private struct SliderRow: View {
-    let title: String
-    let description: String
-    @Binding var value: Double
-    let range: ClosedRange<Double>
-    let step: Double
-    let suffix: String
-
-    var body: some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 13.5, weight: .semibold)).foregroundColor(OC.textPrimary)
-                Text(description).font(.system(size: 12)).foregroundColor(OC.textSecondary)
-            }
-            Spacer()
-            Slider(value: $value, in: range, step: step) {
-                Text(title)
-            } minimumValueLabel: {
-                Text("\(Int(range.lowerBound))")
-            } maximumValueLabel: {
-                Text("\(Int(range.upperBound))")
-            }
-            .frame(width: 180)
-            Text("\(Int(value))\(suffix)")
-                .font(OFont.mono(12.5, weight: .semibold))
-                .foregroundColor(OC.textPrimary)
-                .frame(width: 46, alignment: .trailing)
-        }
-        .padding(16)
-    }
-}
-
 private struct InfoRow: View {
     let label: String
     let value: String
@@ -360,7 +168,7 @@ private struct ShortcutRow: View {
             Text(keys)
                 .font(OFont.mono(12, weight: .semibold))
                 .foregroundColor(OC.accentBlue)
-                .frame(minWidth: 120, alignment: .leading)
+                .frame(minWidth: 90, alignment: .leading)
             Text(action)
                 .font(.system(size: 13))
                 .foregroundColor(OC.textSecondary)

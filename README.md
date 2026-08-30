@@ -150,7 +150,7 @@ No `~/Library/LaunchAgents` plist, no `/Applications/Omanix` symlink, no `~/.oma
 | Category | What you get |
 |---|---|
 | **Core** | Nix (Determinate) + `nix-darwin` + `home-manager`, versioned via `flake.lock` |
-| **Desktop** | Tiling + bar that flows around the notch, `loginwindow` + Touch ID, `launchd` services |
+| **Desktop** | macOS Sequoia tiling, configured + shortcut-driven by Omanix; status items in the native menu bar; `loginwindow` + Touch ID, `launchd` services |
 | **Widgets / Apps** | Clock, workspaces, battery, network, audio + community widgets/apps (pomodoro etc. via `omanix.widgets.*`, Swift apps) |
 | **Apps** | Chromium, Firefox, MPV and anything from `nixpkgs` or Homebrew via `omanix add` |
 | **Dev** | Neovim + LSPs, Git, Docker, Node.js / Ruby / Python (add more with `omanix add`) |

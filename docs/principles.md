@@ -31,7 +31,7 @@ If a feature cannot be mapped natively, we cut it or re-architect for Quartz —
 Approved: Build-time (Nix-pure). Extended hard line: **the user never edits `.toml`, `.tpl`, or raw `~/.config` files to make Omanix work.**
 
 - **Themes:** `themes/*/colors.toml` + `default/themed/*.tpl` are _internal build inputs_. The user sets `omanix.theme = "tokyo-night"` (a Nix string enum, own brand — not `omarchy.theme` spec) and Nix renders via `lib/themed.nix`. There is no `omarchy-theme-set` mutating `~/.config`.
-- **Omabar/Omatiles:** The user sets `omanix.omabar.position = "top"` or `omanix.omatiles.gapInner = 8` as Nix options. They never edit a theme.omabar/omatiles config by hand; the app reads the options (and `theme.json`) at runtime.
+- **Omabar/Omatiles:** The user sets `omanix.omabar.showClock = true` or `omanix.omatiles.enableMargins = true` as Nix options. They never edit a theme.omabar/omatiles config by hand; the app reads the options at runtime.
 - **Hyprland lua:** `config/hypr/*.lua` is vendored read-only. User overrides are `homeManagerConfig = { xdg.configFile... }` only via Nix, not by opening `~/.config/hypr/hyprland.lua`.
 
 **Rationale:** Omarchy plugins are bash-imperative (`omarchy-plugin-add` git clones, writes `manifest.json`, sources scripts). Omanix rejects that model. If you need to go into a file to make it work, the abstraction is incomplete — the fix is a typed Nix option, not documentation telling you to edit a tpl.

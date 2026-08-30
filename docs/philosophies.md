@@ -21,7 +21,7 @@ Philosophy: **If it was bash that wrote a file to `~/.config` at runtime, it sho
 
 A generic Linux approach treats the Mac as generic hardware hardware: Asahi Alarm repartitions, BTRFS, `m1n1 → u-boot → GRUB`. Omanix treats the Mac as a Mac:
 
-- **Quartz is the compositor.** The Omanix app tiles windows (Omatiles) and draws the menu bar (Omabar) natively on Quartz. The notch is not an obstacle — the bar is split around it (`hero.jpg` is a promise).
+- **Quartz is the compositor.** Omanix doesn't replace Quartz: Omatiles bridges macOS Sequoia's built-in tiling (the OS does the geometry), and Omabar hosts status items inside Apple's real menu bar via `NSStatusItem` — nothing is hidden, split, or drawn over. `hero.jpg` is a promise.
 - **APFS + FileVault is the filesystem.** No BTRFS migration.
 - **The keyboard is the keyboard.** Media keys, `fnmode`, trackpad haptics are Apple-native.
 
@@ -36,8 +36,8 @@ Philosophy: **If Linux has a macOS counterpart the user expects, use the counter
 Omanix extends that to mean: **you do not go into `.toml`, `.tpl`, or `~/.config` to make stuff work.** If you need to, the option is missing — we add a Nix option, not a wiki page.
 
 - Want `tokyo-night`? Set `omanix.theme = "tokyo-night"` — don't edit `themes/tokyo-night/colors.toml`.
-- Want bar on bottom, transparent? `omanix.omabar.position = "bottom"; omanix.omabar.transparent = true;` — don't open a sketchybar-style config or `default/themed/*.tpl`.
-- Want a new keybinding? `omanix.omatiles.bindings = true;` (or set `layout`) — don't edit `default/hypr/bindings.lua`.
+- Want a clock and battery in the menu bar? `omanix.omabar.showClock = true; omanix.omabar.showBattery = true;` — don't install a menubar app or edit `default/themed/*.tpl`.
+- Want more window snapping? `omanix.omatiles.enableEdgeDrag = true; omanix.omatiles.enableMargins = true;` — don't install a third-party window manager or edit `default/hypr/bindings.lua`.
 
 `themes/`, `default/themed/*.tpl`, `config/` are internal build inputs. The flake is the config; `~/.config` is a build artifact in `/nix/store`. You do not go into those files; Nix goes into them for you.
 
@@ -111,7 +111,7 @@ Philosophy: **Help the user get applications quickly and reliably, and remove th
 
 ## 8. The Bar Is the Contract, the App Is the Widget
 
-If `hero.jpg` shows workspaces flowing around the notch, the bar better flow around it. Theme tokens (`accent #7aa2f7`, `background #1a1b26` in `tokyo-night/colors.toml`) are the design system; the bar is the proof.
+If `hero.jpg` shows workspaces flowing around the notch, the workspaces better flow around the notch. Theme tokens (`accent #7aa2f7`, `background #1a1b26` in `tokyo-night/colors.toml`) are the design system; the desktop is the proof.
 
 Widgets extend that contract: a pomodoro widget is not a floating bash window — it is designed against the `color.toml` tokens (delivered to SwiftUI via `~/.config/omanix/theme.json`), a `launchd` timer that fires Swift code, and optionally a Swift menubar app that shares the same Nix-built assets. It looks like a Mac app because it _is_ a Mac app — but one whose source is in the flake and whose binary is in `/nix/store`.
 

@@ -196,23 +196,16 @@ final class OmanixViewModel: ObservableObject {
         let barState = store.currentOmabarState()
         let tilesState = store.currentOmatilesState()
         omabarEnabled = barState.enable
-        omabarPosition = barState.position
-        omabarHeight = barState.height
-        omabarTransparent = barState.transparent
-        omabarBlur = barState.blur
-        omabarStyle = barState.style
-        omabarColorScheme = barState.colorScheme
         omabarShowClock = barState.showClock
         omabarShowBattery = barState.showBattery
         omabarShowVolume = barState.showVolume
         omabarShowWifi = barState.showWifi
+        omabarShowApps = barState.showApps
         omatilesEnabled = tilesState.enable
-        omatilesLayout = tilesState.layout
-        omatilesGapInner = tilesState.gapInner
-        omatilesGapOuter = tilesState.gapOuter
         omatilesBindings = tilesState.bindings
-        omatilesWatch = tilesState.watch
-        omatilesFloatingApps = tilesState.floatingApps
+        omatilesEdgeDrag = tilesState.enableEdgeDrag
+        omatilesKeyboardShortcuts = tilesState.enableKeyboardShortcuts
+        omatilesMargins = tilesState.enableMargins
 
         widgets = [
             WidgetItem(id: "store", name: "Omanix", icon: "bag", isEnabled: true),
@@ -249,35 +242,25 @@ final class OmanixViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Omabar appearance (mirrors omanix.omabar.*)
+    // MARK: - Omabar (status items in the native menu bar, mirrors omanix.omabar.*)
 
     @Published var omabarEnabled: Bool = true
-    @Published var omabarPosition: String = "top"
-    @Published var omabarHeight: Int = 40
-    @Published var omabarTransparent: Bool = false
-    @Published var omabarBlur: Bool = true
-    @Published var omabarStyle: String = "default"
-    @Published var omabarColorScheme: String = "auto"
     @Published var omabarShowClock: Bool = true
     @Published var omabarShowBattery: Bool = true
     @Published var omabarShowVolume: Bool = true
     @Published var omabarShowWifi: Bool = true
+    @Published var omabarShowApps: Bool = false
 
     var omabarRunning: Bool { OmabarManager.shared.isRunning }
 
     private func omabarSettings() -> RuntimeSettings.Omabar {
         RuntimeSettings.Omabar(
             enable: omabarEnabled,
-            position: omabarPosition,
-            height: omabarHeight,
-            transparent: omabarTransparent,
-            blur: omabarBlur,
-            style: omabarStyle,
-            colorScheme: omabarColorScheme,
             showClock: omabarShowClock,
             showBattery: omabarShowBattery,
             showVolume: omabarShowVolume,
-            showWifi: omabarShowWifi
+            showWifi: omabarShowWifi,
+            showApps: omabarShowApps
         )
     }
 
@@ -307,36 +290,6 @@ final class OmanixViewModel: ObservableObject {
         do { try store.setOmabarEnabled(enabled); needsRebuild = true; applyOmabarToRuntime() }
         catch { omabarEnabled = !enabled; showMessage("Could not set Omabar: \(error.localizedDescription)", .error) }
     }
-    func setOmabarPosition(_ pos: String) {
-        omabarPosition = pos
-        do { try store.setOmabarPosition(pos); needsRebuild = true; applyOmabarToRuntime() }
-        catch { showMessage("Could not set bar position: \(error.localizedDescription)", .error) }
-    }
-    func setOmabarHeight(_ height: Int) {
-        omabarHeight = height
-        do { try store.setOmabarHeight(height); needsRebuild = true; applyOmabarToRuntime() }
-        catch { showMessage("Could not set bar height: \(error.localizedDescription)", .error) }
-    }
-    func toggleOmabarTransparent() {
-        omabarTransparent.toggle()
-        do { try store.setOmabarTransparent(omabarTransparent); needsRebuild = true; applyOmabarToRuntime() }
-        catch { omabarTransparent.toggle(); showMessage("Could not set transparency: \(error.localizedDescription)", .error) }
-    }
-    func toggleOmabarBlur() {
-        omabarBlur.toggle()
-        do { try store.setOmabarBlur(omabarBlur); needsRebuild = true; applyOmabarToRuntime() }
-        catch { omabarBlur.toggle(); showMessage("Could not set blur: \(error.localizedDescription)", .error) }
-    }
-    func setOmabarStyle(_ style: String) {
-        omabarStyle = style
-        do { try store.setOmabarStyle(style); needsRebuild = true; applyOmabarToRuntime() }
-        catch { showMessage("Could not set style: \(error.localizedDescription)", .error) }
-    }
-    func setOmabarColorScheme(_ scheme: String) {
-        omabarColorScheme = scheme
-        do { try store.setOmabarColorScheme(scheme); needsRebuild = true; applyOmabarToRuntime() }
-        catch { showMessage("Could not set color scheme: \(error.localizedDescription)", .error) }
-    }
     func toggleOmabarShowClock() {
         omabarShowClock.toggle()
         do { try store.setOmabarShowClock(omabarShowClock); needsRebuild = true; applyOmabarToRuntime() }
@@ -357,29 +310,26 @@ final class OmanixViewModel: ObservableObject {
         do { try store.setOmabarShowWifi(omabarShowWifi); needsRebuild = true; applyOmabarToRuntime() }
         catch { omabarShowWifi.toggle(); showMessage("Could not update Omabar items: \(error.localizedDescription)", .error) }
     }
+    func toggleOmabarShowApps() {
+        omabarShowApps.toggle()
+        do { try store.setOmabarShowApps(omabarShowApps); needsRebuild = true; applyOmabarToRuntime() }
+        catch { omabarShowApps.toggle(); showMessage("Could not update Omabar items: \(error.localizedDescription)", .error) }
+    }
 
-    // MARK: - Omatiles window tiling (mirrors omanix.omatiles.*)
+    // MARK: - Omatiles (bridge onto macOS' built-in tiling, mirrors omanix.omatiles.*)
 
     @Published var omatilesEnabled: Bool = true
-    @Published var omatilesLayout: String = "tiles"
-    @Published var omatilesGapInner: Int = 8
-    @Published var omatilesGapOuter: Int = 10
     @Published var omatilesBindings: Bool = true
-    @Published var omatilesWatch: Bool = false
-    @Published var omatilesFloatingApps: [String] = []
+    @Published var omatilesEdgeDrag: Bool = true
+    @Published var omatilesKeyboardShortcuts: Bool = true
+    @Published var omatilesMargins: Bool = false
 
     var omatilesRunning: Bool { OmatilesEngine.shared.isRunning }
-    var omatilesTiledCount: Int { OmatilesEngine.shared.tiledCount }
 
     private func omatilesSettings() -> RuntimeSettings.Omatiles {
         RuntimeSettings.Omatiles(
             enable: omatilesEnabled,
-            layout: omatilesLayout,
-            gapInner: omatilesGapInner,
-            gapOuter: omatilesGapOuter,
-            bindings: omatilesBindings,
-            watch: omatilesWatch,
-            floatingApps: omatilesFloatingApps.isEmpty ? ["com.apple.finder", "com.apple.systempreferences", "com.apple.ActivityMonitor"] : omatilesFloatingApps
+            bindings: omatilesBindings
         )
     }
 
@@ -404,10 +354,13 @@ final class OmanixViewModel: ObservableObject {
         OmatilesEngine.shared.stop()
     }
 
-    func tileNow() {
-        if OmatilesEngine.ensureAccessibility() {
-            OmatilesEngine.shared.tile()
+    /// Triggers the platform's own "tile window to left half" (⌃⌥←) as a live test.
+    func tileLeftHalf() {
+        guard OmatilesEngine.ensureAccessibility() else {
+            showMessage("Omanix needs Accessibility permission to post the tiling shortcuts", .error)
+            return
         }
+        OmatilesEngine.shared.tileLeft()
     }
 
     func setOmatilesEnabled(_ enabled: Bool) {
@@ -415,36 +368,28 @@ final class OmanixViewModel: ObservableObject {
         do { try store.setOmatilesEnabled(enabled); needsRebuild = true; applyOmatilesToRuntime() }
         catch { omatilesEnabled = !enabled; showMessage("Could not set Omatiles: \(error.localizedDescription)", .error) }
     }
-    func setOmatilesLayout(_ layout: String) {
-        omatilesLayout = layout
-        do { try store.setOmatilesLayout(layout); needsRebuild = true; applyOmatilesToRuntime() }
-        catch { showMessage("Could not set layout: \(error.localizedDescription)", .error) }
+
+    /// macOS tiling preferences are applied by the activation script (darwin/omatiles.nix),
+    /// so each change marks the system for rebuild.
+    func setOmatilesEdgeDrag(_ enabled: Bool) {
+        omatilesEdgeDrag = enabled
+        do { try store.setOmatilesEdgeDrag(enabled); needsRebuild = true }
+        catch { omatilesEdgeDrag = !enabled; showMessage("Could not set drag-to-edge tiling: \(error.localizedDescription)", .error) }
     }
-    func setOmatilesGapInner(_ gap: Int) {
-        omatilesGapInner = gap
-        do { try store.setOmatilesGapInner(gap); needsRebuild = true; applyOmatilesToRuntime() }
-        catch { showMessage("Could not set inner gap: \(error.localizedDescription)", .error) }
+    func setOmatilesKeyboardShortcuts(_ enabled: Bool) {
+        omatilesKeyboardShortcuts = enabled
+        do { try store.setOmatilesKeyboardShortcuts(enabled); needsRebuild = true }
+        catch { omatilesKeyboardShortcuts = !enabled; showMessage("Could not set system tiling shortcuts: \(error.localizedDescription)", .error) }
     }
-    func setOmatilesGapOuter(_ gap: Int) {
-        omatilesGapOuter = gap
-        do { try store.setOmatilesGapOuter(gap); needsRebuild = true; applyOmatilesToRuntime() }
-        catch { showMessage("Could not set outer gap: \(error.localizedDescription)", .error) }
+    func setOmatilesMargins(_ enabled: Bool) {
+        omatilesMargins = enabled
+        do { try store.setOmatilesMargins(enabled); needsRebuild = true }
+        catch { omatilesMargins = !enabled; showMessage("Could not set tiled margins: \(error.localizedDescription)", .error) }
     }
     func toggleOmatilesBindings() {
         omatilesBindings.toggle()
         do { try store.setOmatilesBindings(omatilesBindings); needsRebuild = true; applyOmatilesToRuntime() }
         catch { omatilesBindings.toggle(); showMessage("Could not set bindings: \(error.localizedDescription)", .error) }
-    }
-    func toggleOmatilesWatch() {
-        omatilesWatch.toggle()
-        do { try store.setOmatilesWatch(omatilesWatch); needsRebuild = true; applyOmatilesToRuntime() }
-        catch { omatilesWatch.toggle(); showMessage("Could not set watch mode: \(error.localizedDescription)", .error) }
-    }
-    func setOmatilesFloatingApps(_ apps: [String]) {
-        let cleaned = apps.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-        omatilesFloatingApps = cleaned
-        do { try store.setOmatilesFloatingApps(cleaned); needsRebuild = true; applyOmatilesToRuntime() }
-        catch { showMessage("Could not set floating apps: \(error.localizedDescription)", .error) }
     }
 
     // MARK: - Themes (13 — mirrors themes/*/colors.toml via lib/themed.nix, omanix = signature Omakase light)

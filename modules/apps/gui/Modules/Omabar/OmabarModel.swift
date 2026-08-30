@@ -1,10 +1,11 @@
 // Modules/Omabar/OmabarModel.swift
-// Omabar content model: clock, battery (pmset), volume (osascript, click-to-mute),
-// Wi-Fi (networksetup), frontmost app, and the on-screen app list used for workspace
-// pills. Foundation/AppKit only.
+// Omabar content model: clock, battery (pmset), volume (osascript), Wi-Fi
+// (networksetup), and the on-screen app list used by the menu bar app switcher.
+// Foundation/AppKit only — it knows nothing about NSStatusItems; the manager
+// renders whatever the model publishes.
 //
-// All shell work runs OFF the main actor (Task.detached) so the bar never hitches
-// on pmset/osascript/networksetup; results are published back on the main actor.
+// All shell work runs OFF the main actor (Task.detached) so the menu bar never
+// hitches on pmset/osascript/networksetup; results are published back on the main actor.
 
 import Foundation
 import AppKit
@@ -21,11 +22,9 @@ final class OmabarModel: ObservableObject {
     @Published var wifiName = ""
     @Published var wifiOn = true
     @Published var frontAppName = ""
-    @Published var frontAppIcon = NSImage()
     @Published var visibleApps: [VisibleApp] = []
-    @Published var palette = RuntimeSettings.Palette.load()
 
-    /// An on-screen app pill (deduped by pid).
+    /// An on-screen app (deduped by pid).
     struct VisibleApp: Identifiable {
         let pid: pid_t
         let name: String
@@ -37,7 +36,6 @@ final class OmabarModel: ObservableObject {
     private var pollTimer: Timer?
     private var windowsTimer: Timer?
     private var workspacesObserver: NSObjectProtocol?
-    private var lastPollSoon = false
 
     func start() {
         refreshAll()
@@ -51,7 +49,6 @@ final class OmabarModel: ObservableObject {
                 self?.refreshBattery()
                 self?.refreshWifi()
                 self?.refreshVolume()
-                self?.refreshPalette()
             }
         }
         windowsTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
@@ -82,46 +79,27 @@ final class OmabarModel: ObservableObject {
         refreshBattery()
         refreshVolume()
         refreshWifi()
-        refreshPalette()
-    }
-
-    /// Reloads the active theme palette (rare — called on bar apply + slow poll).
-    func refreshPalette() {
-        palette = RuntimeSettings.Palette.load()
     }
 
     // MARK: - Frontmost app
 
     func refreshFrontApp() {
-        guard let app = NSWorkspace.shared.frontmostApplication else {
-            frontAppName = ""
-            frontAppIcon = NSImage()
-            markFocusedPill()
-            return
-        }
-        frontAppName = app.localizedName ?? ""
-        frontAppIcon = app.icon ?? NSImage()
-        markFocusedPill()
+        frontAppName = NSWorkspace.shared.frontmostApplication?.localizedName ?? ""
+        markFocusedApps()
     }
 
-    // MARK: - App pills (workspaces overview)
+    // MARK: - App list (workspaces overview)
 
     func refreshWindows() {
-        let apps = Desktop.visibleApps()
-        visibleApps = apps.map { app in
+        visibleApps = Desktop.visibleApps().map { app in
             VisibleApp(pid: app.pid, name: app.name, isFocused: app.name == frontAppName)
         }
     }
 
-    private func markFocusedPill() {
+    private func markFocusedApps() {
         for index in visibleApps.indices {
             visibleApps[index].isFocused = visibleApps[index].name == frontAppName
         }
-    }
-
-    /// Activates the running app behind a pill (Reef-style refocus).
-    func activate(_ app: VisibleApp) {
-        NSRunningApplication(processIdentifier: app.pid)?.activate()
     }
 
     // MARK: - Battery
@@ -163,12 +141,12 @@ final class OmabarModel: ObservableObject {
         }
     }
 
-    /// Click-to-mute / unmute (async so the bar doesn't hitch).
+    /// Click-to-mute / unmute (async so the menu bar doesn't hitch).
     func toggleMute() {
         let next = muted
         muted = !next
         Task { @MainActor in
-            await Self.shell("/usr/bin/osascript", ["-e", "set volume output muted to \(next ? "false" : "true")"])
+            _ = await Self.shell("/usr/bin/osascript", ["-e", "set volume output muted to \(next ? "false" : "true")"])
         }
     }
 
@@ -223,7 +201,7 @@ final class OmabarModel: ObservableObject {
 
     // MARK: - Shell helper (off the main actor)
 
-    /// Runs a command detached so no status poll ever blocks the bar. The outer
+    /// Runs a command detached so no status poll ever blocks the menu bar. The outer
     /// method may be actor-isolated; that only costs a brief setup hop — the pipe
     /// I/O and wait all happen on a utility priority task.
     static func shell(_ executable: String, _ arguments: [String]) async -> String {

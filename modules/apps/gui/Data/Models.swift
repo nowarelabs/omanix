@@ -62,38 +62,27 @@ struct WidgetItem: Identifiable {
     var isEnabled: Bool
 }
 
-// MARK: - Omabar (native menu bar) state
+// MARK: - Omabar (native menu bar status items) state
 
 /// Mirrors `omanix.omabar.*` from configuration.nix.
 struct OmabarState: Equatable {
     var enable = true
-    var position = "top"
-    var height = 40
-    var transparent = false
-    var blur = true
-    var style = "default"
-    var colorScheme = "auto"
     var showClock = true
     var showBattery = true
     var showVolume = true
     var showWifi = true
+    var showApps = false
 }
 
-// MARK: - Omatiles (window tiling) state
+// MARK: - Omatiles (bridge onto macOS' built-in tiling) state
 
 /// Mirrors `omanix.omatiles.*` from configuration.nix.
 struct OmatilesState: Equatable {
     var enable = true
-    var layout = "tiles"
-    var gapInner = 8
-    var gapOuter = 10
     var bindings = true
-    var watch = false
-    var floatingApps: [String] = [
-        "com.apple.finder",
-        "com.apple.systempreferences",
-        "com.apple.ActivityMonitor"
-    ]
+    var enableEdgeDrag = true
+    var enableKeyboardShortcuts = true
+    var enableMargins = false
 }
 
 // MARK: - Theme

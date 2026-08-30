@@ -79,8 +79,8 @@ omanix/                              # flake root — cloned to ~/.omanix (begin
 {
   # ~/.omanix/flake.nix — the only file you edit
   omanix.theme = "tokyo-night";                 # not themes/tokyo-night/colors.toml
-  omanix.omatiles.gapInner = 8;                  # not a tiling config file
-  omanix.omabar.position = "top";                # not a sketchybarrc / remote process
+  omanix.omatiles.enableMargins = true;          # not a tiling config file
+  omanix.omabar.showClock = true;                # not a menubar app / remote process
   omanix.widgets.pomodoro.enable = true;        # not git clone manifest.json
   omanix.widgets.pomodoro.enable = true;        # Swift app → /Applications/Pomodoro.app via lib/mkApp (launchd on mac, systemd on linux)
 }
@@ -119,9 +119,9 @@ Hyprland tiling is rebuilt as the native **Omatiles** Swift module (`Modules/Oma
 
 | Omarchy (Hyprland) | Omanix (native module) |
 |---|---|
-| `bind = SUPER, 1, workspace, 1` | `omanix.omatiles.bindings = true` → ⌘⌥T tile, ⌘⌥J/K focus, ⌘⌥L cycle layout |
-| `windowrulev2` | `omanix.omatiles.floatingApps` bundle IDs |
-| `hyprctl dispatch workspace` | `OmatilesLayouts.swift` CGRect math + AX API |
+| `bind = SUPER, 1, workspace, 1` | `omanix.omatiles.bindings = true` → ⌘⌥←/→/↑/↓ tile half, ⌘⌥Z untile |
+| `windowrulev2` | macOS Sequoia manages window rules; Omanix exposes the Window Management toggles |
+| `hyprctl dispatch workspace` | system ⌃⌥+arrow shortcuts driven by `Com.apple.WindowManager` + `OmatilesEngine` |
 
 If no native equivalent, delete shim and document in `docs/porting.md`.
 
@@ -133,11 +133,11 @@ If no native equivalent, delete shim and document in `docs/porting.md`.
 
 ```nix
 omanix.theme = "tokyo-night";
-omanix.omabar = { position = "top"; transparent = false; blur = true; };
-omanix.omatiles = { layout = "tiles"; gapInner = 8; gapOuter = 10; };
+omanix.omabar = { showClock = true; showBattery = true; };
+omanix.omatiles = { enableEdgeDrag = true; enableMargins = false; };
 ```
 
-`shell/` QML is never executed; its tokens are the reference for the Omabar item reimplementation in `Modules/Omabar/OmabarContentView.swift`. No `sketchybar/plugins/*.nix` exists anymore.
+`shell/` QML is never executed; its tokens are high-level references for the Omabar status items in `Modules/Omabar/OmabarManager.swift` (which live inside the native menu bar). No `sketchybar/plugins/*.nix` exists anymore.
 
 ---
 
@@ -300,7 +300,7 @@ The Store is `modules/apps/store/` → `lib/mkApp` SwiftUI (mac, `mkApp` GTK on 
 - **Browse:** Nix packages (`nix search` cached JSON) + brew casks/brews + `omanix.widgets` gallery + `omanix.theme` picker. Search box debounces, shows `search.nixos.org` description + `brew info` cask.
 - **Install/Remove:** Buttons call `libexec/omanix-add.sh` / `libexec/omanix-remove.sh` helpers that edit `configuration.nix` (adds `environment.systemPackages` or `homebrew.casks`), run `nix flake check` dry, show diff preview, then `omanix rebuild` with progress bar. No terminal. On failure, shows `nix` log + `Rollback` button.
 - **Widgets:** Toggles `omanix.widgets.pomodoro.enable` etc., previews live via `launchctl kickstart -k gui/$UID/om.omanix.omabar` (mac) / `quickshell ipc` (linux) without full rebuild — `Store` writes to `overlays/store-preview.nix` then `omanix rebuild --preview`.
-- **OS settings:** Sliders for `system.defaults.dock`, `omanix.omatiles.gapInner`, Touch ID toggle — all `omanix.*` options, never raw `defaults write`.
+- **OS settings:** Sliders for `system.defaults.dock`, `omanix.omatiles.enableMargins`, Touch ID toggle — all `omanix.*` options, never raw `defaults write`.
 - **Entry points:** `Super → Omanix Store`, `open -a "Omanix Store"`, `omanix store` CLI. Green user never types `omanix add`.
 
 **Contributor rule:** Store edits `configuration.nix` via structured helpers (`nix edit`-like `yq` for Nix), not `echo` or `sed`. All Store-initiated changes must be `omanix rebuild --rollback`able in 30s and appear as a `git diff` in `~/.omanix`.
