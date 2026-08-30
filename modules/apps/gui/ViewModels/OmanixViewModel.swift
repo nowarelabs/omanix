@@ -63,6 +63,7 @@ final class OmanixViewModel: ObservableObject {
         loadWidgets()
         loadThemes()
         refreshDeclared()
+        loadPlugins()
     }
 
     // MARK: - Installed
@@ -289,6 +290,146 @@ final class OmanixViewModel: ObservableObject {
         omabarEnabled = enabled
         do { try store.setOmabarEnabled(enabled); needsRebuild = true; applyOmabarToRuntime() }
         catch { omabarEnabled = !enabled; showMessage("Could not set Omabar: \(error.localizedDescription)", .error) }
+    }
+
+    // MARK: - Plugins (reusable menu bar / utility surface, persisted separately)
+
+    /// The user-arranged list of plugins with their current enabled state.
+    @Published var pluginItems: [PluginItem] = []
+
+    // MARK: Menu bar display preferences (drive our clock / battery renderers)
+
+    @Published var mbAutoHide: Bool = false
+    @Published var mbShowDate: Bool = true
+    @Published var mbShowBatteryPercent: Bool = true
+    @Published var mbUse24Hour: Bool = false
+    @Published var mbClockFormat: String = "digital"
+
+    /// Re-load pluginItems from the registry + persisted store (order + enabled).
+    func loadPlugins() {
+        loadMenuBarPrefs()
+        let order = PluginStore.shared.orderedIDs(all: PluginRegistry.all)
+        pluginItems = order.compactMap { id in
+            guard let plugin = PluginRegistry.plugin(id: id) else { return nil }
+            let enabled = PluginStore.shared.isEnabled(id, default: pluginDefaultEnabled(plugin.id))
+            return PluginItem(plugin, isEnabled: enabled)
+        }
+    }
+
+    private func loadMenuBarPrefs() {
+        let p = PluginStore.shared.menuBarPrefs()
+        mbAutoHide = p.autoHide
+        mbShowDate = p.showDate
+        mbShowBatteryPercent = p.showBatteryPercent
+        mbUse24Hour = p.use24Hour
+        mbClockFormat = p.clockFormat
+    }
+
+    /// Apply the display preferences to the running menu bar and the macOS auto-hide
+    /// preference, then persist.
+    private func applyMenuBarPrefs(_ mutate: (inout MenubarPrefs) -> Void) {
+        PluginStore.shared.updateMenuBarPrefs { prefs in
+            mutate(&prefs)
+        }
+        let p = PluginStore.shared.menuBarPrefs()
+        mbAutoHide = p.autoHide
+        mbShowDate = p.showDate
+        mbShowBatteryPercent = p.showBatteryPercent
+        mbUse24Hour = p.use24Hour
+        mbClockFormat = p.clockFormat
+        applyMenuBarPrefsToRuntime(p)
+    }
+
+    private func applyMenuBarPrefsToRuntime(_ p: MenubarPrefs) {
+        // Auto-hide the macOS menu bar until the pointer reaches the top.
+        Defaults.write(key: "AppleMenuBarAutoHide", value: p.autoHide)
+        // Push new formats into the live clock / battery status items.
+        OmabarManager.shared.applyDisplayPrefs()
+    }
+
+    func setMBAutoHide(_ value: Bool) {
+        applyMenuBarPrefs { $0.autoHide = value }
+    }
+    func setMBShowDate(_ value: Bool) {
+        applyMenuBarPrefs { $0.showDate = value }
+    }
+    func setMBShowBatteryPercent(_ value: Bool) {
+        applyMenuBarPrefs { $0.showBatteryPercent = value }
+    }
+    func setMBUse24Hour(_ value: Bool) {
+        applyMenuBarPrefs { $0.use24Hour = value }
+    }
+    func setMBClockFormat(_ value: String) {
+        applyMenuBarPrefs { $0.clockFormat = value }
+    }
+
+    /// Move a plugin to a new index in the persisted order, then refresh the UI.
+    func movePlugin(_ id: String, to destination: Int) {
+        PluginStore.shared.move(id: id, to: destination)
+        loadPlugins()
+        applyPluginsToRuntime()
+    }
+
+    /// Enable/disable a plugin by id and refresh the runtime bar.
+    func setPluginEnabled(_ id: String, _ enabled: Bool) {
+        PluginStore.shared.setEnabled(id, enabled)
+        loadPlugins()
+        applyPluginsToRuntime()
+        // Keep the legacy omanix.omabar.show* in sync so a rebuild leaves the
+        // native Control Center hiding consistent with what the user chose.
+        switch id {
+        case "clock":   omabarShowClock = enabled
+        case "battery": omabarShowBattery = enabled
+        case "volume":  omabarShowVolume = enabled
+        case "wifi":    omabarShowWifi = enabled
+        case "apps":    omabarShowApps = enabled
+        default: break
+        }
+    }
+
+    /// Convenience for toggling then refreshing (used by the Settings list).
+    func togglePlugin(_ item: PluginItem) {
+        setPluginEnabled(item.id, !item.isEnabled)
+    }
+
+    /// Open the System Settings pane for a permission (granting action).
+    func grant(_ permission: OmanixPermission) {
+        permission.openSettings()
+    }
+
+    private func pluginDefaultEnabled(_ id: String) -> Bool {
+        switch id {
+        case "clock", "battery", "volume", "wifi": return true
+        case "apps": return false
+        default: return true
+        }
+    }
+
+    private func applyPluginsToRuntime() {
+        if OmabarManager.shared.isRunning {
+            OmabarManager.shared.apply()
+        } else {
+            _ = OmabarManager.shared.start()
+        }
+    }
+
+    /// Called from the Menu Bar "Save Changes" button: re-apply the plugin set to the
+    /// running bar and mark the OS-level configuration for rebuild so the native Control
+    /// Center hiding matches what the user enabled.
+    func applyOmabarFromPlugins() {
+        applyPluginsToRuntime()
+        do {
+            try store.setOmabarEnabled(omabarEnabled)
+            try store.setOmabarShowClock(omabarShowClock)
+            try store.setOmabarShowBattery(omabarShowBattery)
+            try store.setOmabarShowVolume(omabarShowVolume)
+            try store.setOmabarShowWifi(omabarShowWifi)
+            try store.setOmabarShowApps(omabarShowApps)
+            needsRebuild = true
+            showMessage("Menu bar updated", .success)
+        } catch {
+            showMessage("Could not update Menu bar: \(error.localizedDescription)", .error)
+        }
     }
     func toggleOmabarShowClock() {
         omabarShowClock.toggle()

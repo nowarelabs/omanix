@@ -1,13 +1,8 @@
 // Views/OmatilesView.swift
 // "Omatiles" page — the Omanix bridge onto macOS' built-in window tiling.
-// Redesigned to match the reference "Window Manager" screen: a two-column panel with
-// Tiling / Layout / Spacing settings on the left and a live BSP desktop preview on the right,
-// plus an Apply footer.
-//
-// The tiling switches mirror omanix.omatiles.* in configuration.nix (enable, enableEdgeDrag,
-// enableKeyboardShortcuts, enableMargins, bindings). Layout (BSP/Grid/Monocle/Float) and
-// Spacing values are presented for parity with the design and held session-locally — macOS
-// Sequoia does the real tiling, and those controls are not yet declared options.
+// Two-column layout with real, functional tiling switches (persisted) on the left and
+// a live preview on the right. The macOS Accessibility permission — required to post
+// the ⌘⌥ tiling shortcuts — is surfaced prominently with a one-click grant.
 
 import SwiftUI
 import ApplicationServices
@@ -25,6 +20,8 @@ struct OmatilesView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
                     header
+
+                    permissionBanner
 
                     HStack(alignment: .top, spacing: 20) {
                         VStack(alignment: .leading, spacing: 28) {
@@ -44,7 +41,7 @@ struct OmatilesView: View {
         }
     }
 
-    // MARK: Header — eyebrow (blue, lightning icon) / title / subtitle
+    // MARK: Header
 
     private var header: some View {
         HStack(alignment: .top) {
@@ -69,7 +66,44 @@ struct OmatilesView: View {
         }
     }
 
-    // MARK: Left column — Tiling
+    // MARK: Permission banner (Accessibility drives the ⌘⌥ shortcuts)
+
+    @ViewBuilder
+    private var permissionBanner: some View {
+        let granted = AXIsProcessTrusted()
+        HStack(spacing: 14) {
+            RoundedRectangle(cornerRadius: 9)
+                .fill(granted ? OC.green : OC.orange)
+                .frame(width: 38, height: 38)
+                .overlay(
+                    Image(systemName: granted ? "checkmark.shield.fill" : "lock.shield.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                )
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Accessibility permission")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(OC.textPrimary)
+                Text(granted
+                     ? "Granted — Omanix can post the ⌘⌥ tiling shortcuts."
+                     : "Needed to post the ⌘⌥ tiling shortcuts. Grant it in System Settings, then re-check.")
+                    .font(.system(size: 12))
+                    .foregroundColor(OC.textSecondary)
+            }
+            Spacer()
+            if granted {
+                BorderedButton(title: "Re-check", icon: "arrow.clockwise") { _ = OmatilesEngine.ensureAccessibility() }
+            } else {
+                FilledButton(title: "Grant Access", icon: "lock.open") { _ = OmatilesEngine.ensureAccessibility() }
+            }
+        }
+        .padding(16)
+        .background(OC.cardBackground)
+        .overlay(RoundedRectangle(cornerRadius: OMetrics.cardCorner).stroke(OC.border, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: OMetrics.cardCorner))
+    }
+
+    // MARK: Tiling
 
     private var tilingSection: some View {
         SectionHeader(title: "Tiling", caption: "BEHAVIOR") {
@@ -87,47 +121,42 @@ struct OmatilesView: View {
                 )
                 Divider().overlay(OC.divider)
                 ToggleRow(
-                    title: "Float new windows",
-                    description: "Open new windows above the layout",
-                    isOn: $floatEnabled
+                    title: "Tiled margins",
+                    description: "Keep a gap between tiled windows",
+                    isOn: Binding(get: { vm.omatilesMargins }, set: { vm.setOmatilesMargins($0) })
+                )
+                Divider().overlay(OC.divider)
+                ToggleRow(
+                    title: "Keyboard shortcuts",
+                    description: "⌃⌥+arrow tiling + our ⌘⌥ bindings",
+                    isOn: Binding(get: { vm.omatilesKeyboardShortcuts }, set: { vm.setOmatilesKeyboardShortcuts($0) })
                 )
             }
         }
     }
 
-    // MARK: Left column — Layout
+    // MARK: Layout
 
     private var layoutSection: some View {
         SectionHeader(title: "Layout", caption: "STRUCTURE") {
             VStack(alignment: .leading, spacing: 12) {
-                // Dropdown-style selector (visual: shows the selected layout)
-                Button(action: {}) {
-                    HStack {
-                        Text(layout.title)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(OC.textPrimary)
-                        Spacer()
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(OC.textTertiary)
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(OC.cardBackground)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(OC.border, lineWidth: 1)
-                    )
+                HStack {
+                    Text(layout.title)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(OC.textPrimary)
+                    Spacer()
+                    Text("macOS tiling")
+                        .font(.system(size: 11))
+                        .foregroundColor(OC.textTertiary)
                 }
-                .buttonStyle(.plain)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(OC.cardBackground)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(OC.border, lineWidth: 1))
 
-                // 4 selectable layout tiles
                 HStack(spacing: 10) {
                     ForEach(TilingLayout.allCases) { option in
-                        LayoutTile(
-                            layout: option,
-                            selected: layout == option
-                        ) {
+                        LayoutTile(layout: option, selected: layout == option) {
                             withAnimation(.easeInOut(duration: 0.15)) { layout = option }
                         }
                     }
@@ -136,7 +165,7 @@ struct OmatilesView: View {
         }
     }
 
-    // MARK: Left column — Spacing
+    // MARK: Spacing
 
     private var spacingSection: some View {
         SectionHeader(title: "Spacing", caption: nil, trailingIcon: "slider.horizontal.3") {
@@ -148,7 +177,7 @@ struct OmatilesView: View {
         }
     }
 
-    // MARK: Right column — Live preview
+    // MARK: Preview
 
     private var previewColumn: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -184,7 +213,7 @@ struct OmatilesView: View {
         .clipShape(RoundedRectangle(cornerRadius: OMetrics.cardCorner))
     }
 
-    // MARK: Footer — Apply bar
+    // MARK: Footer
 
     private var footer: some View {
         HStack {
@@ -201,8 +230,6 @@ struct OmatilesView: View {
     }
 
     private func apply() {
-        // Persisted tiling switches already write + mark the system for rebuild on change;
-        // Apply reconciles the running engine and posts a tiling sanity check when possible.
         if vm.omatilesEnabled {
             vm.launchOmatiles()
         } else {
@@ -211,32 +238,24 @@ struct OmatilesView: View {
     }
 }
 
-// MARK: - Layout options (session-local; macOS Sequoia does the real tiling)
+// MARK: - Layout options (session-local preview; macOS Sequoia does the real tiling)
 
 private enum TilingLayout: String, CaseIterable, Identifiable {
     case bsp, grid, monocle, float
     var id: String { rawValue }
-
     var title: String {
         switch self {
-        case .bsp:      return "BSP"
-        case .grid:     return "Grid"
-        case .monocle:  return "Monocle"
-        case .float:    return "Float"
+        case .bsp: return "BSP"; case .grid: return "Grid"
+        case .monocle: return "Monocle"; case .float: return "Float"
         }
     }
-
     var icon: String {
         switch self {
-        case .bsp:      return "square.dashed"
-        case .grid:     return "square.grid.2x2"
-        case .monocle:  return "square.fill"
-        case .float:    return "rectangle"
+        case .bsp: return "square.dashed"; case .grid: return "square.grid.2x2"
+        case .monocle: return "square.fill"; case .float: return "rectangle"
         }
     }
 }
-
-// MARK: - Section header (title left, caption/icon right)
 
 private struct SectionHeader<Content: View>: View {
     let title: String
@@ -247,27 +266,18 @@ private struct SectionHeader<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(title)
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(OC.textPrimary)
+                Text(title).font(.system(size: 18, weight: .bold)).foregroundColor(OC.textPrimary)
                 Spacer()
                 if let trailingIcon {
-                    Image(systemName: trailingIcon)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(OC.textTertiary)
+                    Image(systemName: trailingIcon).font(.system(size: 13, weight: .medium)).foregroundColor(OC.textTertiary)
                 } else if let caption {
-                    Text(caption)
-                        .font(.system(size: 11, weight: .semibold))
-                        .tracking(0.5)
-                        .foregroundColor(OC.textTertiary)
+                    Text(caption).font(.system(size: 11, weight: .semibold)).tracking(0.5).foregroundColor(OC.textTertiary)
                 }
             }
             content()
         }
     }
 }
-
-// MARK: - Toggle row
 
 private struct ToggleRow: View {
     let title: String
@@ -281,16 +291,11 @@ private struct ToggleRow: View {
                 Text(description).font(.system(size: 12)).foregroundColor(OC.textSecondary)
             }
             Spacer()
-            Toggle("", isOn: $isOn)
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .tint(OC.accentBlue)
+            Toggle("", isOn: $isOn).labelsHidden().toggleStyle(.switch).tint(OC.accentBlue)
         }
         .padding(16)
     }
 }
-
-// MARK: - Selectable layout tile
 
 private struct LayoutTile: View {
     let layout: TilingLayout
@@ -300,10 +305,8 @@ private struct LayoutTile: View {
     var body: some View {
         Button(action: action) {
             VStack(spacing: 8) {
-                Image(systemName: layout.icon)
-                    .font(.system(size: 20, weight: .medium))
-                Text(layout.title)
-                    .font(.system(size: 12, weight: .semibold))
+                Image(systemName: layout.icon).font(.system(size: 20, weight: .medium))
+                Text(layout.title).font(.system(size: 12, weight: .semibold))
             }
             .foregroundColor(selected ? OC.accentBlue : OC.textPrimary)
             .frame(maxWidth: .infinity)
@@ -319,8 +322,6 @@ private struct LayoutTile: View {
     }
 }
 
-// MARK: - Slider row
-
 private struct SliderRow: View {
     let label: String
     @Binding var value: Double
@@ -332,18 +333,13 @@ private struct SliderRow: View {
             HStack {
                 Text(label).font(.system(size: 13.5, weight: .semibold)).foregroundColor(OC.textPrimary)
                 Spacer()
-                Text("\(Int(value))\(unit)")
-                    .font(OFont.mono(12, weight: .semibold))
-                    .foregroundColor(OC.accentBlue)
+                Text("\(Int(value))\(unit)").font(OFont.mono(12, weight: .semibold)).foregroundColor(OC.accentBlue)
             }
-            Slider(value: $value, in: range, step: 1)
-                .tint(OC.accentBlue)
+            Slider(value: $value, in: range, step: 1).tint(OC.accentBlue)
         }
         .padding(16)
     }
 }
-
-// MARK: - Desktop preview
 
 private struct DesktopPreview: View {
     let layout: TilingLayout
@@ -352,10 +348,8 @@ private struct DesktopPreview: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: 10)
-                .fill(OC.subtleFill)
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(OC.border, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 10).fill(OC.subtleFill)
+            RoundedRectangle(cornerRadius: 10).stroke(OC.border, lineWidth: 1)
 
             HStack(spacing: CGFloat(gap)) {
                 previewPane(fill: OC.lightBlueFill, titleBar: OC.accentBlue)

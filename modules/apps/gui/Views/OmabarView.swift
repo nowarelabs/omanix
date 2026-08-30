@@ -1,30 +1,30 @@
 // Views/OmabarView.swift
-// "Omabar" page — control the Omanix status items that live inside the native macOS menu bar.
-// Redesigned to match the reference "Menu Bar" screen: a reorderable 9-item list of status
-// items, each with a drag handle, a colored icon tile, a status pill, a visibility toggle, and
-// an eye reveal control, plus a footer Save bar.
+// "Omabar" page — control the Omanix menu bar (status) plugins.
+// Your plugins are listed in a drag-to-reorder list; toggling a row shows/hides it
+// in the macOS menu bar instantly. Any plugin that needs a macOS permission is
+// surfaced in the Permissions section below with a one-click grant.
 //
-// Persisted items mirror omanix.omabar.* in configuration.nix (Enable Omabar → omabar.enable,
-// Clock/Battery/Volume/Wi-Fi → their show* switches). The remaining reference rows
-// (Control Center, Brightness, Dropbox, Bluetooth) are pipeline items shown for parity so the
-// row count and order match the design; their visibility state is session-local and not yet a
-// declared option. Running modules obey the real settings live.
+// This page is 100% plugin-driven: it reads PluginRegistry + PluginStore through the
+// view model and never names a specific plugin. Add a plugin to the registry and it
+// shows up here, in the menu bar, and in the permission list automatically.
 
 import SwiftUI
 
 struct OmabarView: View {
     @EnvironmentObject private var vm: OmanixViewModel
-
-    private var items: [OmabarItem] { OmabarItem.all }
-    private let always: [String] = ["cc", "wifi", "battery", "clock", "omanix"]
-    private let whenActive: [String] = ["volume", "brightness", "dropbox"]
+    @State private var draggingID: String?
 
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
                     header
+
+                    clockMenubarSection
+
                     itemsSection
+
+                    permissionsSection
                 }
                 .padding(24)
             }
@@ -33,7 +33,7 @@ struct OmabarView: View {
         }
     }
 
-    // MARK: Header — eyebrow / title / subtitle / item-count pill
+    // MARK: Header
 
     private var header: some View {
         HStack(alignment: .top) {
@@ -53,7 +53,7 @@ struct OmabarView: View {
             HStack(spacing: 6) {
                 Image(systemName: "list.bullet")
                     .font(.system(size: 11, weight: .semibold))
-                Text("\(items.count) items")
+                Text("\(vm.pluginItems.count) items")
                     .font(.system(size: 12, weight: .semibold))
             }
             .foregroundColor(OC.accentBlue)
@@ -64,11 +64,142 @@ struct OmabarView: View {
         }
     }
 
-    // MARK: Item list
+    // MARK: Clock & Menubar (General toggles + Clock Format)
+
+    private var clockMenubarSection: some View {
+        VStack(alignment: .leading, spacing: 28) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("General")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(OC.textPrimary)
+
+                VStack(spacing: 0) {
+                    PrefToggleRow(
+                        title: "Auto-hide menu bar",
+                        description: "Reveal the menu bar when you move the pointer to the top",
+                        icon: "menubar.rectangle",
+                        isOn: Binding(get: { vm.mbAutoHide }, set: { vm.setMBAutoHide($0) })
+                    )
+                    divider
+                    PrefToggleRow(
+                        title: "Show date next to time",
+                        description: "Display the abbreviated date in the menu bar",
+                        icon: "calendar",
+                        isOn: Binding(get: { vm.mbShowDate }, set: { vm.setMBShowDate($0) })
+                    )
+                    divider
+                    PrefToggleRow(
+                        title: "Show battery percentage",
+                        description: "Keep the current charge visible beside the battery icon",
+                        icon: "battery.75percent",
+                        isOn: Binding(get: { vm.mbShowBatteryPercent }, set: { vm.setMBShowBatteryPercent($0) })
+                    )
+                    divider
+                    PrefToggleRow(
+                        title: "Use 24-hour time",
+                        description: "Display time using a 24-hour clock",
+                        icon: "clock",
+                        isOn: Binding(get: { vm.mbUse24Hour }, set: { vm.setMBUse24Hour($0) })
+                    )
+                }
+                .background(OC.cardBackground)
+                .overlay(RoundedRectangle(cornerRadius: OMetrics.cardCorner).stroke(OC.border, lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: OMetrics.cardCorner))
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Clock Format")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(OC.textPrimary)
+                    Spacer()
+                    Text("Choose how the time appears in your menu bar")
+                        .font(.system(size: 12))
+                        .foregroundColor(OC.textTertiary)
+                }
+
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(spacing: 10) {
+                        FormatTile(
+                            kind: "digital",
+                            title: "Digital",
+                            icon: "digital",
+                            mono: true,
+                            selected: vm.mbClockFormat == "digital"
+                        ) { vm.setMBClockFormat("digital") }
+
+                        FormatTile(
+                            kind: "analog",
+                            title: "Analog",
+                            icon: "clock",
+                            mono: false,
+                            selected: vm.mbClockFormat == "analog"
+                        ) { vm.setMBClockFormat("analog") }
+                    }
+
+                    samplePreview
+                }
+                .padding(16)
+                .background(OC.cardBackground)
+                .overlay(RoundedRectangle(cornerRadius: OMetrics.cardCorner).stroke(OC.border, lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: OMetrics.cardCorner))
+            }
+        }
+    }
+
+    /// Live sample that mirrors what the Clock plugin will show.
+    private var samplePreview: some View {
+        let time = sampleTimeText()
+        return HStack(spacing: 10) {
+            Image(systemName: vm.mbClockFormat == "analog" ? "clock" : "digital")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundColor(OC.accentBlue)
+            Text(time)
+                .font(OFont.mono(14, weight: .semibold))
+                .foregroundColor(OC.textPrimary)
+            Text(sampleDateText())
+                .font(.system(size: 13))
+                .foregroundColor(OC.textSecondary)
+            Spacer()
+            Text(vm.mbClockFormat == "analog" ? "Analog" : "Digital")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(OC.textTertiary)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 3)
+                .background(OC.subtleFill)
+                .clipShape(Capsule())
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(OC.subtleFill)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func sampleTimeText() -> String {
+        // Use a stable reference time ("9:41" classic Apple screen) so the preview
+        // reads cleanly regardless of the actual wall clock.
+        let base = DateComponents(hour: 9, minute: 41).date ?? Date()
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        if vm.mbClockFormat == "analog" { return "9:41" }
+        f.dateFormat = vm.mbUse24Hour ? "HH:mm" : "h:mm a"
+        return f.string(from: base)
+    }
+
+    private func sampleDateText() -> String {
+        // "Saturday" sample consistent with the design reference.
+        "Saturday"
+    }
+
+    private var divider: some View {
+        Divider().overlay(OC.divider)
+    }
+
+    // MARK: Items (drag to reorder)
 
     private var itemsSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline) {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
                 Text("Menu Bar Items")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(OC.textPrimary)
@@ -78,181 +209,309 @@ struct OmabarView: View {
                     .foregroundColor(OC.textTertiary)
             }
 
-            CardBox {
-                ForEach(items) { item in
-                    OmabarItemRow(
+            VStack(spacing: 0) {
+                ForEach(Array(vm.pluginItems.enumerated()), id: \.element.id) { index, item in
+                    PluginRow(
                         item: item,
-                        status: status(for: item),
-                        isVisible: Binding(
-                            get: { visibility(for: item) },
-                            set: { setVisibility(for: item, $0) }
+                        isDragging: draggingID == item.id,
+                        onToggle: { vm.togglePlugin(item) }
+                    )
+                    .onDrag {
+                        draggingID = item.id
+                        return NSItemProvider(object: item.id as NSString)
+                    }
+                    .onDrop(
+                        of: [.text],
+                        delegate: PluginDropDelegate(
+                            itemID: item.id,
+                            targetIndex: index,
+                            items: vm.pluginItems.map(\.id),
+                            draggingID: $draggingID,
+                            onMove: { from, to in vm.movePlugin(from, to: to) }
                         )
                     )
-                    if item.id != items.last?.id {
+                    if index < vm.pluginItems.count - 1 {
                         Divider().overlay(OC.divider)
                     }
+                }
+            }
+            .background(OC.cardBackground)
+            .overlay(RoundedRectangle(cornerRadius: OMetrics.cardCorner).stroke(OC.border, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: OMetrics.cardCorner))
+        }
+    }
+
+    // MARK: Drag & drop reorder delegate
+
+    private struct PluginDropDelegate: DropDelegate {
+        let itemID: String
+        let targetIndex: Int
+        let items: [String]
+        @Binding var draggingID: String?
+        let onMove: (String, Int) -> Void
+
+        func dropEntered(info: DropInfo) {
+            guard let dragging = draggingID, dragging != itemID,
+                  let from = items.firstIndex(of: dragging) else { return }
+            // Move the dragged plugin to the target's index (adjusting for removal).
+            var result = items
+            result.remove(at: from)
+            let dest = items.firstIndex(of: itemID) ?? targetIndex
+            let clamped = min(max(0, dest), result.count)
+            onMove(dragging, clamped)
+        }
+
+        func dropUpdated(info: DropInfo) -> DropProposal? {
+            DropProposal(operation: .move)
+        }
+
+        func performDrop(info: DropInfo) -> Bool {
+            draggingID = nil
+            return true
+        }
+
+        func dropExited(info: DropInfo) {
+            draggingID = nil
+        }
+    }
+
+    // MARK: Permissions
+
+    private var permissionsSection: some View {
+        let needed = enabledPermissions
+        return Group {
+            if !needed.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Permissions")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(OC.textPrimary)
+                    VStack(spacing: 0) {
+                        ForEach(Array(needed.enumerated()), id: \.element) { index, permission in
+                            PermissionRow(permission: permission) {
+                                vm.grant(permission)
+                            }
+                            if index < needed.count - 1 {
+                                Divider().overlay(OC.divider)
+                            }
+                        }
+                    }
+                    .background(OC.cardBackground)
+                    .overlay(RoundedRectangle(cornerRadius: OMetrics.cardCorner).stroke(OC.border, lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: OMetrics.cardCorner))
                 }
             }
         }
     }
 
-    // MARK: Footer — Save bar
+    /// Distinct permissions required by the enabled plugins, in a stable order.
+    private var enabledPermissions: [OmanixPermission] {
+        var seen = Set<OmanixPermission>()
+        var result: [OmanixPermission] = []
+        for item in vm.pluginItems where item.isEnabled {
+            for p in item.permissions where !seen.contains(p) {
+                seen.insert(p)
+                result.append(p)
+            }
+        }
+        return result
+    }
+
+    // MARK: Footer
 
     private var footer: some View {
         HStack {
-            Text("Changes are saved for this device")
+            Text("Changes are applied live to the menu bar")
                 .font(.system(size: 12))
                 .foregroundColor(OC.textSecondary)
             Spacer()
-            FilledButton(title: "Save Changes", icon: "checkmark") { apply() }
+            FilledButton(title: "Save Changes", icon: "checkmark") {
+                vm.applyOmabarFromPlugins()
+            }
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 12)
         .background(OC.toolBarBackground)
         .overlay(Rectangle().fill(OC.divider).frame(height: 1), alignment: .top)
     }
-
-    // MARK: Mapping rows <-> real settings
-
-    private func status(for item: OmabarItem) -> OmabarStatus {
-        if always.contains(item.id) { return .always }
-        if whenActive.contains(item.id) { return .whenActive }
-        return .hidden
-    }
-
-    private func visibility(for item: OmabarItem) -> Bool {
-        switch item.id {
-        case "enable":  return vm.omabarEnabled
-        case "clock":   return vm.omabarShowClock
-        case "battery": return vm.omabarShowBattery
-        case "volume":  return vm.omabarShowVolume
-        case "wifi":    return vm.omabarShowWifi
-        default:        return item.defaultVisible
-        }
-    }
-
-    private func setVisibility(for item: OmabarItem, _ on: Bool) {
-        switch item.id {
-        case "enable":  vm.setOmabarEnabled(on)
-        case "clock":   vm.toggleOmabarShowClock()
-        case "battery": vm.toggleOmabarShowBattery()
-        case "volume":  vm.toggleOmabarShowVolume()
-        case "wifi":    vm.toggleOmabarShowWifi()
-        default:        break // session-local rows (Control Center / Brightness / Dropbox / Bluetooth)
-        }
-    }
-
-    private func apply() {
-        // Persisted items are already written the moment each toggle flips (setters apply
-        // to the running module live), so Save just reconciles the module's run state.
-        if vm.omabarEnabled {
-            vm.launchOmabar()
-        } else {
-            vm.stopOmabar()
-        }
-    }
 }
 
-// MARK: - Item model (matches the reference list order + styling)
+// MARK: - Plugin row
 
-private struct OmabarItem: Identifiable {
-    let id: String
-    let name: String
-    let icon: String
-    let tint: Color
-    var defaultVisible = true
-
-    static let all: [OmabarItem] = [
-        OmabarItem(id: "cc",        name: "Control Center", icon: "switch.2",        tint: OC.accentBlue),
-        OmabarItem(id: "wifi",      name: "Wi-Fi",          icon: "wifi",            tint: OC.accentBlue),
-        OmabarItem(id: "battery",   name: "Battery",        icon: "battery.100",     tint: OC.green),
-        OmabarItem(id: "clock",     name: "Clock",          icon: "clock",           tint: OC.purple),
-        OmabarItem(id: "volume",    name: "Volume",         icon: "speaker.wave.2",  tint: OC.orange),
-        OmabarItem(id: "brightness",name: "Brightness",     icon: "sun.max",         tint: OC.amber),
-        OmabarItem(id: "omanix",    name: "Omanix",         icon: "bolt.fill",       tint: OC.accentBlue),
-        OmabarItem(id: "dropbox",   name: "Dropbox",        icon: "square.stack.3d.up.fill", tint: OC.cyan),
-        OmabarItem(id: "bluetooth", name: "Bluetooth",      icon: "dot.radiowaves.left.and.right", tint: OC.accentBlue,
-                   defaultVisible: false),
-    ]
-}
-
-private enum OmabarStatus {
-    case always, whenActive, hidden
-
-    var label: String {
-        switch self {
-        case .always:     return "Always"
-        case .whenActive: return "When active"
-        case .hidden:     return "Hidden"
-        }
-    }
-
-    var color: Color {
-        switch self {
-        case .always:     return OC.green
-        case .whenActive: return OC.orange
-        case .hidden:     return OC.textTertiary
-        }
-    }
-}
-
-// MARK: - Row
-
-private struct OmabarItemRow: View {
-    let item: OmabarItem
-    let status: OmabarStatus
-    @Binding var isVisible: Bool
+private struct PluginRow: View {
+    let item: PluginItem
+    let isDragging: Bool
+    let onToggle: () -> Void
 
     var body: some View {
         HStack(spacing: 14) {
-            // Drag handle (6-dot grip)
+            // Drag/ordering handle
             Image(systemName: "line.3.horizontal")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(OC.textTertiary)
-                .frame(width: 16)
+                .frame(width: 18)
                 .help("Drag to reorder")
 
-            // Colored icon tile
+            // Icon tile
             RoundedRectangle(cornerRadius: 8)
                 .fill(item.tint)
                 .frame(width: 30, height: 30)
                 .overlay(
-                    Image(systemName: item.icon)
+                    Image(systemName: item.symbol)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.white)
                 )
 
-            Text(item.name)
-                .font(.system(size: 13.5, weight: .semibold))
-                .foregroundColor(OC.textPrimary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.name)
+                    .font(.system(size: 13.5, weight: .semibold))
+                    .foregroundColor(OC.textPrimary)
+                Text(item.subtitle)
+                    .font(.system(size: 11.5))
+                    .foregroundColor(OC.textTertiary)
+            }
 
             Spacer()
 
-            // Status pill
-            Text(status.label)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(status.color)
-                .padding(.horizontal, 9)
-                .padding(.vertical, 3)
-                .background(status.color.opacity(0.14))
-                .clipShape(Capsule())
+            // Permission indication (small dot if this plugin needs a permission)
+            if !item.permissions.isEmpty {
+                Image(systemName: "lock.shield")
+                    .font(.system(size: 12))
+                    .foregroundColor(OC.textTertiary)
+                    .help(item.permissions.map(\.title).joined(separator: ", "))
+            }
 
-            // Visibility toggle
-            Toggle("", isOn: $isVisible)
+            Toggle("", isOn: Binding(get: { item.isEnabled }, set: { _ in onToggle() }))
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .tint(OC.accentBlue)
-
-            // Eye reveal / hide
-            Image(systemName: isVisible ? "eye" : "eye.slash")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(isVisible ? OC.textSecondary : OC.textTertiary)
-                .frame(width: 20)
-                .contentTransition(.symbolEffect(.replace))
-                .onTapGesture { isVisible.toggle() }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+        .background(isDragging ? OC.subtleFill : Color.clear)
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(isDragging ? OC.accentBlue : Color.clear, lineWidth: isDragging ? 1 : 0)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+}
+
+// MARK: - Permission row
+
+private struct PermissionRow: View {
+    let permission: OmanixPermission
+    let grant: () -> Void
+
+    var body: some View {
+        HStack(spacing: 14) {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(permission.granted ? OC.green : OC.orange)
+                .frame(width: 30, height: 30)
+                .overlay(
+                    Image(systemName: permission.granted ? "checkmark" : "lock")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                )
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(permission.title)
+                    .font(.system(size: 13.5, weight: .semibold))
+                    .foregroundColor(OC.textPrimary)
+                Text(permission.explanation)
+                    .font(.system(size: 11.5))
+                    .foregroundColor(OC.textTertiary)
+            }
+
+            Spacer()
+
+            Text(permission.granted ? "Granted" : "Not granted")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(permission.granted ? OC.green : OC.orange)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 3)
+                .background((permission.granted ? OC.green : OC.orange).opacity(0.14))
+                .clipShape(Capsule())
+
+            if !permission.granted {
+                FilledButton(title: "Grant", icon: "lock.open") { grant() }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+}
+
+// MARK: - Preference toggle row
+
+private struct PrefToggleRow: View {
+    let title: String
+    let description: String
+    let icon: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        HStack(spacing: 14) {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(OC.accentBlue.opacity(0.12))
+                .frame(width: 30, height: 30)
+                .overlay(
+                    Image(systemName: icon)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(OC.accentBlue)
+                )
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 13.5, weight: .semibold))
+                    .foregroundColor(OC.textPrimary)
+                Text(description)
+                    .font(.system(size: 12))
+                    .foregroundColor(OC.textSecondary)
+            }
+            Spacer()
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .tint(OC.accentBlue)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+}
+
+// MARK: - Clock format tile
+
+private struct FormatTile: View {
+    let kind: String
+    let title: String
+    let icon: String
+    let mono: Bool
+    let selected: Bool
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                if mono {
+                    Text("9:41")
+                        .font(OFont.mono(15, weight: .semibold))
+                } else {
+                    Image(systemName: icon)
+                        .font(.system(size: 18, weight: .medium))
+                }
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            .foregroundColor(selected ? Color.white : OC.textPrimary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(selected ? OC.accentBlue : Color.white)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(selected ? OC.accentBlue : OC.border, lineWidth: selected ? 1.5 : 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
     }
 }
 
