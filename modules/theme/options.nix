@@ -47,6 +47,43 @@
       description = "Show the frontmost app in the menu bar, with a menu of all on-screen apps to switch to.";
       example = true;
     };
+
+    # --- Omabar clock / battery display preferences (Nix-owned; GUI writes via
+    # `omanix state set` and applies live — mirrors the macOS-only live path) ---
+    autoHide = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Hide the macOS menu bar until the pointer reaches the top of the screen.";
+      example = true;
+    };
+
+    showDate = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Render the abbreviated date beside the time in the clock status item.";
+      example = false;
+    };
+
+    showBatteryPercent = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Show the numeric charge percentage beside the battery icon.";
+      example = false;
+    };
+
+    use24Hour = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Use a 24-hour clock instead of 12-hour.";
+      example = true;
+    };
+
+    clockFormat = lib.mkOption {
+      type = lib.types.enum [ "digital" "analog" ];
+      default = "digital";
+      description = "How the clock is drawn: 'digital' (HH:mm text) or 'analog' (small clock glyph).";
+      example = "analog";
+    };
   };
 
   # --- Omatiles: a thin bridge onto macOS Sequoia's BUILT-IN window tiling ---

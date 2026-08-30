@@ -60,6 +60,11 @@ enum RuntimeSettings {
         var showVolume = true
         var showWifi = true
         var showApps = false
+        var autoHide = false
+        var showDate = true
+        var showBatteryPercent = true
+        var use24Hour = false
+        var clockFormat = "digital"
 
         static func load() -> Omabar {
             Omabar(
@@ -68,7 +73,12 @@ enum RuntimeSettings {
                 showBattery: bool("omanix.omabar.showBattery", default: true),
                 showVolume: bool("omanix.omabar.showVolume", default: true),
                 showWifi: bool("omanix.omabar.showWifi", default: true),
-                showApps: bool("omanix.omabar.showApps", default: false)
+                showApps: bool("omanix.omabar.showApps", default: false),
+                autoHide: bool("omanix.omabar.autoHide", default: false),
+                showDate: bool("omanix.omabar.showDate", default: true),
+                showBatteryPercent: bool("omanix.omabar.showBatteryPercent", default: true),
+                use24Hour: bool("omanix.omabar.use24Hour", default: false),
+                clockFormat: option("omanix.omabar.clockFormat") ?? "digital"
             )
         }
     }

@@ -326,12 +326,25 @@ final class OmanixViewModel: ObservableObject {
     }
 
     /// Apply the display preferences to the running menu bar and the macOS auto-hide
-    /// preference, then persist.
+    /// preference, then persist. The declarative source of truth is the Nix state
+    /// (omanix.omabar.*); the JSON + macOS defaults writes are the live-apply side
+    /// effects so the running bar obeys without a rebuild.
     private func applyMenuBarPrefs(_ mutate: (inout MenubarPrefs) -> Void) {
-        PluginStore.shared.updateMenuBarPrefs { prefs in
-            mutate(&prefs)
+        let before = PluginStore.shared.menuBarPrefs()
+        var next = before
+        mutate(&next)
+        let p = next
+        do {
+            if p.autoHide != before.autoHide { try store.setOmabarAutoHide(p.autoHide) }
+            if p.showDate != before.showDate { try store.setOmabarShowDate(p.showDate) }
+            if p.showBatteryPercent != before.showBatteryPercent { try store.setOmabarShowBatteryPercent(p.showBatteryPercent) }
+            if p.use24Hour != before.use24Hour { try store.setOmabarUse24Hour(p.use24Hour) }
+            if p.clockFormat != before.clockFormat { try store.setOmabarClockFormat(p.clockFormat) }
+            needsRebuild = true
+        } catch {
+            showMessage("Could not update menu bar preference: \(error.localizedDescription)", .error)
         }
-        let p = PluginStore.shared.menuBarPrefs()
+        PluginStore.shared.setMenuBarPrefs(p)
         mbAutoHide = p.autoHide
         mbShowDate = p.showDate
         mbShowBatteryPercent = p.showBatteryPercent

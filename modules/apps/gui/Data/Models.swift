@@ -72,6 +72,11 @@ struct OmabarState: Equatable {
     var showVolume = true
     var showWifi = true
     var showApps = false
+    var autoHide = false
+    var showDate = true
+    var showBatteryPercent = true
+    var use24Hour = false
+    var clockFormat = "digital"
 }
 
 // MARK: - Omatiles (bridge onto macOS' built-in tiling) state

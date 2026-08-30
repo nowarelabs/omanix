@@ -132,6 +132,11 @@ func writeTestFlake(_ env: TestEnv) throws {
           options.omanix.omabar.showVolume = lib.mkOption { type = lib.types.bool; default = true; };
           options.omanix.omabar.showWifi = lib.mkOption { type = lib.types.bool; default = true; };
           options.omanix.omabar.showApps = lib.mkOption { type = lib.types.bool; default = false; };
+          options.omanix.omabar.autoHide = lib.mkOption { type = lib.types.bool; default = false; };
+          options.omanix.omabar.showDate = lib.mkOption { type = lib.types.bool; default = true; };
+          options.omanix.omabar.showBatteryPercent = lib.mkOption { type = lib.types.bool; default = true; };
+          options.omanix.omabar.use24Hour = lib.mkOption { type = lib.types.bool; default = false; };
+          options.omanix.omabar.clockFormat = lib.mkOption { type = lib.types.str; default = "digital"; };
           options.omanix.omatiles.enable = lib.mkOption { type = lib.types.bool; default = true; };
           options.omanix.omatiles.bindings = lib.mkOption { type = lib.types.bool; default = true; };
           options.omanix.omatiles.enableEdgeDrag = lib.mkOption { type = lib.types.bool; default = true; };
@@ -232,15 +237,33 @@ func run() throws {
     checkEq(nixEval("omanix.omabar.showWifi"), "true", "Swift setOmabarShowWifi(true) -> nix eval reflects true")
     checkEq(nixEval("omanix.omabar.showApps"), "true", "Swift setOmabarShowApps(true) -> nix eval reflects true")
 
+    print("\n[3] menu-bar display options (autoHide/showDate/showBatteryPercent/use24Hour/clockFormat)")
+    try store.setOmabarAutoHide(true)
+    checkBool(store.currentOmabarState().autoHide == true, "currentOmabarState().autoHide == true")
+    try store.setOmabarShowDate(false)
+    checkBool(store.currentOmabarState().showDate == false, "currentOmabarState().showDate == false")
+    try store.setOmabarShowBatteryPercent(false)
+    checkBool(store.currentOmabarState().showBatteryPercent == false, "currentOmabarState().showBatteryPercent == false")
+    try store.setOmabarUse24Hour(true)
+    checkBool(store.currentOmabarState().use24Hour == true, "currentOmabarState().use24Hour == true")
+    try store.setOmabarClockFormat("analog")
+    checkEq(store.currentOmabarState().clockFormat, "analog", "currentOmabarState().clockFormat == 'analog'")
+    checkEq(readAssignment("omanix.omabar.autoHide", inFile: env.flakeDir + "/state.nix") ?? "", "true", "state.nix has omanix.omabar.autoHide = true")
+    checkEq(readAssignment("omanix.omabar.clockFormat", inFile: env.flakeDir + "/state.nix") ?? "", "analog", "state.nix has omanix.omabar.clockFormat = \"analog\"")
+    checkEq(nixEval("omanix.omabar.autoHide"), "true", "Swift setOmabarAutoHide(true) -> nix eval reflects true")
+    checkEq(nixEval("omanix.omabar.showDate"), "false", "Swift setOmabarShowDate(false) -> nix eval reflects false")
+    checkEq(nixEval("omanix.omabar.use24Hour"), "true", "Swift setOmabarUse24Hour(true) -> nix eval reflects true")
+    checkEq(nixEval("omanix.omabar.clockFormat"), "analog", "Swift setOmabarClockFormat('analog') -> nix eval reflects 'analog'")
+
     // ---------------- Swift -> Nix: theme (string) ----------------
-    print("\n[3] setTheme('solstice') ")
+    print("\n[4] setTheme('solstice') ")
     try store.setTheme("solstice")
     checkEq(store.readOption("omanix.theme") ?? "", "solstice", "readOption('omanix.theme') == 'solstice'")
     checkEq(readAssignment("omanix.theme", inFile: env.flakeDir + "/state.nix") ?? "", "solstice", "state.nix has omanix.theme = \"solstice\"")
     checkEq(nixEval("omanix.theme"), "solstice", "Swift setTheme('solstice') -> nix eval .#env.config.omanix.theme == 'solstice'")
 
     // ---------------- Swift -> Nix: widget options ----------------
-    print("\n[4] setWidgetEnabled('store', true) / ('pomodoro', true)")
+    print("\n[5] setWidgetEnabled('store', true) / ('pomodoro', true)")
     try store.setWidgetEnabled("store", true)
     checkBool(store.readBoolOption("omanix.widgets.store.enable") == .some(true), "readBoolOption('omanix.widgets.store.enable') == true")
     checkEq(readAssignment("omanix.widgets.store.enable", inFile: env.flakeDir + "/state.nix") ?? "", "true", "state.nix has omanix.widgets.store.enable = true")
@@ -253,14 +276,14 @@ func run() throws {
     checkEq(nixEval("omanix.widgets.clock.enable"), "true", "Swift setWidgetEnabled('clock', true) -> nix eval reflects true")
 
     // ---------------- Swift -> Nix: schema rejects bad values ----------------
-    print("\n[5] invalid values rejected by CLI (schema)")
+    print("\n[6] invalid values rejected by CLI (schema)")
     // Swift's Bool type is compile-time-safe, so a non-bool literal can never reach
     // the CLI from the store. The CLI's own type/unknown-key rejection is verified
     // at the CLI level in tests/two-way.sh (it owns the schema contract).
     check(true, "store keeps Bool type-safe (CLI rejection covered in tests/two-way.sh)")
 
     // ---------------- Nix -> Swift: write state.nix, Swift reads it ----------------
-    print("\n[6] Nix writes state.nix -> Swift readers reflect it")
+    print("\n[7] Nix writes state.nix -> Swift readers reflect it")
     let state = """
     { ... }:
     {
@@ -284,13 +307,18 @@ func run() throws {
     checkEq(nixEval("omanix.theme"), "tokyo-night", "Nix-written state.nix -> nix eval sees omanix.theme == 'tokyo-night'")
 
     // ---------------- unset falls back to defaults ----------------
-    print("\n[7] unset options fall back to defaults (fresh empty flake dir)")
+    print("\n[8] unset options fall back to defaults (fresh empty flake dir)")
     let freshDir = env.flakeDir + "/fresh"
     try FileManager.default.createDirectory(atPath: freshDir, withIntermediateDirectories: true)
     let store2 = OmanixStore(omanixDir: freshDir)
     checkBool(store2.currentOmabarState().showClock == true, "fresh: currentOmabarState().showClock == true default")
     checkBool(store2.currentOmatilesState().enableEdgeDrag == true, "fresh: currentOmatilesState().enableEdgeDrag == true default")
     checkBool(store2.currentOmatilesState().enableMargins == false, "fresh: currentOmatilesState().enableMargins == false default")
+    checkBool(store2.currentOmabarState().autoHide == false, "fresh: currentOmabarState().autoHide == false default")
+    checkBool(store2.currentOmabarState().showDate == true, "fresh: currentOmabarState().showDate == true default")
+    checkBool(store2.currentOmabarState().showBatteryPercent == true, "fresh: currentOmabarState().showBatteryPercent == true default")
+    checkBool(store2.currentOmabarState().use24Hour == false, "fresh: currentOmabarState().use24Hour == false default")
+    checkEq(store2.currentOmabarState().clockFormat, "digital", "fresh: currentOmabarState().clockFormat == 'digital' default")
 
     print("\n=== RESULTS ===")
     if failures.isEmpty {
