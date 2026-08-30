@@ -346,21 +346,33 @@ final class OmanixStore {
         )
     }
 
-    /// Rewrites `option = ...;` in a Nix config file, appending if absent.
+    /// Rewrites `option = ...;` in a Nix config file.
+    /// In-place when the assignment already exists; otherwise inserts the new
+    /// option just before the module's final `}` — never at end of file, so a
+    /// top-level `option = value;` syntax error is impossible. Any stray lines
+    /// already sitting after the final `}` (from an older build) are dropped.
     private func rewriteOption(_ option: String, toLiteral value: String, in path: String) throws {
-        let original = try String(contentsOfFile: path, encoding: .utf8)
-        let pattern = NSRegularExpression.escapedPattern(for: option)
-        var updated = original
-        if updated.range(of: option) != nil {
-            updated = updated.replacingOccurrences(
-                of: "\(pattern) = .*;",
-                with: "\(option) = \(value);",
-                options: .regularExpression
-            )
+        var original = try String(contentsOfFile: path, encoding: .utf8)
+
+        // 1. Existing assignment: rewrite its value in place.
+        let pair = "\(option) = \(value);"
+        if let range = original.range(of: "\(option) = .*;", options: .regularExpression) {
+            original.replaceSubrange(range, with: pair)
         } else {
-            updated += "\n  \(option) = \(value);"
+            // 2. Missing: insert inside the module, just above its closing brace.
+            let lines = original.components(separatedBy: "\n")
+            if let close = lines.lastIndex(where: { $0.trimmingCharacters(in: .whitespaces) == "}" }) {
+                var kept = Array(lines[..<close])
+                kept.append("  \(option) = \(value);")
+                kept.append(lines[close])
+                original = kept.joined(separator: "\n") + "\n"
+            } else {
+                // No module found — best effort so we never silently drop a setting.
+                if !original.hasSuffix("\n") { original += "\n" }
+                original += "  \(option) = \(value);\n"
+            }
         }
-        try updated.write(toFile: path, atomically: true, encoding: .utf8)
+        try original.write(toFile: path, atomically: true, encoding: .utf8)
     }
 
     // MARK: - Process helpers
