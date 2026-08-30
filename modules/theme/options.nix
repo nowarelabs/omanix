@@ -34,6 +34,13 @@
       example = false;
     };
 
+    showVolumeText = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Render the numeric volume percentage beside the speaker icon. When false, only the icon is shown.";
+      example = false;
+    };
+
     showWifi = lib.mkOption {
       type = lib.types.bool;
       default = true;

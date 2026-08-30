@@ -130,6 +130,7 @@ func writeTestFlake(_ env: TestEnv) throws {
           options.omanix.omabar.showClock = lib.mkOption { type = lib.types.bool; default = true; };
           options.omanix.omabar.showBattery = lib.mkOption { type = lib.types.bool; default = true; };
           options.omanix.omabar.showVolume = lib.mkOption { type = lib.types.bool; default = true; };
+          options.omanix.omabar.showVolumeText = lib.mkOption { type = lib.types.bool; default = true; };
           options.omanix.omabar.showWifi = lib.mkOption { type = lib.types.bool; default = true; };
           options.omanix.omabar.showApps = lib.mkOption { type = lib.types.bool; default = false; };
           options.omanix.omabar.autoHide = lib.mkOption { type = lib.types.bool; default = false; };
@@ -248,8 +249,11 @@ func run() throws {
     checkBool(store.currentOmabarState().use24Hour == true, "currentOmabarState().use24Hour == true")
     try store.setOmabarClockFormat("analog")
     checkEq(store.currentOmabarState().clockFormat, "analog", "currentOmabarState().clockFormat == 'analog'")
+    try store.setOmabarShowVolumeText(false)
+    checkBool(store.currentOmabarState().showVolumeText == false, "currentOmabarState().showVolumeText == false")
     checkEq(readAssignment("omanix.omabar.autoHide", inFile: env.flakeDir + "/state.nix") ?? "", "true", "state.nix has omanix.omabar.autoHide = true")
     checkEq(readAssignment("omanix.omabar.clockFormat", inFile: env.flakeDir + "/state.nix") ?? "", "analog", "state.nix has omanix.omabar.clockFormat = \"analog\"")
+    checkEq(readAssignment("omanix.omabar.showVolumeText", inFile: env.flakeDir + "/state.nix") ?? "", "false", "state.nix has omanix.omabar.showVolumeText = false")
     checkEq(nixEval("omanix.omabar.autoHide"), "true", "Swift setOmabarAutoHide(true) -> nix eval reflects true")
     checkEq(nixEval("omanix.omabar.showDate"), "false", "Swift setOmabarShowDate(false) -> nix eval reflects false")
     checkEq(nixEval("omanix.omabar.use24Hour"), "true", "Swift setOmabarUse24Hour(true) -> nix eval reflects true")
@@ -318,6 +322,7 @@ func run() throws {
     checkBool(store2.currentOmabarState().showDate == true, "fresh: currentOmabarState().showDate == true default")
     checkBool(store2.currentOmabarState().showBatteryPercent == true, "fresh: currentOmabarState().showBatteryPercent == true default")
     checkBool(store2.currentOmabarState().use24Hour == false, "fresh: currentOmabarState().use24Hour == false default")
+    checkBool(store2.currentOmabarState().showVolumeText == true, "fresh: currentOmabarState().showVolumeText == true default")
     checkEq(store2.currentOmabarState().clockFormat, "digital", "fresh: currentOmabarState().clockFormat == 'digital' default")
 
     print("\n=== RESULTS ===")

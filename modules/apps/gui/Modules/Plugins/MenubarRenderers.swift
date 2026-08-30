@@ -183,6 +183,10 @@ final class VolumeRenderer: OmanixMenubarRenderer {
     private var volume = 60
     private var muted = false
 
+    /// CoreAudio event subscription (keeps the renderer in sync with hardware
+    /// volume/mute keys via native property listeners — no polling, no shell).
+    private var eventToken: AnyObject?
+
     var primaryAction: Selector? { nil }
     var actionTarget: AnyObject? { self }
 
@@ -193,27 +197,39 @@ final class VolumeRenderer: OmanixMenubarRenderer {
         status.button?.action = #selector(openMenu(_:))
         status.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
         item = status
-        refresh()
+        // Subscribe before drawing; observeVolume delivers an initial sample
+        // immediately, so the icon/title are correct right away.
+        eventToken = SystemEvents.observeVolume { [weak self] state in
+            self?.render(volume: state.volume, muted: state.muted)
+        }
     }
 
     func refresh() {
-        if let v = Int(PluginShell.run("/usr/bin/osascript", ["-e", "output volume of (get volume settings)"]).trimmingCharacters(in: .whitespacesAndNewlines)) {
-            volume = v
+        render(volume: volume, muted: muted)
+    }
+
+    func uninstall() {
+        if let token = eventToken {
+            SystemEvents.unobserveVolume(token)
+            eventToken = nil
         }
-        muted = PluginShell.run("/usr/bin/osascript", ["-e", "output muted of (get volume settings)"]).contains("true")
+        if let item { NSStatusBar.system.removeStatusItem(item) }
+        item = nil
+    }
+
+    /// Draws the status item for a known (volume, muted) pair.
+    private func render(volume: Int, muted: Bool) {
+        self.volume = volume
+        self.muted = muted
         let level: String
         switch volume {
         case ..<34: level = "speaker.wave.1.fill"
         case ..<67: level = "speaker.wave.2.fill"
         default:    level = "speaker.wave.3.fill"
         }
-        item?.button?.title = "\(volume)%"
         item?.button?.image = templateImage(muted ? "speaker.slash.fill" : level)
-    }
-
-    func uninstall() {
-        if let item { NSStatusBar.system.removeStatusItem(item) }
-        item = nil
+        let showText = RuntimeSettings.Omabar.load().showVolumeText
+        item?.button?.title = showText ? "\(volume)%" : ""
     }
 
     @objc private func openMenu(_ sender: NSStatusBarButton) {
@@ -229,8 +245,7 @@ final class VolumeRenderer: OmanixMenubarRenderer {
     }
 
     @objc private func toggleMute() {
-        _ = PluginShell.run("/usr/bin/osascript", ["-e", "set volume output muted to \(muted ? "false" : "true")"])
-        refresh()
+        SystemEvents.setVolumeMuted(!muted)
     }
     @objc private func openSound() { openSettingsPane("com.apple.settings.Sound") }
 }

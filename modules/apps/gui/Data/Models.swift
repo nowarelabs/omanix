@@ -70,6 +70,7 @@ struct OmabarState: Equatable {
     var showClock = true
     var showBattery = true
     var showVolume = true
+    var showVolumeText = true
     var showWifi = true
     var showApps = false
     var autoHide = false

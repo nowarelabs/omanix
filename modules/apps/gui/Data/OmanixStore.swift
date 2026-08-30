@@ -295,6 +295,7 @@ final class OmanixStore {
     func setOmabarShowClock(_ v: Bool) throws { try setOmabarOption("showClock", v ? "true" : "false") }
     func setOmabarShowBattery(_ v: Bool) throws { try setOmabarOption("showBattery", v ? "true" : "false") }
     func setOmabarShowVolume(_ v: Bool) throws { try setOmabarOption("showVolume", v ? "true" : "false") }
+    func setOmabarShowVolumeText(_ v: Bool) throws { try setOmabarOption("showVolumeText", v ? "true" : "false") }
     func setOmabarShowWifi(_ v: Bool) throws { try setOmabarOption("showWifi", v ? "true" : "false") }
     func setOmabarShowApps(_ v: Bool) throws { try setOmabarOption("showApps", v ? "true" : "false") }
 
@@ -360,6 +361,7 @@ final class OmanixStore {
             showClock: readBoolOption("omanix.omabar.showClock") ?? true,
             showBattery: readBoolOption("omanix.omabar.showBattery") ?? true,
             showVolume: readBoolOption("omanix.omabar.showVolume") ?? true,
+            showVolumeText: readBoolOption("omanix.omabar.showVolumeText") ?? true,
             showWifi: readBoolOption("omanix.omabar.showWifi") ?? true,
             showApps: readBoolOption("omanix.omabar.showApps") ?? false,
             autoHide: readBoolOption("omanix.omabar.autoHide") ?? false,

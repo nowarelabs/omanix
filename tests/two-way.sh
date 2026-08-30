@@ -159,7 +159,7 @@ fi
 step "Every GUI toggle/button backed by declarative state is covered"
 # Walk the view-model's store setters and confirm each has a Swift-level test.
 COVERED=(setOmatilesEnabled setOmatilesEdgeDrag setOmatilesMargins setOmatilesBindings setOmatilesKeyboardShortcuts
-         setOmabarEnabled setOmabarShowClock setOmabarShowBattery setOmabarShowVolume setOmabarShowWifi setOmabarShowApps
+         setOmabarEnabled setOmabarShowClock setOmabarShowBattery setOmabarShowVolume setOmabarShowVolumeText setOmabarShowWifi setOmabarShowApps
          setOmabarAutoHide setOmabarShowDate setOmabarShowBatteryPercent setOmabarUse24Hour setOmabarClockFormat
          setTheme setWidgetEnabled)
 MISSING=0

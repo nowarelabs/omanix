@@ -89,6 +89,7 @@ if [ -x "$XCRUN" ] || command -v xcrun >/dev/null 2>&1; then
       "$XCRUN" swiftc \
         -framework SwiftUI \
         -framework Foundation \
+        -framework CoreAudio \
         -o "$BIN" \
         $(find "$GUI_DIR" -name '*.swift' | sort)
       echo "Omanix GUI rebuilt"

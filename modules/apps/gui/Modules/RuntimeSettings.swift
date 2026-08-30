@@ -58,6 +58,7 @@ enum RuntimeSettings {
         var showClock = true
         var showBattery = true
         var showVolume = true
+        var showVolumeText = true
         var showWifi = true
         var showApps = false
         var autoHide = false
@@ -72,6 +73,7 @@ enum RuntimeSettings {
                 showClock: bool("omanix.omabar.showClock", default: true),
                 showBattery: bool("omanix.omabar.showBattery", default: true),
                 showVolume: bool("omanix.omabar.showVolume", default: true),
+                showVolumeText: bool("omanix.omabar.showVolumeText", default: true),
                 showWifi: bool("omanix.omabar.showWifi", default: true),
                 showApps: bool("omanix.omabar.showApps", default: false),
                 autoHide: bool("omanix.omabar.autoHide", default: false),
