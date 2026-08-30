@@ -305,6 +305,28 @@ final class OmanixStore {
     func setOmabarUse24Hour(_ v: Bool) throws { try setOmabarOption("use24Hour", v ? "true" : "false") }
     func setOmabarClockFormat(_ v: String) throws { try setOmabarOption("clockFormat", v) }
 
+    // MARK: - Structured components (Phase 3: components.<name>.* overrides flat show*)
+
+    func setComponentOption(_ component: String, _ key: String, _ value: String) throws {
+        try setState("omanix.omabar.components.\(component).\(key)", value)
+    }
+
+    func setComponentEnabled(_ component: String, _ enabled: Bool) throws {
+        try setComponentOption(component, "enable", enabled ? "true" : "false")
+    }
+
+    func setComponentShowText(_ component: String, _ show: Bool) throws {
+        try setComponentOption(component, "showText", show ? "true" : "false")
+    }
+
+    func readComponentBool(_ component: String, _ key: String) -> Bool? {
+        readBoolOption("omanix.omabar.components.\(component).\(key)")
+    }
+
+    func readComponentString(_ component: String, _ key: String) -> String? {
+        readOption("omanix.omabar.components.\(component).\(key)")
+    }
+
     func setOmatilesOption(_ key: String, _ value: String) throws {
         try setState("omanix.omatiles.\(key)", value)
     }
@@ -355,20 +377,21 @@ final class OmanixStore {
     }
 
     /// Reads the current `omanix.omabar.*` values with defaults for anything unset.
+    /// Structured `components.<name>.*` overrides flat `show*` when set (Phase 3).
     func currentOmabarState() -> OmabarState {
         OmabarState(
             enable: readBoolOption("omanix.omabar.enable") ?? true,
-            showClock: readBoolOption("omanix.omabar.showClock") ?? true,
-            showBattery: readBoolOption("omanix.omabar.showBattery") ?? true,
-            showVolume: readBoolOption("omanix.omabar.showVolume") ?? true,
-            showVolumeText: readBoolOption("omanix.omabar.showVolumeText") ?? true,
-            showWifi: readBoolOption("omanix.omabar.showWifi") ?? true,
-            showApps: readBoolOption("omanix.omabar.showApps") ?? false,
+            showClock: readComponentBool("clock", "enable") ?? readBoolOption("omanix.omabar.showClock") ?? true,
+            showBattery: readComponentBool("battery", "enable") ?? readBoolOption("omanix.omabar.showBattery") ?? true,
+            showVolume: readComponentBool("volume", "enable") ?? readBoolOption("omanix.omabar.showVolume") ?? true,
+            showVolumeText: readComponentBool("volume", "showText") ?? readBoolOption("omanix.omabar.showVolumeText") ?? true,
+            showWifi: readComponentBool("wifi", "enable") ?? readBoolOption("omanix.omabar.showWifi") ?? true,
+            showApps: readComponentBool("apps", "enable") ?? readBoolOption("omanix.omabar.showApps") ?? false,
             autoHide: readBoolOption("omanix.omabar.autoHide") ?? false,
             showDate: readBoolOption("omanix.omabar.showDate") ?? true,
-            showBatteryPercent: readBoolOption("omanix.omabar.showBatteryPercent") ?? true,
+            showBatteryPercent: readComponentBool("battery", "showText") ?? readBoolOption("omanix.omabar.showBatteryPercent") ?? true,
             use24Hour: readBoolOption("omanix.omabar.use24Hour") ?? false,
-            clockFormat: readOption("omanix.omabar.clockFormat") ?? "digital"
+            clockFormat: readComponentString("clock", "style") ?? readOption("omanix.omabar.clockFormat") ?? "digital"
         )
     }
 

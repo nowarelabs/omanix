@@ -15,9 +15,9 @@ import Foundation
 
 enum RuntimeSettings {
 
-    private static let omanixDir = NSHomeDirectory() + "/.omanix"
-    private static let configPath = omanixDir + "/configuration.nix"
-    private static let statePath = omanixDir + "/state.nix"
+    static let omanixDir = NSHomeDirectory() + "/.omanix"
+    static let configPath = omanixDir + "/configuration.nix"
+    static let statePath = omanixDir + "/state.nix"
 
     // MARK: - Configuration reading
 
@@ -68,19 +68,27 @@ enum RuntimeSettings {
         var clockFormat = "digital"
 
         static func load() -> Omabar {
-            Omabar(
+            // Structured `components.<name>.*` overrides flat `show*` when set (Phase 3).
+            func compBool(_ name: String, _ key: String, flat: String, default def: Bool) -> Bool {
+                if let v = option("omanix.omabar.components.\(name).\(key)") { return v == "true" }
+                return bool(flat, default: def)
+            }
+            func compString(_ name: String, _ key: String, flat: String, default def: String) -> String {
+                option("omanix.omabar.components.\(name).\(key)") ?? option(flat) ?? def
+            }
+            return Omabar(
                 enable: bool("omanix.omabar.enable", default: true),
-                showClock: bool("omanix.omabar.showClock", default: true),
-                showBattery: bool("omanix.omabar.showBattery", default: true),
-                showVolume: bool("omanix.omabar.showVolume", default: true),
-                showVolumeText: bool("omanix.omabar.showVolumeText", default: true),
-                showWifi: bool("omanix.omabar.showWifi", default: true),
-                showApps: bool("omanix.omabar.showApps", default: false),
+                showClock: compBool("clock", "enable", flat: "omanix.omabar.showClock", default: true),
+                showBattery: compBool("battery", "enable", flat: "omanix.omabar.showBattery", default: true),
+                showVolume: compBool("volume", "enable", flat: "omanix.omabar.showVolume", default: true),
+                showVolumeText: compBool("volume", "showText", flat: "omanix.omabar.showVolumeText", default: true),
+                showWifi: compBool("wifi", "enable", flat: "omanix.omabar.showWifi", default: true),
+                showApps: compBool("apps", "enable", flat: "omanix.omabar.showApps", default: false),
                 autoHide: bool("omanix.omabar.autoHide", default: false),
                 showDate: bool("omanix.omabar.showDate", default: true),
-                showBatteryPercent: bool("omanix.omabar.showBatteryPercent", default: true),
+                showBatteryPercent: compBool("battery", "showText", flat: "omanix.omabar.showBatteryPercent", default: true),
                 use24Hour: bool("omanix.omabar.use24Hour", default: false),
-                clockFormat: option("omanix.omabar.clockFormat") ?? "digital"
+                clockFormat: compString("clock", "style", flat: "omanix.omabar.clockFormat", default: "digital")
             )
         }
     }

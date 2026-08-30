@@ -23,6 +23,8 @@ schema() {
   case "$1" in
     omanix.omabar.enable|omanix.omabar.showClock|omanix.omabar.showBattery|omanix.omabar.showVolume|omanix.omabar.showVolumeText|omanix.omabar.showWifi|omanix.omabar.showApps|omanix.omabar.autoHide|omanix.omabar.showDate|omanix.omabar.showBatteryPercent|omanix.omabar.use24Hour) echo bool ;;
     omanix.omabar.clockFormat) echo string ;;
+    omanix.omabar.components.*.enable|omanix.omabar.components.*.showText) echo bool ;;
+    omanix.omabar.components.*.style|omanix.omabar.components.*.colorScheme) echo string ;;
     omanix.omatiles.enable|omanix.omatiles.bindings|omanix.omatiles.enableEdgeDrag|omanix.omatiles.enableKeyboardShortcuts|omanix.omatiles.enableMargins) echo bool ;;
     omanix.widgets.gui.enable|omanix.widgets.store.enable|omanix.widgets.pomodoro.enable|omanix.widgets.clock.enable) echo bool ;;
     omanix.theme) echo string ;;
@@ -127,6 +129,7 @@ list_options() {
   local path v
   printf '%-45s %-16s %s\n' "OPTION" "TYPE" "CURRENT"
   for path in omanix.omabar.enable omanix.omabar.showClock omanix.omabar.showBattery omanix.omabar.showVolume omanix.omabar.showVolumeText omanix.omabar.showWifi omanix.omabar.showApps omanix.omabar.autoHide omanix.omabar.showDate omanix.omabar.showBatteryPercent omanix.omabar.use24Hour omanix.omabar.clockFormat \
+               omanix.omabar.components.clock.enable omanix.omabar.components.clock.style omanix.omabar.components.battery.enable omanix.omabar.components.battery.showText omanix.omabar.components.volume.enable omanix.omabar.components.volume.showText omanix.omabar.components.wifi.enable omanix.omabar.components.apps.enable \
                omanix.omatiles.enable omanix.omatiles.bindings omanix.omatiles.enableEdgeDrag omanix.omatiles.enableKeyboardShortcuts omanix.omatiles.enableMargins \
                omanix.widgets.gui.enable omanix.widgets.store.enable omanix.widgets.pomodoro.enable omanix.widgets.clock.enable \
                omanix.theme; do

@@ -32,6 +32,8 @@ final class OmabarManager: NSObject, OmanixMenubarHost {
 
     /// File-system watcher for ~/.config/omanix (plugin enable/order + bar prefs).
     private var watcher: DispatchSourceFileSystemObject?
+    /// Second watcher for ~/.omanix/state.nix (Phase 3: declarative components).
+    private var stateWatcher: DispatchSourceFileSystemObject?
 
     private override init() {
         super.init()
@@ -57,6 +59,8 @@ final class OmabarManager: NSObject, OmanixMenubarHost {
     func stop() {
         watcher?.cancel()
         watcher = nil
+        stateWatcher?.cancel()
+        stateWatcher = nil
         removeAll()
         isRunning = false
     }
@@ -99,6 +103,26 @@ final class OmabarManager: NSObject, OmanixMenubarHost {
         }
         source.resume()
         watcher = source
+
+        // Phase 3: also watch the declarative state file so `omanix state set
+        // omanix.omabar.components.*.enable` live-applies without a rebuild.
+        guard stateWatcher == nil else { return }
+        let stateDir = (RuntimeSettings.statePath as NSString).deletingLastPathComponent
+        let sfd = open(stateDir, O_EVTONLY)
+        guard sfd >= 0 else { return }
+        let stateSource = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: sfd,
+            eventMask: [.write, .rename, .delete],
+            queue: .main
+        )
+        stateSource.setEventHandler { [weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self?.registryChanged()
+            }
+        }
+        stateSource.setCancelHandler { close(sfd) }
+        stateSource.resume()
+        stateWatcher = stateSource
     }
 
     private func registryChanged() {
@@ -146,10 +170,18 @@ final class OmabarManager: NSObject, OmanixMenubarHost {
     }
 
     private func defaultEnabled(_ id: String) -> Bool {
+        // Structured `components.<id>.enable` (Phase 3) overrides the flat defaults;
+        // RuntimeSettings.Omabar.load() already folds that logic.
+        let s = RuntimeSettings.Omabar.load()
         switch id {
-        case "clock", "battery", "volume", "wifi": return true
-        case "apps": return false
-        default: return true
+        case "clock": return s.showClock
+        case "battery": return s.showBattery
+        case "volume": return s.showVolume
+        case "wifi": return s.showWifi
+        case "apps": return s.showApps
+        default:
+            if let v = RuntimeSettings.option("omanix.omabar.components.\(id).enable") { return v == "true" }
+            return true
         }
     }
 }

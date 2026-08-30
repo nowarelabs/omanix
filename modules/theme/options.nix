@@ -91,6 +91,48 @@
       description = "How the clock is drawn: 'digital' (HH:mm text) or 'analog' (small clock glyph).";
       example = "analog";
     };
+
+    # --- Structured declarative components (Phase 3: Module-Based Configuration) ---
+    # The canonical, Nix-owned surface for bar layout. When set, `components.<name>.enable`
+    # overrides the flat `show*` toggles above; this makes the entire desktop layout a
+    # strongly-typed compilation input, as the brief's declarative & state-compiled model
+    # requires. Supported built-ins: clock, battery, volume, wifi, apps. Custom keys
+    # become compile-time plugins in Phase 5.
+    components = lib.mkOption {
+      type = lib.types.attrsOf (lib.types.submodule {
+        options.enable = lib.mkOption {
+          type = lib.types.bool;
+          default = true;
+          description = "Show this component in the Omabar.";
+          example = false;
+        };
+        options.showText = lib.mkOption {
+          type = lib.types.nullOr lib.types.bool;
+          default = null;
+          description = "Show text beside the icon when applicable (battery %, volume %). Null defers to the component's default.";
+          example = false;
+        };
+        options.style = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          description = "Visual style variant, e.g. \"digital\" / \"analog\" for clock.";
+          example = "analog";
+        };
+        options.colorScheme = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          description = "Optional color-scheme override for this component (merged with the global theme).";
+          example = "dracula";
+        };
+      });
+      default = {};
+      description = "Declarative per-component configuration for the Omabar. Keys are component IDs (clock, battery, volume, wifi, apps, ...). When present, `components.<name>.enable` overrides the flat `show*` toggle.";
+      example = {
+        clock = { enable = true; style = "digital"; };
+        battery = { enable = true; showText = false; };
+        volume = { enable = true; showText = true; };
+      };
+    };
   };
 
   # --- Omatiles: a thin bridge onto macOS Sequoia's BUILT-IN window tiling ---

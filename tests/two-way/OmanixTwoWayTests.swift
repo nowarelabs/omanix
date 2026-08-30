@@ -138,6 +138,15 @@ func writeTestFlake(_ env: TestEnv) throws {
           options.omanix.omabar.showBatteryPercent = lib.mkOption { type = lib.types.bool; default = true; };
           options.omanix.omabar.use24Hour = lib.mkOption { type = lib.types.bool; default = false; };
           options.omanix.omabar.clockFormat = lib.mkOption { type = lib.types.str; default = "digital"; };
+          options.omanix.omabar.components = lib.mkOption {
+            type = lib.types.attrsOf (lib.types.submodule {
+              options.enable = lib.mkOption { type = lib.types.bool; default = true; };
+              options.showText = lib.mkOption { type = lib.types.nullOr lib.types.bool; default = null; };
+              options.style = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; };
+              options.colorScheme = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; };
+            });
+            default = {};
+          };
           options.omanix.omatiles.enable = lib.mkOption { type = lib.types.bool; default = true; };
           options.omanix.omatiles.bindings = lib.mkOption { type = lib.types.bool; default = true; };
           options.omanix.omatiles.enableEdgeDrag = lib.mkOption { type = lib.types.bool; default = true; };
@@ -258,6 +267,21 @@ func run() throws {
     checkEq(nixEval("omanix.omabar.showDate"), "false", "Swift setOmabarShowDate(false) -> nix eval reflects false")
     checkEq(nixEval("omanix.omabar.use24Hour"), "true", "Swift setOmabarUse24Hour(true) -> nix eval reflects true")
     checkEq(nixEval("omanix.omabar.clockFormat"), "analog", "Swift setOmabarClockFormat('analog') -> nix eval reflects 'analog'")
+
+    print("\n[3b] structured components (enable/showText/style) overrides flat")
+    try store.setComponentEnabled("clock", false)
+    checkBool(store.currentOmabarState().showClock == false, "components.clock.enable false overrides showClock -> showClock == false")
+    try store.setComponentShowText("battery", false)
+    checkBool(store.currentOmabarState().showBatteryPercent == false, "components.battery.showText false overrides showBatteryPercent -> false")
+    try store.setComponentEnabled("volume", false)
+    checkBool(store.currentOmabarState().showVolume == false, "components.volume.enable false overrides showVolume -> false")
+    try store.setComponentOption("clock", "style", "analog")
+    checkEq(store.currentOmabarState().clockFormat, "analog", "components.clock.style 'analog' overrides clockFormat")
+    checkEq(readAssignment("omanix.omabar.components.clock.enable", inFile: env.flakeDir + "/state.nix") ?? "", "false", "state.nix has omanix.omabar.components.clock.enable = false")
+    checkEq(readAssignment("omanix.omabar.components.battery.showText", inFile: env.flakeDir + "/state.nix") ?? "", "false", "state.nix has omanix.omabar.components.battery.showText = false")
+    checkEq(nixEval("omanix.omabar.components.clock.enable"), "false", "Swift setComponentEnabled('clock', false) -> nix eval reflects false")
+    checkEq(nixEval("omanix.omabar.components.battery.showText"), "false", "Swift setComponentShowText('battery', false) -> nix eval reflects false")
+    checkEq(nixEval("omanix.omabar.components.clock.style"), "analog", "Swift setComponentOption clock.style analog -> nix eval reflects analog")
 
     // ---------------- Swift -> Nix: theme (string) ----------------
     print("\n[4] setTheme('solstice') ")

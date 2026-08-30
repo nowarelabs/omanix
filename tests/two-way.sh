@@ -71,8 +71,23 @@ cat > "$T/flake.nix" <<'EOF'
       options.omanix.omabar.showClock = lib.mkOption { type = lib.types.bool; default = true; };
       options.omanix.omabar.showBattery = lib.mkOption { type = lib.types.bool; default = true; };
       options.omanix.omabar.showVolume = lib.mkOption { type = lib.types.bool; default = true; };
+      options.omanix.omabar.showVolumeText = lib.mkOption { type = lib.types.bool; default = true; };
       options.omanix.omabar.showWifi = lib.mkOption { type = lib.types.bool; default = true; };
       options.omanix.omabar.showApps = lib.mkOption { type = lib.types.bool; default = false; };
+      options.omanix.omabar.autoHide = lib.mkOption { type = lib.types.bool; default = false; };
+      options.omanix.omabar.showDate = lib.mkOption { type = lib.types.bool; default = true; };
+      options.omanix.omabar.showBatteryPercent = lib.mkOption { type = lib.types.bool; default = true; };
+      options.omanix.omabar.use24Hour = lib.mkOption { type = lib.types.bool; default = false; };
+      options.omanix.omabar.clockFormat = lib.mkOption { type = lib.types.str; default = "digital"; };
+      options.omanix.omabar.components = lib.mkOption {
+        type = lib.types.attrsOf (lib.types.submodule {
+          options.enable = lib.mkOption { type = lib.types.bool; default = true; };
+          options.showText = lib.mkOption { type = lib.types.nullOr lib.types.bool; default = null; };
+          options.style = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; };
+          options.colorScheme = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; };
+        });
+        default = {};
+      };
       options.omanix.omatiles.enable = lib.mkOption { type = lib.types.bool; default = true; };
       options.omanix.omatiles.bindings = lib.mkOption { type = lib.types.bool; default = true; };
       options.omanix.omatiles.enableEdgeDrag = lib.mkOption { type = lib.types.bool; default = true; };
@@ -133,10 +148,23 @@ if [[ -z "$REAL_OPTIONS" ]]; then
   bad "could not extract real Nix option paths"
 else
   SCHEMA_PATHS=$(sed -n '/^schema() {/,/^}/p' "$ROOT/libexec/omanix-state.sh" \
-    | grep -oE 'omanix\.[a-zA-Z0-9._]+' | sort -u)
+    | grep -oE 'omanix\.[a-zA-Z0-9._*]+' | sort -u)
   MISSING_IN_NIX=0
   while IFS= read -r p; do
     [[ -z "$p" ]] && continue
+    # Wildcard components (e.g. omanix.omabar.components.*.enable) match the
+    # attrsOf declaration `omanix.omabar.components` in Nix options.
+    if [[ "$p" == *"*"* ]]; then
+      prefix="${p%%\**}"
+      prefix="${prefix%.}"
+      if grep -qxF "$prefix" <<<"$REAL_OPTIONS"; then
+        continue
+      fi
+      # Also accept if any Nix option starts with the prefix (submodule).
+      if grep -q "^${prefix//./\\.}" <<<"$REAL_OPTIONS"; then
+        continue
+      fi
+    fi
     if ! grep -qxF "$p" <<<"$REAL_OPTIONS"; then
       echo "  WARN schema path has no matching Nix option: $p"
       MISSING_IN_NIX=1
@@ -161,6 +189,7 @@ step "Every GUI toggle/button backed by declarative state is covered"
 COVERED=(setOmatilesEnabled setOmatilesEdgeDrag setOmatilesMargins setOmatilesBindings setOmatilesKeyboardShortcuts
          setOmabarEnabled setOmabarShowClock setOmabarShowBattery setOmabarShowVolume setOmabarShowVolumeText setOmabarShowWifi setOmabarShowApps
          setOmabarAutoHide setOmabarShowDate setOmabarShowBatteryPercent setOmabarUse24Hour setOmabarClockFormat
+         setComponentEnabled setComponentShowText setComponentOption
          setTheme setWidgetEnabled)
 MISSING=0
 for s in "${COVERED[@]}"; do
