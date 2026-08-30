@@ -66,13 +66,15 @@ final class ClockRenderer: OmanixMenubarRenderer {
         status.button?.action = #selector(clockClicked(_:))
         status.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
         item = status
-        eventToken = SystemEvents.observeClock { [weak self] date in
+        // Pure rendering: subscribe to the BarStateStore's clock projection.
+        // The store is the single reducer; the renderer is a pure (Date) -> view.
+        eventToken = BarStateStore.shared.subscribe(select: { $0.clock }) { [weak self] date in
             self?.render(date: date)
         }
     }
 
     func refresh() {
-        render(date: Date())
+        render(date: BarStateStore.shared.state.clock)
     }
 
     private func render(date: Date) {
@@ -106,7 +108,7 @@ final class ClockRenderer: OmanixMenubarRenderer {
 
     func uninstall() {
         if let token = eventToken {
-            SystemEvents.unobserveClock(token)
+            BarStateStore.shared.unsubscribe(token)
             eventToken = nil
         }
         if let item { NSStatusBar.system.removeStatusItem(item) }
@@ -152,18 +154,18 @@ final class BatteryRenderer: OmanixMenubarRenderer {
         status.button?.action = #selector(openMenu(_:))
         status.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
         item = status
-        eventToken = SystemEvents.observeBattery { [weak self] state in
+        eventToken = BarStateStore.shared.subscribe(select: { $0.battery }) { [weak self] state in
             self?.render(state)
         }
     }
 
     func refresh() {
-        render(BatteryMonitor.shared.readState())
+        render(BarStateStore.shared.state.battery)
     }
 
     func uninstall() {
         if let token = eventToken {
-            SystemEvents.unobserveBattery(token)
+            BarStateStore.shared.unsubscribe(token)
             eventToken = nil
         }
         if let item { NSStatusBar.system.removeStatusItem(item) }
@@ -211,8 +213,8 @@ final class VolumeRenderer: OmanixMenubarRenderer {
     private var volume = 60
     private var muted = false
 
-    /// CoreAudio event subscription (keeps the renderer in sync with hardware
-    /// volume/mute keys via native property listeners — no polling, no shell).
+    /// BarState subscription — the volume renderer is now a pure function of
+    /// BarState.volume, fed by the typed EventBus + BarStateStore reducer.
     private var eventToken: AnyObject?
 
     var primaryAction: Selector? { nil }
@@ -225,20 +227,19 @@ final class VolumeRenderer: OmanixMenubarRenderer {
         status.button?.action = #selector(openMenu(_:))
         status.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
         item = status
-        // Subscribe before drawing; observeVolume delivers an initial sample
-        // immediately, so the icon/title are correct right away.
-        eventToken = SystemEvents.observeVolume { [weak self] state in
+        eventToken = BarStateStore.shared.subscribe(select: { $0.volume }) { [weak self] state in
             self?.render(volume: state.volume, muted: state.muted)
         }
     }
 
     func refresh() {
-        render(volume: volume, muted: muted)
+        let v = BarStateStore.shared.state.volume
+        render(volume: v.volume, muted: v.muted)
     }
 
     func uninstall() {
         if let token = eventToken {
-            SystemEvents.unobserveVolume(token)
+            BarStateStore.shared.unsubscribe(token)
             eventToken = nil
         }
         if let item { NSStatusBar.system.removeStatusItem(item) }
@@ -297,18 +298,18 @@ final class WifiRenderer: OmanixMenubarRenderer {
         status.button?.action = #selector(openMenu(_:))
         status.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
         item = status
-        eventToken = SystemEvents.observeWifi { [weak self] state in
+        eventToken = BarStateStore.shared.subscribe(select: { $0.wifi }) { [weak self] state in
             self?.render(state)
         }
     }
 
     func refresh() {
-        render(WifiMonitor.shared.readState())
+        render(BarStateStore.shared.state.wifi)
     }
 
     func uninstall() {
         if let token = eventToken {
-            SystemEvents.unobserveWifi(token)
+            BarStateStore.shared.unsubscribe(token)
             eventToken = nil
         }
         if let item { NSStatusBar.system.removeStatusItem(item) }

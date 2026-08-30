@@ -126,6 +126,7 @@ final class WifiMonitor: NSObject, CWEventDelegate {
 
     private func wifiChanged() {
         let state = readState()
+        EventBus.shared.publish(wifi: state)
         let current = observers
         for observer in current {
             let q = observer.queue, handler = observer.onChange

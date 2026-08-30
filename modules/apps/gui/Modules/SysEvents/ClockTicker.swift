@@ -70,6 +70,7 @@ final class ClockTicker {
 
     private func fire() {
         let now = Date()
+        EventBus.shared.publish(clock: now)
         let current = observers
         for observer in current {
             let queue = observer.queue, handler = observer.onChange

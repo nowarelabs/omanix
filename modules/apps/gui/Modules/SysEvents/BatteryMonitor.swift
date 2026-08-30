@@ -85,6 +85,7 @@ final class BatteryMonitor {
 
     private func powerSourcesChanged() {
         let state = readState()
+        EventBus.shared.publish(battery: state)
         let current = observers
         for observer in current {
             let q = observer.queue, handler = observer.onChange

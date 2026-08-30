@@ -31,6 +31,8 @@ struct SystemVolumeState: Equatable {
 
 final class CoreAudioVolumeMonitor {
 
+    static let shared = CoreAudioVolumeMonitor()
+
     /// One active subscriber.
     private final class Observer {
         let queue: DispatchQueue
@@ -249,10 +251,14 @@ final class CoreAudioVolumeMonitor {
     }
 
     private func deliverToAll() {
-        // Copy so mutations from within callbacks don't trip the iterator.
+        let state = readState()
+        // Fan out to the typed bus (BarStateStore + any bus subscribers) first,
+        // then to legacy direct observers. Both hops are async on their queues.
+        EventBus.shared.publish(volume: state)
         let current = observers
         for observer in current {
-            deliverTo(observer)
+            let q = observer.queue, h = observer.onChange
+            q.async { h(state) }
         }
     }
 
