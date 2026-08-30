@@ -156,4 +156,25 @@ enum RuntimeSettings {
         var layout: String
         var apps: [String]
     }
+
+    // MARK: - Plugins (Phase 5: IPC socket)
+
+    struct Plugins {
+        var enable = true
+        var socketPath = NSHomeDirectory() + "/.config/omanix/omanix.sock"
+
+        static func load() -> Plugins {
+            let enable = bool("omanix.plugins.enable", default: true)
+            let raw = option("omanix.plugins.socketPath") ?? ".config/omanix/omanix.sock"
+            let abs: String
+            if raw.hasPrefix("/") {
+                abs = raw
+            } else if raw.hasPrefix("~") {
+                abs = (raw as NSString).expandingTildeInPath
+            } else {
+                abs = NSHomeDirectory() + "/" + raw
+            }
+            return Plugins(enable: enable, socketPath: abs)
+        }
+    }
 }

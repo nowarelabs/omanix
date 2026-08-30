@@ -43,6 +43,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if args.contains("--omabar") {
                 let bar = RuntimeSettings.Omabar.load()
                 if bar.enable { _ = OmabarManager.shared.start(settings: bar) }
+                let plugins = RuntimeSettings.Plugins.load()
+                if plugins.enable {
+                    PluginIPCServer.shared.start(socketPath: plugins.socketPath)
+                    IPCPluginManager.shared.start()
+                }
             }
             if args.contains("--omatiles") {
                 let tiles = RuntimeSettings.Omatiles.load()
@@ -60,6 +65,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if tiles.enable { OmatilesEngine.shared.start(settings: tiles) }
 
             if RuntimeSettings.Owin.load().enable { _ = WorkspaceManager.shared.start() }
+
+            let plugins = RuntimeSettings.Plugins.load()
+            if plugins.enable {
+                PluginIPCServer.shared.start(socketPath: plugins.socketPath)
+                IPCPluginManager.shared.start()
+            }
 
             // Bring the live macOS WindowManager tiling prefs in line with the current
             // declarative config even if no rebuild has run yet (so ⌃⌥+arrow works now).

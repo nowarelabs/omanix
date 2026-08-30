@@ -33,6 +33,7 @@
           ./modules/theme/theme.nix   # themed distribution -> Ghostty (lib/themed.nix)
           # Desktop (Phase 4: Owin workspaces — AXUI + declarative mappings)
           ./modules/desktop/workspaces.nix
+          ./modules/desktop/plugins.nix
           # Darwin-only
           ./modules/darwin/system.nix # system.defaults (dock, finder, loginwindow)
           ./modules/darwin/pam.nix    # Touch ID, primary user, users.users

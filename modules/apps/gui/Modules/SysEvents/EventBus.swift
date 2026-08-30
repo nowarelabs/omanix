@@ -27,6 +27,31 @@ struct WindowFocusedInfo: Equatable {
     var bundleID: String
 }
 
+struct PluginUpdateInfo: Equatable {
+    var id: String
+    var title: String
+    var image: String?
+    var payload: [String: String]?
+
+    static func from(json: [String: Any]) -> PluginUpdateInfo? {
+        let params: [String: Any]
+        if let p = json["params"] as? [String: Any] {
+            params = p
+        } else if json["id"] != nil {
+            params = json
+        } else {
+            return nil
+        }
+        guard let id = params["id"] as? String, let title = params["title"] as? String else { return nil }
+        let image = params["image"] as? String
+        var payload: [String: String]?
+        if let raw = params["payload"] as? [String: Any] {
+            payload = raw.mapValues { "\($0)" }
+        }
+        return PluginUpdateInfo(id: id, title: title, image: image, payload: payload)
+    }
+}
+
 /// The single, strongly-typed event vocabulary the whole desktop speaks.
 /// Add new cases here as the desktop grows (window events, plugin IPC, etc.).
 enum OmanixEvent: Equatable {
@@ -36,6 +61,7 @@ enum OmanixEvent: Equatable {
     case clock(Date)
     case windowCreated(WindowCreatedInfo)
     case windowFocused(WindowFocusedInfo)
+    case pluginUpdate(PluginUpdateInfo)
 }
 
 final class EventBus {
@@ -61,6 +87,7 @@ final class EventBus {
     private var clockBoxes: [Box<Date>] = []
     private var windowCreatedBoxes: [Box<WindowCreatedInfo>] = []
     private var windowFocusedBoxes: [Box<WindowFocusedInfo>] = []
+    private var pluginUpdateBoxes: [Box<PluginUpdateInfo>] = []
     private var anyBoxes: [Box<OmanixEvent>] = []
 
     private init() {}
@@ -115,6 +142,14 @@ final class EventBus {
         return box
     }
 
+    @discardableResult
+    func subscribePluginUpdate(queue: DispatchQueue = .main,
+                               handler: @escaping (PluginUpdateInfo) -> Void) -> AnyObject {
+        let box = Box(queue: queue, handler: handler)
+        sync.sync { pluginUpdateBoxes.append(box) }
+        return box
+    }
+
     /// Subscribe to every event (useful for the state store, logging, IPC).
     @discardableResult
     func subscribe(queue: DispatchQueue = .main,
@@ -132,6 +167,7 @@ final class EventBus {
             clockBoxes.removeAll { $0 === token }
             windowCreatedBoxes.removeAll { $0 === token }
             windowFocusedBoxes.removeAll { $0 === token }
+            pluginUpdateBoxes.removeAll { $0 === token }
             anyBoxes.removeAll { $0 === token }
         }
     }
@@ -191,6 +227,16 @@ final class EventBus {
     func publish(windowFocused info: WindowFocusedInfo) {
         let boxes = sync.sync { windowFocusedBoxes }
         let event = OmanixEvent.windowFocused(info)
+        for box in boxes {
+            let q = box.queue, h = box.handler
+            q.async { h(info) }
+        }
+        publishAny(event)
+    }
+
+    func publish(pluginUpdate info: PluginUpdateInfo) {
+        let boxes = sync.sync { pluginUpdateBoxes }
+        let event = OmanixEvent.pluginUpdate(info)
         for box in boxes {
             let q = box.queue, h = box.handler
             q.async { h(info) }
