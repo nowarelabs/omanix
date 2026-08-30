@@ -1,9 +1,9 @@
 // Modules/SysEvents/WifiMonitor.swift
 // Native, event-driven Wi-Fi monitor via CoreWLAN (no networksetup polling).
 //
-// Reads power + SSID from CWWiFiClient's default interface and subscribes to
-// CoreWLAN's SSID/power notifications so the bar updates exactly when the network
-// or radio changes — idle the rest of the time.
+// Reads power + SSID from CWWiFiClient's default interface and subscribes via
+// CWWiFiClient's modern event API (startMonitoringEventWithType + CWEventDelegate)
+// so the bar updates exactly when the radio or association changes — idle otherwise.
 
 import CoreWLAN
 import Foundation
@@ -18,7 +18,7 @@ struct WifiState: Equatable {
     static func off() -> WifiState { WifiState(powerOn: false, ssid: "", rssi: 0) }
 }
 
-final class WifiMonitor {
+final class WifiMonitor: NSObject, CWEventDelegate {
 
     private final class Observer {
         let queue: DispatchQueue
@@ -30,11 +30,13 @@ final class WifiMonitor {
     }
 
     private var observers: [Observer] = []
-    private var handles: [NSObjectProtocol] = []
+    private var isMonitoring = false
 
     static let shared = WifiMonitor()
 
-    private init() {}
+    private override init() {
+        super.init()
+    }
 
     /// The interface to report on (the first available airport interface).
     private var interface: CWInterface? {
@@ -63,8 +65,7 @@ final class WifiMonitor {
         }
     }
 
-    /// Provide a fresh read via shared client (technically a no-arg call returns
-    /// the same client; re-querying the interface each read is cheap and current).
+    /// Provide a fresh read via shared client (re-querying the interface each read).
     func readState() -> WifiState {
         guard let iface = interface else { return .unknown }
         let powerOn = iface.powerOn()
@@ -74,8 +75,8 @@ final class WifiMonitor {
         return WifiState(powerOn: true, ssid: ssid, rssi: rssi)
     }
 
-    /// Sets the Wi-Fi power state natively via CoreWLAN. The power-change
-    /// notification re-fires so all wifi subscribers redraw without polling.
+    /// Sets the Wi-Fi power state natively via CoreWLAN. The power-change delegate
+    /// fires so all wifi subscribers redraw without polling.
     func setPowerOn(_ powerOn: Bool) {
         guard let iface = interface else { return }
         do {
@@ -85,30 +86,42 @@ final class WifiMonitor {
         }
     }
 
-    // MARK: - Notifications
+    // MARK: - CWEventDelegate
+
+    func powerStateDidChangeForWiFiInterface(withName interfaceName: String) {
+        wifiChanged()
+    }
+
+    func ssidDidChangeForWiFiInterface(withName interfaceName: String) {
+        wifiChanged()
+    }
+
+    func bssidDidChangeForWiFiInterface(withName interfaceName: String) {
+        wifiChanged()
+    }
+
+    // MARK: - Monitoring
 
     private func ensureListening() {
-        guard handles.isEmpty else { return }
-        let nc = NotificationCenter.default
-        var newHandles: [NSObjectProtocol] = []
-        // CoreWLAN posts CW*DidChange notifications when the link/power changes.
-        newHandles.append(nc.addObserver(forName: NSNotification.Name.CWSSIDDidChange, object: nil, queue: .main) { [weak self] _ in
-            self?.wifiChanged()
-        })
-        newHandles.append(nc.addObserver(forName: NSNotification.Name.CWPowerDidChange, object: nil, queue: .main) { [weak self] _ in
-            self?.wifiChanged()
-        })
-        newHandles.append(nc.addObserver(forName: NSNotification.Name.CWBSSIDDidChange, object: nil, queue: .main) { [weak self] _ in
-            self?.wifiChanged()
-        })
-        handles = newHandles
+        guard !isMonitoring else { return }
+        let client = CWWiFiClient.shared()
+        client.delegate = self
+        try? client.startMonitoringEvent(with: .powerDidChange)
+        try? client.startMonitoringEvent(with: .ssidDidChange)
+        try? client.startMonitoringEvent(with: .bssidDidChange)
+        isMonitoring = true
     }
 
     private func stopListening() {
-        for handle in handles {
-            NotificationCenter.default.removeObserver(handle)
+        guard isMonitoring else { return }
+        let client = CWWiFiClient.shared()
+        try? client.stopMonitoringEvent(with: .powerDidChange)
+        try? client.stopMonitoringEvent(with: .ssidDidChange)
+        try? client.stopMonitoringEvent(with: .bssidDidChange)
+        if client.delegate === self {
+            client.delegate = nil
         }
-        handles.removeAll()
+        isMonitoring = false
     }
 
     private func wifiChanged() {
