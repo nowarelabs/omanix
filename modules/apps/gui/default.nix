@@ -100,25 +100,28 @@ if [ -x "$XCRUN" ] || command -v xcrun >/dev/null 2>&1; then
       echo "Omanix GUI up to date — skipping rebuild (keeps the Accessibility grant)"
     fi
 
-    cp ${infoPlist} "$BUNDLE/Contents/Info.plist"
-    cp ${../../../assets/Omanix.icns} "$STORE_DIR/icon.icns"
-    cp ${../../../assets/Omanix.icns} "$BUNDLE/Contents/Resources/AppIcon.icns"
+     cp ${infoPlist} "$BUNDLE/Contents/Info.plist"
+     cp ${../../../assets/Omanix.icns} "$STORE_DIR/icon.icns"
+     cp ${../../../assets/Omanix.icns} "$BUNDLE/Contents/Resources/AppIcon.icns"
 
-    # Ad-hoc sign the whole bundle so the Accessibility (TCC) grant keys on one
-    # stable identity. Required after a rebuild; no-op-identical when skipped.
-    codesign --force --sign - "$BUNDLE" 2>/dev/null || true
+     # Ensure the bundle is owned by the user before signing, so the
+     # Accessibility (TCC) grant keys on a stable identity that survives
+     # rebuilds. Failures here are non-fatal (the build already succeeded).
+     chown -R ${user}:admin "$BUNDLE" 2>/dev/null || log "WARN" "chown $BUNDLE failed (non-fatal)"
 
-    # Restart the per-user module agents onto the (possibly rebuilt) binary so
-    # they pick it up without a logout. They run as the user, so they share the
-    # GUI's Accessibility permission rather than needing a root grant.
-    USER_UID="$(id -u ${user} 2>/dev/null || echo 501)"
-    launchctl kickstart -k "gui/$USER_UID/om.omanix.omabar" 2>/dev/null || true
-    launchctl kickstart -k "gui/$USER_UID/om.omanix.omatiles" 2>/dev/null || true
+     # Ad-hoc sign the whole bundle so the Accessibility (TCC) grant keys on one
+     # stable identity. Required after a rebuild; no-op-identical when skipped.
+     codesign --force --sign - "$BUNDLE" 2>/dev/null || true
 
-    chown -R ${user}:admin "$BUNDLE"
+     # Restart the per-user module agents onto the (possibly rebuilt) binary so
+     # they pick it up without a logout. They run as the user, so they share the
+     # GUI's Accessibility permission rather than needing a root grant.
+     USER_UID="$(id -u ${user} 2>/dev/null || echo 501)"
+     launchctl kickstart -k "gui/$USER_UID/om.omanix.omabar" 2>/dev/null || true
+     launchctl kickstart -k "gui/$USER_UID/om.omanix.omatiles" 2>/dev/null || true
 
-    log "INFO" "Omanix GUI built successfully"
-    echo "Omanix GUI built successfully"
+     log "INFO" "Omanix GUI built successfully"
+     echo "Omanix GUI built successfully"
   else
     echo "WARNING: gui sources not found, skipping build"
   fi

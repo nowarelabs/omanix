@@ -102,13 +102,16 @@ install_preflight() {
     exit 1
   fi
 
-  # Check for sudo access
-  if ! sudo -n true 2>/dev/null; then
+  # Check for sudo access (only darwin-rebuild needs it, and only that
+  # binary is whitelisted NOPASSWD via /etc/sudoers.d/ after the first
+  # install — `sudo -n true` would always fail, so test the real binary).
+  if ! sudo -n /run/current-system/sw/bin/darwin-rebuild --help &>/dev/null 2>&1 \
+     && ! sudo -n darwin-rebuild --help &>/dev/null 2>&1; then
     echo ""
     echo "Omanix requires sudo access for system configuration."
     echo "You'll be prompted for your password during installation."
     echo ""
-    sudo echo "" || {
+    sudo -v || {
       echo "ERROR: sudo access required but not available."
       exit 1
     }
