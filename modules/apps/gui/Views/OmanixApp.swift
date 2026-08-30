@@ -47,6 +47,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if args.contains("--omatiles") {
                 let tiles = RuntimeSettings.Omatiles.load()
                 if tiles.enable { OmatilesEngine.shared.start(settings: tiles) }
+                // Owin shares the omatiles launchd slot when enabled (Phase 4).
+                if RuntimeSettings.Owin.load().enable { _ = WorkspaceManager.shared.start() }
             }
         } else {
             // Normal GUI launch: start the enabled desktop modules so the screen
@@ -56,6 +58,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             let tiles = RuntimeSettings.Omatiles.load()
             if tiles.enable { OmatilesEngine.shared.start(settings: tiles) }
+
+            if RuntimeSettings.Owin.load().enable { _ = WorkspaceManager.shared.start() }
 
             // Bring the live macOS WindowManager tiling prefs in line with the current
             // declarative config even if no rebuild has run yet (so ⌃⌥+arrow works now).

@@ -196,4 +196,53 @@
       example = { background = "#000000"; accent = "#ff00ff"; };
     };
   };
+
+  # --- Owin: declarative window manager (Phase 4: deterministic workspace mappings) ---
+  # The brief's "Anti-AeroSpace" — a Declarative Layout Engine that routes windows
+  # via a Nix-generated static map and AXUI hooks, not a standalone daemon's
+  # imperative tree. Enabling requires Accessibility permission; layouts are
+  # type-safe functions (bsp/monocle/stack/spiral) on a per-workspace basis.
+  options.omanix.owin = {
+    enable = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Enable the native Owin window manager (AXUI-based, declarative). When false, Omatiles (macOS built-in tiling bridge) remains the tiling surface.";
+      example = true;
+    };
+    defaultLayout = lib.mkOption {
+      type = lib.types.enum [ "bsp" "monocle" "stack" "spiral" "float" ];
+      default = "bsp";
+      description = "Fallback layout for workspaces not explicitly configured or for floating windows.";
+      example = "monocle";
+    };
+  };
+
+  options.omanix.workspaces = lib.mkOption {
+    type = lib.types.attrsOf (lib.types.submodule {
+      options.monitor = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = "Monitor to pin this workspace to (e.g. \"Built-in Display\" or \"External 4K\" via NSScreen.localizedName). Null means follow the focused screen.";
+        example = "External 4K";
+      };
+      options.layout = lib.mkOption {
+        type = lib.types.enum [ "bsp" "monocle" "stack" "spiral" "float" ];
+        default = "bsp";
+        description = "Layout algorithm for this workspace.";
+        example = "monocle";
+      };
+      options.apps = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [];
+        description = "Bundle IDs or app names to auto-route to this workspace on launch. Evaluated against the app's CFBundleIdentifier at launch via AXUI.";
+        example = [ "com.brave.Browser" "Ghostty" ];
+      };
+    });
+    default = {};
+    description = "Deterministic workspace mappings. Each key is a workspace name like \"1: Web\" or \"2: Code\"; Owin uses the Nix-generated static map to route windows on launch without a daemon. See modules/apps/gui/Modules/Omatiles/WorkspaceManager.swift.";
+    example = {
+      "1: Web" = { monitor = "External 4K"; layout = "monocle"; apps = [ "Brave" "Slack" ]; };
+      "2: Code" = { monitor = "Built-in Display"; layout = "bsp"; apps = [ "Ghostty" ]; };
+    };
+  };
 }

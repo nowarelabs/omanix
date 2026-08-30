@@ -16,6 +16,17 @@
 
 import Foundation
 
+struct WindowCreatedInfo: Equatable {
+    var pid: pid_t
+    var bundleID: String
+    var workspace: String?
+}
+
+struct WindowFocusedInfo: Equatable {
+    var pid: pid_t
+    var bundleID: String
+}
+
 /// The single, strongly-typed event vocabulary the whole desktop speaks.
 /// Add new cases here as the desktop grows (window events, plugin IPC, etc.).
 enum OmanixEvent: Equatable {
@@ -23,6 +34,8 @@ enum OmanixEvent: Equatable {
     case battery(BatteryState)
     case wifi(WifiState)
     case clock(Date)
+    case windowCreated(WindowCreatedInfo)
+    case windowFocused(WindowFocusedInfo)
 }
 
 final class EventBus {
@@ -46,6 +59,8 @@ final class EventBus {
     private var batteryBoxes: [Box<BatteryState>] = []
     private var wifiBoxes: [Box<WifiState>] = []
     private var clockBoxes: [Box<Date>] = []
+    private var windowCreatedBoxes: [Box<WindowCreatedInfo>] = []
+    private var windowFocusedBoxes: [Box<WindowFocusedInfo>] = []
     private var anyBoxes: [Box<OmanixEvent>] = []
 
     private init() {}
@@ -78,9 +93,25 @@ final class EventBus {
 
     @discardableResult
     func subscribeClock(queue: DispatchQueue = .main,
-                        handler: @escaping (Date) -> Void) -> AnyObject {
+                       handler: @escaping (Date) -> Void) -> AnyObject {
         let box = Box(queue: queue, handler: handler)
         sync.sync { clockBoxes.append(box) }
+        return box
+    }
+
+    @discardableResult
+    func subscribeWindowCreated(queue: DispatchQueue = .main,
+                                handler: @escaping (WindowCreatedInfo) -> Void) -> AnyObject {
+        let box = Box(queue: queue, handler: handler)
+        sync.sync { windowCreatedBoxes.append(box) }
+        return box
+    }
+
+    @discardableResult
+    func subscribeWindowFocused(queue: DispatchQueue = .main,
+                                handler: @escaping (WindowFocusedInfo) -> Void) -> AnyObject {
+        let box = Box(queue: queue, handler: handler)
+        sync.sync { windowFocusedBoxes.append(box) }
         return box
     }
 
@@ -99,6 +130,8 @@ final class EventBus {
             batteryBoxes.removeAll { $0 === token }
             wifiBoxes.removeAll { $0 === token }
             clockBoxes.removeAll { $0 === token }
+            windowCreatedBoxes.removeAll { $0 === token }
+            windowFocusedBoxes.removeAll { $0 === token }
             anyBoxes.removeAll { $0 === token }
         }
     }
@@ -141,6 +174,26 @@ final class EventBus {
         for box in boxes {
             let q = box.queue, h = box.handler
             q.async { h(date) }
+        }
+        publishAny(event)
+    }
+
+    func publish(windowCreated info: WindowCreatedInfo) {
+        let boxes = sync.sync { windowCreatedBoxes }
+        let event = OmanixEvent.windowCreated(info)
+        for box in boxes {
+            let q = box.queue, h = box.handler
+            q.async { h(info) }
+        }
+        publishAny(event)
+    }
+
+    func publish(windowFocused info: WindowFocusedInfo) {
+        let boxes = sync.sync { windowFocusedBoxes }
+        let event = OmanixEvent.windowFocused(info)
+        for box in boxes {
+            let q = box.queue, h = box.handler
+            q.async { h(info) }
         }
         publishAny(event)
     }
