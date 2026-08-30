@@ -2,12 +2,12 @@
 // Headless two-way (Swift <-> Nix) test harness for the Omanix declarative state.
 //
 // NO SwiftUI here — this compiles against only the Foundation-based Data/ layer
-// (OmanixStore, Models, FileLogger) so it can be run from a terminal without a
+// (Omanix, Models, FileLogger) so it can be run from a terminal without a
 // GUI, letting CI / `tests/two-way.sh` verify every button/toggle/option round-
 // trips between the Swift store and the Nix module system.
 //
 // Model: the app talks to Nix ONLY through the `omanix state set` CLI (see
-// OmanixStore.setState), which writes the validated state.nix. configuration.nix
+// Omanix.setState), which writes the validated state.nix. configuration.nix
 // imports state.nix, so `omanix rebuild` flows values through the real module
 // system. This harness proves, for every option:
 //   Swift writes  -> readOption/currentXState sees it       (Swift self-read)
@@ -82,7 +82,7 @@ func bundlePath() -> String {
 struct TestEnv {
     let root: String          // repo root
     let flakeDir: String      // isolated temp flake
-    let store: OmanixStore
+    let store: Omanix
     let sourceBin: String
     let sourceLibexec: String
 
@@ -104,7 +104,7 @@ struct TestEnv {
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: flakeDir + "/bin/omanix")
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: flakeDir + "/libexec/omanix-state.sh")
 
-        store = OmanixStore(omanixDir: flakeDir)
+        store = Omanix(omanixDir: flakeDir)
     }
 }
 
@@ -338,7 +338,7 @@ func run() throws {
     print("\n[8] unset options fall back to defaults (fresh empty flake dir)")
     let freshDir = env.flakeDir + "/fresh"
     try FileManager.default.createDirectory(atPath: freshDir, withIntermediateDirectories: true)
-    let store2 = OmanixStore(omanixDir: freshDir)
+    let store2 = Omanix(omanixDir: freshDir)
     checkBool(store2.currentOmabarState().showClock == true, "fresh: currentOmabarState().showClock == true default")
     checkBool(store2.currentOmatilesState().enableEdgeDrag == true, "fresh: currentOmatilesState().enableEdgeDrag == true default")
     checkBool(store2.currentOmatilesState().enableMargins == false, "fresh: currentOmatilesState().enableMargins == false default")

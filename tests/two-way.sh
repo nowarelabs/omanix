@@ -34,7 +34,7 @@ BIN="$WORK/two-way-tests"
 xcrun swiftc \
   -framework Foundation \
   -o "$BIN" \
-  "$GUI_DIR/Data/OmanixStore.swift" \
+  "$GUI_DIR/Data/Omanix.swift" \
   "$GUI_DIR/Data/Models.swift" \
   "$GUI_DIR/Data/FileLogger.swift" \
   "$TEST_DIR/OmanixTwoWayTests.swift" 2>&1 \

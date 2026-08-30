@@ -7,7 +7,7 @@ echo "=== tests/cli ==="
 
 # 1. Bash syntax check for all bin/ and lib/ scripts
 echo "Checking bash syntax..."
-for f in bin/omanix lib/omanix-add.sh lib/omanix-remove.sh checks/darwin-check.sh tests/cli tests/shell tests/pristine tests/two-way.sh; do
+for f in bin/omanix lib/omanix-add.sh lib/omanix-remove.sh checks/darwin-check.sh tests/cli tests/shell tests/pristine tests/two-way.sh tests/behavior.sh; do
   if [[ -f "$f" ]]; then
     bash -n "$f" || { echo "FAIL: $f has syntax errors"; exit 1; }
     echo "  OK: $f"

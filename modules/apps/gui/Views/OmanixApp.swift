@@ -75,7 +75,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Bring the live macOS WindowManager tiling prefs in line with the current
             // declarative config even if no rebuild has run yet (so ⌃⌥+arrow works now).
             // Goes through the Nix-owned `omanix state apply omatiles` path.
-            try? OmanixStore().applyOmatilesLive()
+            try? Omanix().applyOmatilesLive()
         }
     }
 }

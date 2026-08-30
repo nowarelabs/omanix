@@ -1,4 +1,4 @@
-// Data/OmanixStore.swift
+// Data/Omanix.swift
 // Omanix — the data/service layer. Wraps the `omanix` CLI and the on-disk
 // Homebrew index. Foundation ONLY — no SwiftUI. All methods run the `omanix`
 // command and return plain values; the view model layers state on top.
@@ -21,7 +21,7 @@ enum OmanixError: LocalizedError {
 
 /// The single place that talks to the `omanix` CLI and reads/writes files
 /// under `~/.omanix`. Create one instance and share it.
-final class OmanixStore {
+final class Omanix {
 
     private let omanixDir: String
     private var brewCacheDir: String { "\(omanixDir)/brew-index" }

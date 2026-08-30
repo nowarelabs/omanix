@@ -1,6 +1,6 @@
 // Views/ThemesView.swift
 // "Themes" page: 12 Omanix themes (colors.toml) with live preview and Store wiring.
-// Writes omanix.theme via OmanixStore.setTheme -> configuration.nix, rebuild to apply.
+// Writes omanix.theme via Omanix.setTheme -> configuration.nix, rebuild to apply.
 
 import SwiftUI
 

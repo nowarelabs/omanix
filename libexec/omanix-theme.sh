@@ -110,7 +110,7 @@ per_app() {
     exit 1
   fi
   local opt="omanix.perApp.$app.$key"
-  # Use rewrite similar to OmanixStore's rewriteOption
+  # Use rewrite similar to Omanix's rewriteOption
   if grep -q "$opt" "$CONFIG"; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
       sed -i '' "s|$opt = \"[^\"]*\"|$opt = \"$val\"|" "$CONFIG"

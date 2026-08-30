@@ -1,5 +1,5 @@
 // ViewModels/OmanixViewModel.swift
-// Omanix — the functionality layer bridging Data (OmanixStore) to Views.
+// Omanix — the functionality layer bridging Data (Omanix) to Views.
 // Owns all @Published UI state, instantiates the store, and exposes
 // thin async operations. Views never touch the store directly.
 
@@ -48,14 +48,14 @@ final class OmanixViewModel: ObservableObject {
 
     // MARK: Dependencies
 
-    private let store: OmanixStore
+    private let store: Omanix
     private var searchTask: Task<Void, Never>?
     private var messageTimer: Task<Void, Never>?
     private var lastQuery = ""
 
     // MARK: Init
 
-    init(store: OmanixStore = OmanixStore()) {
+    init(store: Omanix = Omanix()) {
         self.store = store
         FileLogger.shared.rotate()
         FileLogger.shared.info("vm", "app launched")
