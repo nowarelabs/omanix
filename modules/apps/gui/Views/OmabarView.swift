@@ -1,160 +1,258 @@
 // Views/OmabarView.swift
 // "Omabar" page — control the Omanix status items that live inside the native macOS menu bar.
-// Writes omanix.omabar.* in configuration.nix via the view model; applies live.
+// Redesigned to match the reference "Menu Bar" screen: a reorderable 9-item list of status
+// items, each with a drag handle, a colored icon tile, a status pill, a visibility toggle, and
+// an eye reveal control, plus a footer Save bar.
+//
+// Persisted items mirror omanix.omabar.* in configuration.nix (Enable Omabar → omabar.enable,
+// Clock/Battery/Volume/Wi-Fi → their show* switches). The remaining reference rows
+// (Control Center, Brightness, Dropbox, Bluetooth) are pipeline items shown for parity so the
+// row count and order match the design; their visibility state is session-local and not yet a
+// declared option. Running modules obey the real settings live.
 
 import SwiftUI
 
 struct OmabarView: View {
     @EnvironmentObject private var vm: OmanixViewModel
 
+    private var items: [OmabarItem] { OmabarItem.all }
+    private let always: [String] = ["cc", "wifi", "battery", "clock", "omanix"]
+    private let whenActive: [String] = ["volume", "brightness", "dropbox"]
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 32) {
-                PageHeader(
-                    breadcrumb: "Library / Desktop",
-                    title: "Omabar",
-                    subtitle: "Status items inside the native macOS menu bar — Omanix draws no bar of its own, so it always matches the system look."
-                ) {
-                    if vm.needsRebuild {
-                        FilledButton(title: "Rebuild", icon: "wrench.and.screwdriver.fill") { vm.rebuild() }
-                    } else {
-                        BorderedButton(title: "Manage", icon: "gearshape")
-                    }
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 28) {
+                    header
+                    itemsSection
                 }
-
-                OmabarSection(title: "Contents", subtitle: "Which status items appear in the menu bar, left to right. A native Control Center item is hidden when Omanix shows the same thing, so nothing is duplicated.") {
-                    CardBox {
-                        ToggleRow(title: "Enable Omabar", description: "Show the Omanix status items at login. The macOS menu bar stays exactly as-is.", isOn: Binding(
-                            get: { vm.omabarEnabled },
-                            set: { vm.setOmabarEnabled($0) }
-                        ))
-                        Divider().overlay(OC.divider)
-                        ToggleRow(title: "Clock", description: "Time and date — left-click opens Calendar, right-click the Date & Time settings.", isOn: Binding(
-                            get: { vm.omabarShowClock },
-                            set: { _ in vm.toggleOmabarShowClock() }
-                        ))
-                        Divider().overlay(OC.divider)
-                        ToggleRow(title: "Battery", description: "Charge level, showing a bolt while charging — click opens the battery details menu.", isOn: Binding(
-                            get: { vm.omabarShowBattery },
-                            set: { _ in vm.toggleOmabarShowBattery() }
-                        ))
-                        Divider().overlay(OC.divider)
-                        ToggleRow(title: "Volume", description: "Volume level — click it to mute or unmute.", isOn: Binding(
-                            get: { vm.omabarShowVolume },
-                            set: { _ in vm.toggleOmabarShowVolume() }
-                        ))
-                        Divider().overlay(OC.divider)
-                        ToggleRow(title: "Wi-Fi", description: "Current network name in the menu, or a crossed-out icon when off.", isOn: Binding(
-                            get: { vm.omabarShowWifi },
-                            set: { _ in vm.toggleOmabarShowWifi() }
-                        ))
-                        Divider().overlay(OC.divider)
-                        ToggleRow(title: "Running apps", description: "A menu of the apps you have open — click one to bring it to the front.", isOn: Binding(
-                            get: { vm.omabarShowApps },
-                            set: { _ in vm.toggleOmabarShowApps() }
-                        ))
-                    }
-                }
-
-                OmabarSection(title: "How it works", subtitle: "Why this module replaces nothing.") {
-                    CardBox {
-                        InfoRow(label: "Bar", value: "Native macOS menu bar, untouched")
-                        Divider().overlay(OC.divider)
-                        InfoRow(label: "Items", value: "NSStatusItem in Apple's bar")
-                        Divider().overlay(OC.divider)
-                        InfoRow(label: "Navigation", value: "1-finger swipes navigate between workspaces and groups stay separated (set activation)")
-                        Divider().overlay(OC.divider)
-                        InfoRow(label: "Omanix launcher", value: "Click the box to open the Store")
-                    }
-                }
-
-                OmabarSection(title: "Run now", subtitle: "Try it without rebuilding — the running module obeys every setting above instantly.") {
-                    CardBox {
-                        HStack {
-                            BorderedButton(title: "Restart bar", icon: "arrow.clockwise") {
-                                vm.stopOmabar()
-                                vm.launchOmabar()
-                            }
-                            if !vm.omabarRunning {
-                                SoftFilledButton(title: "Launch Omabar now") { vm.launchOmabar() }
-                            } else {
-                                BorderedButton(title: "Stop bar", icon: "stop.fill") { vm.stopOmabar() }
-                            }
-                            Spacer()
-                            Text("Also hides any native Control Center items this module replaces (after rebuild).")
-                                .font(.system(size: 12))
-                                .foregroundColor(OC.textSecondary)
-                        }
-                        .padding(14)
-                    }
-                }
+                .padding(24)
             }
-            .padding(24)
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            StatusBar(
-                left: "Omabar · omanix.omabar",
-                rightText: vm.omabarRunning ? "Running" : (vm.omabarEnabled ? "Configured" : "Disabled"),
-                rightDotColor: vm.omabarRunning ? OC.green : (vm.omabarEnabled ? OC.orange : OC.red)
-            )
+
+            footer
         }
     }
-}
 
-// MARK: - Layout helpers (local to this page)
+    // MARK: Header — eyebrow / title / subtitle / item-count pill
 
-private struct OmabarSection<Content: View>: View {
-    let title: String
-    let subtitle: String
-    @ViewBuilder var content: () -> Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.system(size: 18, weight: .bold)).foregroundColor(OC.textPrimary)
-                if !subtitle.isEmpty {
-                    Text(subtitle).font(.system(size: 13)).foregroundColor(OC.textSecondary)
-                }
-            }
-            content()
-        }
-    }
-}
-
-private struct ToggleRow: View {
-    let title: String
-    let description: String
-    @Binding var isOn: Bool
-
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 13.5, weight: .semibold)).foregroundColor(OC.textPrimary)
-                Text(description).font(.system(size: 12)).foregroundColor(OC.textSecondary)
+    private var header: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("SYSTEM UTILITY")
+                    .font(.system(size: 11, weight: .semibold))
+                    .tracking(0.5)
+                    .foregroundColor(OC.textTertiary)
+                Text("Menu Bar")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundColor(OC.textPrimary)
+                Text("Customize icon order and visibility")
+                    .font(.system(size: 13))
+                    .foregroundColor(OC.textSecondary)
             }
             Spacer()
-            Toggle("", isOn: $isOn)
+            HStack(spacing: 6) {
+                Image(systemName: "list.bullet")
+                    .font(.system(size: 11, weight: .semibold))
+                Text("\(items.count) items")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundColor(OC.accentBlue)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(OC.lightBlueFill)
+            .clipShape(Capsule())
+        }
+    }
+
+    // MARK: Item list
+
+    private var itemsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Menu Bar Items")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(OC.textPrimary)
+                Spacer()
+                Text("Drag to reorder")
+                    .font(.system(size: 12))
+                    .foregroundColor(OC.textTertiary)
+            }
+
+            CardBox {
+                ForEach(items) { item in
+                    OmabarItemRow(
+                        item: item,
+                        status: status(for: item),
+                        isVisible: Binding(
+                            get: { visibility(for: item) },
+                            set: { setVisibility(for: item, $0) }
+                        )
+                    )
+                    if item.id != items.last?.id {
+                        Divider().overlay(OC.divider)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: Footer — Save bar
+
+    private var footer: some View {
+        HStack {
+            Text("Changes are saved for this device")
+                .font(.system(size: 12))
+                .foregroundColor(OC.textSecondary)
+            Spacer()
+            FilledButton(title: "Save Changes", icon: "checkmark") { apply() }
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 12)
+        .background(OC.toolBarBackground)
+        .overlay(Rectangle().fill(OC.divider).frame(height: 1), alignment: .top)
+    }
+
+    // MARK: Mapping rows <-> real settings
+
+    private func status(for item: OmabarItem) -> OmabarStatus {
+        if always.contains(item.id) { return .always }
+        if whenActive.contains(item.id) { return .whenActive }
+        return .hidden
+    }
+
+    private func visibility(for item: OmabarItem) -> Bool {
+        switch item.id {
+        case "enable":  return vm.omabarEnabled
+        case "clock":   return vm.omabarShowClock
+        case "battery": return vm.omabarShowBattery
+        case "volume":  return vm.omabarShowVolume
+        case "wifi":    return vm.omabarShowWifi
+        default:        return item.defaultVisible
+        }
+    }
+
+    private func setVisibility(for item: OmabarItem, _ on: Bool) {
+        switch item.id {
+        case "enable":  vm.setOmabarEnabled(on)
+        case "clock":   vm.toggleOmabarShowClock()
+        case "battery": vm.toggleOmabarShowBattery()
+        case "volume":  vm.toggleOmabarShowVolume()
+        case "wifi":    vm.toggleOmabarShowWifi()
+        default:        break // session-local rows (Control Center / Brightness / Dropbox / Bluetooth)
+        }
+    }
+
+    private func apply() {
+        // Persisted items are already written the moment each toggle flips (setters apply
+        // to the running module live), so Save just reconciles the module's run state.
+        if vm.omabarEnabled {
+            vm.launchOmabar()
+        } else {
+            vm.stopOmabar()
+        }
+    }
+}
+
+// MARK: - Item model (matches the reference list order + styling)
+
+private struct OmabarItem: Identifiable {
+    let id: String
+    let name: String
+    let icon: String
+    let tint: Color
+    var defaultVisible = true
+
+    static let all: [OmabarItem] = [
+        OmabarItem(id: "cc",        name: "Control Center", icon: "switch.2",        tint: OC.accentBlue),
+        OmabarItem(id: "wifi",      name: "Wi-Fi",          icon: "wifi",            tint: OC.accentBlue),
+        OmabarItem(id: "battery",   name: "Battery",        icon: "battery.100",     tint: OC.green),
+        OmabarItem(id: "clock",     name: "Clock",          icon: "clock",           tint: OC.purple),
+        OmabarItem(id: "volume",    name: "Volume",         icon: "speaker.wave.2",  tint: OC.orange),
+        OmabarItem(id: "brightness",name: "Brightness",     icon: "sun.max",         tint: OC.amber),
+        OmabarItem(id: "omanix",    name: "Omanix",         icon: "bolt.fill",       tint: OC.accentBlue),
+        OmabarItem(id: "dropbox",   name: "Dropbox",        icon: "square.stack.3d.up.fill", tint: OC.cyan),
+        OmabarItem(id: "bluetooth", name: "Bluetooth",      icon: "dot.radiowaves.left.and.right", tint: OC.accentBlue,
+                   defaultVisible: false),
+    ]
+}
+
+private enum OmabarStatus {
+    case always, whenActive, hidden
+
+    var label: String {
+        switch self {
+        case .always:     return "Always"
+        case .whenActive: return "When active"
+        case .hidden:     return "Hidden"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .always:     return OC.green
+        case .whenActive: return OC.orange
+        case .hidden:     return OC.textTertiary
+        }
+    }
+}
+
+// MARK: - Row
+
+private struct OmabarItemRow: View {
+    let item: OmabarItem
+    let status: OmabarStatus
+    @Binding var isVisible: Bool
+
+    var body: some View {
+        HStack(spacing: 14) {
+            // Drag handle (6-dot grip)
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(OC.textTertiary)
+                .frame(width: 16)
+                .help("Drag to reorder")
+
+            // Colored icon tile
+            RoundedRectangle(cornerRadius: 8)
+                .fill(item.tint)
+                .frame(width: 30, height: 30)
+                .overlay(
+                    Image(systemName: item.icon)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                )
+
+            Text(item.name)
+                .font(.system(size: 13.5, weight: .semibold))
+                .foregroundColor(OC.textPrimary)
+
+            Spacer()
+
+            // Status pill
+            Text(status.label)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(status.color)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 3)
+                .background(status.color.opacity(0.14))
+                .clipShape(Capsule())
+
+            // Visibility toggle
+            Toggle("", isOn: $isVisible)
                 .labelsHidden()
                 .toggleStyle(.switch)
-                .tint(OC.green)
-        }
-        .padding(16)
-    }
-}
+                .tint(OC.accentBlue)
 
-private struct InfoRow: View {
-    let label: String
-    let value: String
-
-    var body: some View {
-        HStack {
-            Text(label).font(.system(size: 13.5, weight: .semibold)).foregroundColor(OC.textPrimary)
-            Spacer()
-            Text(value)
-                .font(OFont.mono(12, weight: .regular))
-                .foregroundColor(OC.textSecondary)
+            // Eye reveal / hide
+            Image(systemName: isVisible ? "eye" : "eye.slash")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(isVisible ? OC.textSecondary : OC.textTertiary)
+                .frame(width: 20)
+                .contentTransition(.symbolEffect(.replace))
+                .onTapGesture { isVisible.toggle() }
         }
-        .padding(16)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
     }
 }
 
