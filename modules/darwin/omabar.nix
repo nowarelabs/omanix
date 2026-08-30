@@ -9,10 +9,12 @@
 { config, lib, pkgs, ... }:
 {
   # Launch the Omanix app in "Omabar module mode" at login, restarted if it dies.
-  # NOTE: on the pinned nix-darwin (52d0615) launchd.agents.<name> only takes serviceConfig —
-  # there is no top-level `enable`/`runAtLoad`/`keepAlive`/`program`/`args` option here, so
-  # gating is done at eval time with lib.mkIf (matches the postActivation pattern below).
-  launchd.agents.omabar = lib.mkIf config.omanix.omabar.enable {
+  # Runs as a PER-USER agent (launchd.user.agents, same as services.nix) so the
+  # module shares the GUI's Accessibility permission instead of needing its own
+  # root grant. NOTE: on the pinned nix-darwin (52d0615) launchd.*.agents.<name>
+  # only takes serviceConfig — there is no top-level `enable`/`runAtLoad`
+  # `keepAlive`/`program`/`args`, so gating is done at eval time with lib.mkIf.
+  launchd.user.agents.omabar = lib.mkIf config.omanix.omabar.enable {
     serviceConfig = {
       Label = "om.omanix.omabar";
       ProgramArguments = [ "/Applications/Omanix.app/Contents/MacOS/Omanix" "--omabar" ];

@@ -83,6 +83,14 @@ struct OmatilesView: View {
                             }
                         }
                         .padding(14)
+                        if !accessibilityGranted {
+                            Text("The permission is tied to the built app. Config-only changes no longer rebuild it, so it stays granted until the app itself is recompiled. If you already granted it and this still says Not granted, you're running an older build — relaunch Omanix.")
+                                .font(.system(size: 11.5))
+                                .foregroundColor(OC.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.horizontal, 16)
+                                .padding(.bottom, 14)
+                        }
                     }
                 }
             }

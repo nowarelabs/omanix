@@ -54,14 +54,17 @@ CONFIG_DIR="/Users/${user}/.omanix"
 # /var/root/.omanix and may hold files deleted from the flake since.
 rm -rf "$STORE_DIR/gui"
 if [ -d "$CONFIG_DIR/modules/apps/gui" ]; then
-  cp -R "$CONFIG_DIR/modules/apps/gui" "$STORE_DIR/gui"
+  cp -R -p "$CONFIG_DIR/modules/apps/gui" "$STORE_DIR/gui"
   log "INFO" "copied gui sources from config directory"
 else
-  cp -R ${gui-src} "$STORE_DIR/gui"
+  cp -R -p ${gui-src} "$STORE_DIR/gui"
   log "INFO" "copied gui sources from nix store"
 fi
 
-# Build with system Swift into the same app bundle
+# Build with system Swift into the same app bundle.
+# Incremental: only recompile when a source is actually newer than the installed
+# binary. Building on every activation replaced the executable, so macOS silently
+# revoked the Accessibility permission (it is keyed to the binary's signature).
 XCRUN="/usr/bin/xcrun"
 if [ -x "$XCRUN" ] || command -v xcrun >/dev/null 2>&1; then
   mkdir -p "/Applications/Omanix.app/Contents/MacOS"
@@ -70,19 +73,45 @@ if [ -x "$XCRUN" ] || command -v xcrun >/dev/null 2>&1; then
   # Only compile gui sources (not store sources) — both define @main and would clash
   GUI_DIR="$STORE_DIR/gui"
   if [ -d "$GUI_DIR" ]; then
-    echo "Building Omanix GUI..."
-    # shellcheck disable=SC2046
-    "$XCRUN" swiftc \
-      -framework SwiftUI \
-      -framework Foundation \
-      -o "/Applications/Omanix.app/Contents/MacOS/Omanix" \
-      $(find "$GUI_DIR" -name '*.swift' | sort)
+    BUNDLE="/Applications/Omanix.app"
+    BIN="$BUNDLE/Contents/MacOS/Omanix"
 
-    cp ${infoPlist} "/Applications/Omanix.app/Contents/Info.plist"
+    NEEDS_BUILD=1
+    if [ -x "$BIN" ]; then
+      if [ -z "$(find "$GUI_DIR" -name '*.swift' -newer "$BIN" | head -1)" ]; then
+        NEEDS_BUILD=0
+      fi
+    fi
+
+    if [ "$NEEDS_BUILD" = "1" ]; then
+      echo "Building Omanix GUI..."
+      # shellcheck disable=SC2046
+      "$XCRUN" swiftc \
+        -framework SwiftUI \
+        -framework Foundation \
+        -o "$BIN" \
+        $(find "$GUI_DIR" -name '*.swift' | sort)
+      echo "Omanix GUI rebuilt"
+    else
+      echo "Omanix GUI up to date — skipping rebuild (keeps the Accessibility grant)"
+    fi
+
+    cp ${infoPlist} "$BUNDLE/Contents/Info.plist"
     cp ${../../../assets/Omanix.icns} "$STORE_DIR/icon.icns"
-    cp ${../../../assets/Omanix.icns} "/Applications/Omanix.app/Contents/Resources/AppIcon.icns"
+    cp ${../../../assets/Omanix.icns} "$BUNDLE/Contents/Resources/AppIcon.icns"
 
-    chown -R ${user}:admin /Applications/Omanix.app
+    # Ad-hoc sign the whole bundle so the Accessibility (TCC) grant keys on one
+    # stable identity. Required after a rebuild; no-op-identical when skipped.
+    codesign --force --sign - "$BUNDLE" 2>/dev/null || true
+
+    # Restart the per-user module agents onto the (possibly rebuilt) binary so
+    # they pick it up without a logout. They run as the user, so they share the
+    # GUI's Accessibility permission rather than needing a root grant.
+    USER_UID="$(id -u ${user} 2>/dev/null || echo 501)"
+    launchctl kickstart -k "gui/$USER_UID/om.omanix.omabar" 2>/dev/null || true
+    launchctl kickstart -k "gui/$USER_UID/om.omanix.omatiles" 2>/dev/null || true
+
+    chown -R ${user}:admin "$BUNDLE"
 
     log "INFO" "Omanix GUI built successfully"
     echo "Omanix GUI built successfully"
