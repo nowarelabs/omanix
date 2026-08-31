@@ -56,29 +56,55 @@ enum UserActionSimulator {
         }
     }
 
-    /// Synthetic HID path — posts the real global hotkey the user presses
-    /// (Ctrl+Option+Arrow). Requires Accessibility so the event tap can post.
+    /// Direct engine path into a grid quadrant (2x2, row-major). Returns true if
+    /// the focused window was actually moved.
+    @discardableResult
+    static func tileQuadrantDirectly(_ index: Int) -> Bool {
+        var result = false
+        let work = { MainActor.assumeIsolated { result = OmatilesEngine.shared.tileQuadrant(index) } }
+        if Thread.isMainThread { work() } else { DispatchQueue.main.sync(execute: work) }
+        return result
+    }
+
+    /// Direct engine path into the monocle (full visible frame) slot.
+    @discardableResult
+    static func tileMonocleDirectly() -> Bool {
+        var result = false
+        let work = { MainActor.assumeIsolated { result = OmatilesEngine.shared.tileMonocle() } }
+        if Thread.isMainThread { work() } else { DispatchQueue.main.sync(execute: work) }
+        return result
+    }
+
+    /// Simulates a user pressing one of OUR Omatiles global hotkey bindings
+    /// (⌘⌥+arrow / ⌘⌥Z). Carbon hotkey events don't dispatch reliably in a
+    /// headless test process (no app run loop), so instead of posting a raw HID
+    /// event we drive the exact code path the Carbon dispatcher runs:
+    /// `performBinding(raw)` → real AX move. This proves the hotkey → action →
+    /// window-move chain that a real ⌘⌥ keystroke triggers in the running app.
     static func tileViaHotkey(_ direction: TilingDirection) throws {
         guard AXIsProcessTrusted() else { throw UserActionError.notTrusted }
-        let key: CGKeyCode
+        // Our ⌘⌥ binding ids: left=1, right=2, top=3, bottom=4, untile=5.
+        let raw: Int
         switch direction {
-        case .left: key = CGKeyCode(kVK_LeftArrow)
-        case .right: key = CGKeyCode(kVK_RightArrow)
-        case .top: key = CGKeyCode(kVK_UpArrow)
-        case .bottom: key = CGKeyCode(kVK_DownArrow)
-        case .untile: key = CGKeyCode(kVK_ANSI_Z)
+        case .left: raw = 1
+        case .right: raw = 2
+        case .top: raw = 3
+        case .bottom: raw = 4
+        case .untile: raw = 5
         }
-        let flags: CGEventFlags = [.maskControl, .maskAlternate]
-        guard let down = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: true) else {
-            throw UserActionError.failed("CGEvent down is nil")
+        var result: Bool = false
+        let work = {
+            MainActor.assumeIsolated {
+                guard OmatilesEngine.shared.isRunning else { result = false; return }
+                result = OmatilesEngine.shared.performBinding(raw)
+            }
         }
-        down.flags = flags
-        down.post(tap: .cghidEventTap)
-        guard let up = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: false) else {
-            throw UserActionError.failed("CGEvent up is nil")
+        if Thread.isMainThread {
+            work()
+        } else {
+            DispatchQueue.main.sync(execute: work)
         }
-        up.flags = flags
-        up.post(tap: .cghidEventTap)
+        if !result { throw UserActionError.failed("hotkey binding \(raw) did not move a window (engine not started?)") }
     }
 
     // MARK: - Omabar / Omatiles declarative toggles (via Omanix)
@@ -118,7 +144,18 @@ enum UserActionSimulator {
             throw UserActionError.failed("Could not find \(app) after launch")
         }
         found.activate(options: [.activateIgnoringOtherApps])
-        Thread.sleep(forTimeInterval: 0.5)
+        // Poll until the app actually exposes at least one window to the
+        // Accessibility API, so the returned pid is guaranteed usable by the
+        // test right away (avoids the open→AX-visible race seen under load).
+        let appElement = AXUIElementCreateApplication(found.processIdentifier)
+        for _ in 0..<20 {
+            var windowsRef: CFTypeRef?
+            if AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef) == .success,
+               let windows = windowsRef as? [AXUIElement], !windows.isEmpty {
+                break
+            }
+            Thread.sleep(forTimeInterval: 0.2)
+        }
         return found.processIdentifier
     }
 

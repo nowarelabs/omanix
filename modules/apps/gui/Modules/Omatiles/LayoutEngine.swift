@@ -10,6 +10,7 @@ import CoreGraphics
 
 enum OwinLayout: String {
     case bsp
+    case grid
     case monocle
     case stack
     case spiral
@@ -17,6 +18,11 @@ enum OwinLayout: String {
 }
 
 struct LayoutEngine {
+
+    /// Columns x rows used by the `grid` layout; exposed so callers can derive
+    /// the same frames when drawing "ghost" slot overlays before a window lands.
+    static let gridColumns = 2
+    static let gridRows = 2
 
     /// Returns one frame per window, in window-index order. Gap is inset on all
     /// sides so tiled windows don't touch each other or the screen edge.
@@ -31,10 +37,71 @@ struct LayoutEngine {
         }
         switch layout {
         case .bsp: return bsp(count: count, in: screen, gap: gap)
+        case .grid: return grid(count: count, in: screen, gap: gap)
         case .stack: return stack(count: count, in: screen, gap: gap)
         case .spiral: return spiral(count: count, in: screen, gap: gap)
-        default: return stack(count: count, in: screen, gap: gap)
+        case .monocle, .float: return []
         }
+    }
+
+    /// All grid "slots" (one per grid cell) regardless of how many windows are
+    /// open. Used by the ghost overlay so the user sees exactly where a window
+    /// will land for the 2x2 grid before they drop/press.
+    static func gridSlots(in screen: CGRect, gap: CGFloat = 8) -> [CGRect] {
+        var slots: [CGRect] = []
+        let cols = gridColumns
+        let rows = gridRows
+        let cellW = (screen.width - gap * CGFloat(cols + 1)) / CGFloat(cols)
+        let cellH = (screen.height - gap * CGFloat(rows + 1)) / CGFloat(rows)
+        for r in 0..<rows {
+            for c in 0..<cols {
+                slots.append(CGRect(
+                    x: screen.minX + gap + CGFloat(c) * (cellW + gap),
+                    y: screen.minY + gap + CGFloat(r) * (cellH + gap),
+                    width: cellW,
+                    height: cellH
+                ))
+            }
+        }
+        return slots
+    }
+
+    // MARK: - Single-window placement (⌘⌥ hotkeys / auto-tile)
+
+    /// Half of the screen, inset by `gap` on every side, along the given edge.
+    /// Window reports frames in bottom-left origin (Cocoa), so "top" means the
+    /// larger y range and "bottom" the smaller.
+    static func half(_ edge: Half, in screen: CGRect, gap: CGFloat = 8) -> CGRect {
+        let inset = screen.insetBy(dx: gap, dy: gap)
+        switch edge {
+        case .left:
+            return CGRect(x: inset.minX, y: inset.minY, width: inset.width / 2, height: inset.height)
+        case .right:
+            return CGRect(x: inset.midX, y: inset.minY, width: inset.width / 2, height: inset.height)
+        case .top:
+            return CGRect(x: inset.minX, y: inset.midY, width: inset.width, height: inset.height / 2)
+        case .bottom:
+            return CGRect(x: inset.minX, y: inset.minY, width: inset.width, height: inset.height / 2)
+        }
+    }
+
+    /// One quadrant of the screen, in grid row-major order (0 = top-left).
+    static func quadrant(_ index: Int, in screen: CGRect, gap: CGFloat = 8) -> CGRect? {
+        let slots = gridSlots(in: screen, gap: gap)
+        guard slots.indices.contains(index) else { return nil }
+        return slots[index]
+    }
+
+    enum Half {
+        case left, right, top, bottom
+    }
+
+    // MARK: - Grid (even columns x rows, top-left to bottom-right)
+
+    private static func grid(count: Int, in screen: CGRect, gap: CGFloat) -> [CGRect] {
+        // Fill the 2x2 grid row-major (top-left, top-right, bottom-left, ...).
+        let slots = gridSlots(in: screen, gap: gap)
+        return Array(slots.prefix(count))
     }
 
     // MARK: - BSP (binary space partition, longest-edge split)

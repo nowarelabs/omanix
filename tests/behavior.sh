@@ -52,6 +52,9 @@ xcrun swiftc \
   "$GUI_DIR/Data/Models.swift" \
   "$GUI_DIR/Data/FileLogger.swift" \
   "$GUI_DIR/Modules/RuntimeSettings.swift" \
+  "$GUI_DIR/Modules/Omatiles/LayoutEngine.swift" \
+  "$GUI_DIR/Modules/Omatiles/RealWindowMover.swift" \
+  "$GUI_DIR/Modules/Omatiles/GhostTilingOverlay.swift" \
   "$GUI_DIR/Modules/Omatiles/OmatilesEngine.swift" \
   "$TEST_DIR/UserActionSimulator.swift" \
   "$TEST_DIR/SystemEffectReader.swift" \

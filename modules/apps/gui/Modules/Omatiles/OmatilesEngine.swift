@@ -67,33 +67,83 @@ final class OmatilesEngine {
         removeBindings()
     }
 
-    // MARK: - Native tiling actions (public, also used by the GUI "try it" button)
+    // MARK: - Real tiling actions (AX window moves; public, used by GUI + tests)
 
-    func tileLeft() { pressSystemTiling(.left) }
-    func tileRight() { pressSystemTiling(.right) }
-    func tileTop() { pressSystemTiling(.top) }
-    func tileBottom() { pressSystemTiling(.bottom) }
-    func untile() { pressSystemTiling(.untile) }
+    /// Tiles the focused window into the left half. `@discardableResult` so the
+    /// GUI can ignore success but tests can verify the window actually moved.
+    @discardableResult
+    func tileLeft() -> Bool { tile(.left) }
+    @discardableResult
+    func tileRight() -> Bool { tile(.right) }
+    @discardableResult
+    func tileTop() -> Bool { tile(.top) }
+    @discardableResult
+    func tileBottom() -> Bool { tile(.bottom) }
+    @discardableResult
+    func untile() -> Bool { restore() }
 
-    /// Synthesizes the macOS tiling shortcut (⌃⌥ + arrow/Z) that the OS handles
-    /// natively. Requires Accessibility trust to post synthetic HID events.
-    private func pressSystemTiling(_ action: TilingAction) {
-        guard AXIsProcessTrusted() else { return }
-        let key: CGKeyCode
-        switch action {
-        case .left:   key = CGKeyCode(kVK_LeftArrow)
-        case .right:  key = CGKeyCode(kVK_RightArrow)
-        case .top:    key = CGKeyCode(kVK_UpArrow)
-        case .bottom: key = CGKeyCode(kVK_DownArrow)
-        case .untile: key = CGKeyCode(kVK_ANSI_Z)
+    /// Tiles the focused window into one of the layout engine's grid slots
+    /// (2x2, row-major: 0 = top-left, 1 = top-right, 2 = bottom-left, 3 = bottom-right).
+    @discardableResult
+    func tileQuadrant(_ index: Int) -> Bool {
+        guard let screen = NSScreen.main,
+              let frame = LayoutEngine.quadrant(index, in: screen.visibleFrame, gap: settings.gap) else { return false }
+        // Ghost the full 2x2 grid so the user sees every slot they can navigate.
+        GhostTilingOverlay.shared.showGhosts(for: LayoutEngine.gridSlots(in: screen.visibleFrame, gap: settings.gap))
+        return apply(frame)
+    }
+
+    /// Tiles the focused window full-visible-frame (monocle slot). Returns false
+    /// if the move didn't happen.
+    @discardableResult
+    func tileMonocle() -> Bool {
+        guard let screen = NSScreen.main else { return false }
+        let frame = screen.visibleFrame.insetBy(dx: settings.gap, dy: settings.gap)
+        GhostTilingOverlay.shared.showGhosts(for: [frame])
+        return apply(frame)
+    }
+
+    /// Moves the focused window to an explicit CGRect via AX. Returns false if
+    /// the move didn't happen (no trust, no focused window, AX failure).
+    @discardableResult
+    func moveFocusedWindow(to frame: CGRect) -> Bool {
+        apply(frame)
+    }
+
+    /// Computes a target CGRect plus moves the focused window there via AX.
+    private func tile(_ action: TilingAction) -> Bool {
+        guard let screen = NSScreen.main else { return false }
+        let frame = LayoutEngine.half(halfEdge(action), in: screen.visibleFrame, gap: settings.gap)
+        GhostTilingOverlay.shared.showGhosts(for: [frame])
+        return apply(frame)
+    }
+
+    private func apply(_ frame: CGRect) -> Bool {
+        do {
+            try RealWindowMover.shared.moveFocusedWindow(to: frame)
+            return true
+        } catch {
+            print("OmatilesEngine: tile to \(frame) failed: \(error.localizedDescription)")
+            return false
         }
-        let flags: CGEventFlags = [.maskControl, .maskAlternate]
-        guard let down = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: true) else { return }
-        down.flags = flags
-        down.post(tap: .cghidEventTap)
-        let up = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: false)
-        up?.flags = flags
-        up?.post(tap: .cghidEventTap)
+    }
+
+    /// Untile: raise the focused window to approximately its original position.
+    /// We don't track original frames in this lightweight engine, so untile puts
+    /// the window into the default (full visible frame minus gap) slot.
+    private func restore() -> Bool {
+        guard let screen = NSScreen.main else { return false }
+        return apply(screen.visibleFrame.insetBy(dx: settings.gap, dy: settings.gap))
+    }
+
+    private func halfEdge(_ action: TilingAction) -> LayoutEngine.Half {
+        switch action {
+        case .left: return .left
+        case .right: return .right
+        case .top: return .top
+        case .bottom: return .bottom
+        case .untile: return .left // unused
+        }
     }
 
     // MARK: - Accessibility
@@ -159,11 +209,29 @@ final class OmatilesEngine {
         guard isRunning else { return }
         guard let binding = BindingID(rawValue: raw) else { return }
         switch binding {
-        case .left:   tileLeft()
-        case .right:  tileRight()
-        case .top:    tileTop()
-        case .bottom: tileBottom()
-        case .untile: untile()
+        case .left:   _ = tileLeft()
+        case .right:  _ = tileRight()
+        case .top:    _ = tileTop()
+        case .bottom: _ = tileBottom()
+        case .untile: _ = untile()
+        }
+    }
+
+    /// Routes an Omatiles ⌘⌥ binding id to its tiling action. This is the exact
+    /// code path the Carbon hotkey dispatcher runs when a user presses ⌘⌥← etc.
+    /// Exposed so the behavioral tests can drive the binding→action→AX-move
+    /// chain deterministically without depending on Carbon event dispatch (which
+    /// doesn't fire in a headless test process with no app run loop).
+    @discardableResult
+    func performBinding(_ raw: Int) -> Bool {
+        guard isRunning else { return false }
+        guard let binding = BindingID(rawValue: raw) else { return false }
+        switch binding {
+        case .left:   return tileLeft()
+        case .right:  return tileRight()
+        case .top:    return tileTop()
+        case .bottom: return tileBottom()
+        case .untile: return untile()
         }
     }
 

@@ -158,6 +158,7 @@ struct OmatilesView: View {
                     ForEach(TilingLayout.allCases) { option in
                         LayoutTile(layout: option, selected: layout == option) {
                             withAnimation(.easeInOut(duration: 0.15)) { layout = option }
+                            showDesktopGhosts(for: option)
                         }
                     }
                 }
@@ -234,6 +235,25 @@ struct OmatilesView: View {
             vm.launchOmatiles()
         } else {
             vm.stopOmatiles()
+        }
+    }
+
+    /// Shows translucent ghost drop-boxes on the actual desktop for the chosen
+    /// layout, so the user sees exactly where a window will land before tiling.
+    private func showDesktopGhosts(for option: TilingLayout) {
+        guard let screen = NSScreen.main else { return }
+        let visible = screen.visibleFrame
+        switch option {
+        case .grid:
+            GhostTilingOverlay.shared.showGhosts(for: LayoutEngine.gridSlots(in: visible))
+        case .monocle:
+            GhostTilingOverlay.shared.showGhosts(for: [visible.insetBy(dx: 8, dy: 8)])
+        case .bsp:
+            // Sample two-pane BSP arrangement so the user sees the split.
+            let f = LayoutEngine.frames(count: 2, in: visible, layout: .bsp)
+            GhostTilingOverlay.shared.showGhosts(for: f)
+        case .float:
+            GhostTilingOverlay.shared.hide()
         }
     }
 }

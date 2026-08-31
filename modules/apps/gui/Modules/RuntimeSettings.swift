@@ -12,6 +12,7 @@
 // Foundation ONLY — no SwiftUI/AppKit.
 
 import Foundation
+import CoreGraphics
 
 enum RuntimeSettings {
 
@@ -98,11 +99,13 @@ enum RuntimeSettings {
     struct Omatiles {
         var enable = true
         var bindings = true
+        var gap: CGFloat = 8
 
         static func load() -> Omatiles {
             Omatiles(
                 enable: bool("omanix.omatiles.enable", default: true),
-                bindings: bool("omanix.omatiles.bindings", default: true)
+                bindings: bool("omanix.omatiles.bindings", default: true),
+                gap: CGFloat(option("omanix.omatiles.gap").flatMap(Double.init) ?? 8)
             )
         }
     }

@@ -27,7 +27,7 @@ struct TilingBehaviorTests {
             }
         }
 
-        print("\n[Tiling] Ctrl+Option+Arrow → window tiles")
+        print("\n[Tiling] Hotkey/engine → window actually moves (real AX tiling)")
 
         // 1. Declarative state → live prefs (no window needed, just prefs)
         record(testPrefsLiveApply())
@@ -35,8 +35,10 @@ struct TilingBehaviorTests {
         // 2. Direct engine tiling (requires a real window + AX)
         record(testDirectEngineTileLeft())
         record(testDirectEngineTileRight())
+        record(testDirectEngineQuadrant()) // grid slot
+        record(testDirectEngineMonocle())
 
-        // 3. Hotkey tiling (requires AX trust)
+        // 3. Hotkey/binding tiling (requires AX trust)
         record(testHotkeyTileLeft())
 
         if !skips.isEmpty {
@@ -46,6 +48,17 @@ struct TilingBehaviorTests {
     }
 
     // MARK: - Sub-tests
+
+    /// Reads a window frame once it is AX-visible, retrying briefly to absorb
+    /// the small delay between a new document being created and its window being
+    /// exposed to the Accessibility API.
+    private static func readInitialFrame(pid: pid_t) -> CGRect? {
+        for _ in 0..<10 {
+            if let f = try? SystemEffectReader.windowFrame(pid: pid) { return f }
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        return nil
+    }
 
     /// Verifies that `omanix state set` + `applyOmatilesLive` actually flips
     /// com.apple.WindowManager. This is the "pref" layer beneath the window layer.
@@ -82,8 +95,8 @@ struct TilingBehaviorTests {
         }
         defer { UserActionSimulator.closeWindow(pid: pid) }
 
-        Thread.sleep(forTimeInterval: 0.8)
-        guard let before = try? SystemEffectReader.windowFrame(pid: pid) else {
+        Thread.sleep(forTimeInterval: 0.4)
+        guard let before = Self.readInitialFrame(pid: pid) else {
             return .skipped("Could not read initial window frame (AX)")
         }
 
@@ -115,8 +128,8 @@ struct TilingBehaviorTests {
         }
         defer { UserActionSimulator.closeWindow(pid: pid) }
 
-        Thread.sleep(forTimeInterval: 0.8)
-        guard let before = try? SystemEffectReader.windowFrame(pid: pid) else {
+        Thread.sleep(forTimeInterval: 0.4)
+        guard let before = Self.readInitialFrame(pid: pid) else {
             return .skipped("Could not read initial window frame")
         }
         UserActionSimulator.tileDirectly(.right)
@@ -132,6 +145,63 @@ struct TilingBehaviorTests {
             return .passed("tileRight via engine: \(before) → \(after)")
         } else {
             return .failed("tileRight via engine failed: window frame did not change from \(before) (after: \(after))")
+        }
+    }
+
+    private static func testDirectEngineQuadrant() -> TilingTestResult {
+        return tileAndAssert(label: "tileQuadrant(0) [grid slot]",
+                             before: { _ in }, action: { _ in _ = UserActionSimulator.tileQuadrantDirectly(0) },
+                             matches: { _, after, screen in
+                                 // Top-left grid slot: window is in the left, upper half.
+                                 after.minX < screen.midX && after.maxY > screen.midY
+                             },
+                             expected: "window in top-left grid quadrant")
+    }
+
+    private static func testDirectEngineMonocle() -> TilingTestResult {
+        return tileAndAssert(label: "tileMonocle",
+                             before: { _ in }, action: { _ in _ = UserActionSimulator.tileMonocleDirectly() },
+                             matches: { _, after, screen in
+                                 // Monocle: window near full visible frame.
+                                 after.width > screen.width * 0.85 && after.height > screen.height * 0.85
+                             },
+                             expected: "window near full-screen (monocle)")
+    }
+
+    /// Shared helper: opens a focused test window, runs an action, and asserts
+    /// the window frame actually changed AND satisfies a shape/position check.
+    private static func tileAndAssert(label: String,
+                                      before: (pid_t) -> Void,
+                                      action: (pid_t) -> Void,
+                                      matches: (CGRect, CGRect, CGRect) -> Bool,
+                                      expected: String) -> TilingTestResult {
+        guard NSScreen.main != nil else { return .skipped("No main screen (headless)") }
+        guard AXIsProcessTrusted() else { return .skipped("AX not trusted") }
+
+        let pid: pid_t
+        do {
+            pid = try UserActionSimulator.openTestWindow()
+        } catch {
+            return .skipped("Could not open test window: \(error)")
+        }
+        defer { UserActionSimulator.closeWindow(pid: pid) }
+
+        Thread.sleep(forTimeInterval: 0.4)
+        guard let b = Self.readInitialFrame(pid: pid) else {
+            return .skipped("Could not read initial window frame (AX)")
+        }
+
+        action(pid)
+        Thread.sleep(forTimeInterval: 0.8)
+
+        guard let a = try? SystemEffectReader.windowFrame(pid: pid) else {
+            return .failed("Could not read window frame after \(label)")
+        }
+        let screen = SystemEffectReader.mainScreenFrame()
+        if a != b && matches(b, a, screen) {
+            return .passed("\(label): \(b) → \(a) (\(expected))")
+        } else {
+            return .failed("\(label) failed: frame did not move/meet expectations \(b) → \(a) (expected \(expected), screen \(screen))")
         }
     }
 
@@ -163,9 +233,9 @@ struct TilingBehaviorTests {
         }
         let onScreen = SystemEffectReader.mainScreenFrame().intersects(after)
         if onScreen && after != before {
-            return .passed("tileLeft via HID hotkey Ctrl+Option+Left: \(before) → \(after)")
+            return .passed("tileLeft via ⌘⌥ binding: \(before) → \(after)")
         } else {
-            return .failed("tileLeft via hotkey failed: window frame did not change from \(before) (after: \(after))")
+            return .failed("tileLeft via ⌘⌥ binding failed: window frame did not change from \(before) (after: \(after))")
         }
     }
 }
