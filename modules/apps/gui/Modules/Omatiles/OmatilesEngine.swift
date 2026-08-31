@@ -185,13 +185,12 @@ final class OmatilesEngine {
     //   ⌘⌥PageDn/PageUp  focus the next / previous window
     @discardableResult
     func moveFocusedWindow(forward: Bool) -> Bool {
-        guard AXIsProcessTrusted(), let screen = NSScreen.main, isRunning else { return false }
+        guard AXIsProcessTrusted(), NSScreen.main != nil, isRunning else { return false }
         let layout = OwinLayout(rawValue: settings.defaultLayout) ?? .bsp
         let (windows, frames) = layoutPlan(layout: layout, gap: settings.gap)
-        // Find the focused window's index in the ordered set.
-        guard let focused = RealWindowMover.shared.focusedWindowElement(),
-              let idx = windows.firstIndex(where: { $0 === focused }),
-              windows.count > 1 else { return false }
+        guard windows.count > 1,
+              let focused = RealWindowMover.shared.focusedWindowElement(),
+              let idx = windows.firstIndex(where: { CFEqual($0, focused) }) else { return false }
         let step = (forward ? 1 : -1)
         let next = (idx + step + windows.count) % windows.count
         // Swap the two windows' frames so the focused window lands in the neighbor slot.
@@ -207,24 +206,21 @@ final class OmatilesEngine {
     /// activating the owning application (and its window). Returns true on success.
     @discardableResult
     func focusNextWindow(forward: Bool) -> Bool {
-        guard AXIsProcessTrusted(), let screen = NSScreen.main, isRunning else { return false }
+        guard AXIsProcessTrusted(), NSScreen.main != nil, isRunning else { return false }
         let layout = OwinLayout(rawValue: settings.defaultLayout) ?? .bsp
-        let (windows, frames) = layoutPlan(layout: layout, gap: settings.gap)
+        let (windows, _) = layoutPlan(layout: layout, gap: settings.gap)
         guard windows.count > 1 else { return false }
-        let focusedIndex: Int
-        if let focused = RealWindowMover.shared.focusedWindowElement(),
-           let idx = windows.firstIndex(where: { $0 === focused }) {
-            focusedIndex = idx
-        } else {
-            return false
-        }
+        // Find the focused window's index in the ordered set. CFEqual compares the
+        // represented element (not wrapper pointer identity), which stays stable.
+        guard let focused = RealWindowMover.shared.focusedWindowElement(),
+              let focusedIndex = windows.firstIndex(where: { CFEqual($0, focused) }) else { return false }
         let step = (forward ? 1 : -1)
         let next = (focusedIndex + step + windows.count) % windows.count
         let target = windows[next]
         var pid: pid_t = 0
         AXUIElementGetPid(target, &pid)
         guard pid > 0, let app = NSRunningApplication(processIdentifier: pid) else { return false }
-        app.activate(options: [.activateIgnoringOtherApps])
+        app.activate()
         // Bring the target window to the front within its app.
         AXUIElementPerformAction(target, kAXRaiseAction as CFString)
         return true
@@ -232,24 +228,28 @@ final class OmatilesEngine {
 
     // MARK: - Auto-tiling (Aerospace-style re-flow on window/app activity)
 
-    /// Installs NSWorkspace observers so that when a window or app appears,
-    /// hides, or activates, every visible window is re-arranged into the default
-    /// layout. Debounced so bursts of window creation re-flow once.
+    /// Installs NSWorkspace observers so that when a window-bearing app launches,
+    /// hides, unhides, or terminates, every visible window is re-arranged into the
+    /// default layout — so a newly opened window flows into a spot. Deliberately
+    /// does NOT re-flow on mere focus changes (`didActivate`), which would fight a
+    /// user who is manually placing windows. Debounced so a burst of events
+    /// re-flows once. Note: in-app window creation (e.g. File > New Tab) is not
+    /// observed here; that requires per-process AX observers and is a later
+    /// refinement — app launch/close covers the common "open an app" case.
     private func installAutoTiling(if enabled: Bool) {
         guard enabled, autoTileObservers.isEmpty else { return }
         let center = NSWorkspace.shared.notificationCenter
-        autoTileObservers = [
-            center.addObserver(forName: NSWorkspace.didLaunchApplicationNotification,
-                               object: nil, queue: .main) { [weak self] _ in self?.scheduleAutoTiling() },
-            center.addObserver(forName: NSWorkspace.didActivateApplicationNotification,
-                               object: nil, queue: .main) { [weak self] _ in self?.scheduleAutoTiling() },
-            center.addObserver(forName: NSWorkspace.didHideApplicationNotification,
-                               object: nil, queue: .main) { [weak self] _ in self?.scheduleAutoTiling() },
-            center.addObserver(forName: NSWorkspace.didUnhideApplicationNotification,
-                               object: nil, queue: .main) { [weak self] _ in self?.scheduleAutoTiling() },
-            center.addObserver(forName: NSWorkspace.didTerminateApplicationNotification,
-                               object: nil, queue: .main) { [weak self] _ in self?.scheduleAutoTiling() }
+        let names: [NSNotification.Name] = [
+            NSWorkspace.didLaunchApplicationNotification,
+            NSWorkspace.didTerminateApplicationNotification,
+            NSWorkspace.didHideApplicationNotification,
+            NSWorkspace.didUnhideApplicationNotification
         ]
+        autoTileObservers = names.map { name in
+            center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.scheduleAutoTiling() }
+            }
+        }
         // Re-flow once on startup so a freshly-launched manager tiles existing windows.
         scheduleAutoTiling()
     }
@@ -348,6 +348,10 @@ final class OmatilesEngine {
         _ = registerBinding(.top, keyCode: kVK_UpArrow)
         _ = registerBinding(.bottom, keyCode: kVK_DownArrow)
         _ = registerBinding(.untile, keyCode: kVK_ANSI_Z)
+        _ = registerBinding(.moveNext, keyCode: kVK_ANSI_RightBracket)
+        _ = registerBinding(.movePrev, keyCode: kVK_ANSI_LeftBracket)
+        _ = registerBinding(.focusNext, keyCode: kVK_PageDown)
+        _ = registerBinding(.focusPrev, keyCode: kVK_PageUp)
     }
 
     private func registerBinding(_ binding: BindingID, keyCode: Int) -> Bool {
@@ -380,6 +384,10 @@ final class OmatilesEngine {
         case .top:    _ = tileTop()
         case .bottom: _ = tileBottom()
         case .untile: _ = untile()
+        case .moveNext: _ = moveFocusedWindow(forward: true)
+        case .movePrev: _ = moveFocusedWindow(forward: false)
+        case .focusNext: _ = focusNextWindow(forward: true)
+        case .focusPrev: _ = focusNextWindow(forward: false)
         }
     }
 
@@ -398,6 +406,10 @@ final class OmatilesEngine {
         case .top:    return tileTop()
         case .bottom: return tileBottom()
         case .untile: return untile()
+        case .moveNext: return moveFocusedWindow(forward: true)
+        case .movePrev: return moveFocusedWindow(forward: false)
+        case .focusNext: return focusNextWindow(forward: true)
+        case .focusPrev: return focusNextWindow(forward: false)
         }
     }
 

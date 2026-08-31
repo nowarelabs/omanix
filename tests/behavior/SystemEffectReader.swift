@@ -85,6 +85,27 @@ enum SystemEffectReader {
         AXValueGetValue(sizeVal as! AXValue, .cgSize, &size)
         return CGRect(origin: pos, size: size)
     }
+    /// Returns the frames of ALL AX windows for a pid, in AX order. Useful to
+    /// verify that moving a window INTO a neighbour's slot causes an exchange
+    /// (the neighbour jumps to the vacated slot) rather than an overwrite.
+    static func windowFrames(pid: pid_t) throws -> [CGRect] {
+        let app = AXUIElementCreateApplication(pid)
+        var windowsRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &windowsRef) == .success,
+              let windows = windowsRef as? [AXUIElement], !windows.isEmpty else {
+            throw EffectReaderError.noWindow
+        }
+        return try windows.compactMap { w -> CGRect? in
+            var posRef: CFTypeRef?, sizeRef: CFTypeRef?
+            guard AXUIElementCopyAttributeValue(w, kAXPositionAttribute as CFString, &posRef) == .success,
+                  AXUIElementCopyAttributeValue(w, kAXSizeAttribute as CFString, &sizeRef) == .success,
+                  let posVal = posRef, let sizeVal = sizeRef else { return nil }
+            var pos = CGPoint.zero, size = CGSize.zero
+            AXValueGetValue(posVal as! AXValue, .cgPoint, &pos)
+            AXValueGetValue(sizeVal as! AXValue, .cgSize, &size)
+            return CGRect(origin: pos, size: size)
+        }
+    }
 
     /// Fallback via CGWindowList (no AX needed, but less precise — includes window chrome).
     static func windowFrameViaCG(pid: pid_t) -> CGRect? {

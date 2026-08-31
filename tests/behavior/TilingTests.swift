@@ -40,6 +40,7 @@ struct TilingBehaviorTests {
         record(testDirectEngineQuadrant()) // grid slot
         record(testDirectEngineMonocle())
         record(testDirectEngineApplyGrid()) // whole-workspace layout application
+        record(testDirectEngineWindowExchange()) // moving a window swaps the neighbour's spot
 
         // 3. Hotkey/binding tiling (requires AX trust)
         record(testHotkeyTileLeft())
@@ -222,17 +223,89 @@ struct TilingBehaviorTests {
         }
         let screen = SystemEffectReader.mainScreenFrame()
 
-        // The layout should actually move windows into grid cells: the test window
-        // lands on-screen at a material fraction of the visible frame's width,
-        // having been re-fitted into a 2x2 cell.
-        let fitsCell = after.width > screen.width * 0.30
-            && after.width < screen.width * 0.95
-            && screen.intersects(after)
+        // Grid gives every window a reduced-size cell (never the full screen and
+        // never overlapping another cell). The window moved on-screen and was
+        // re-fitted into a cell — i.e. its area is a fraction of the screen, not the
+        // whole screen, and it is fully on the visible frame.
+        let movedOnScreen = screen.contains(after)
+            && after.width > 0 && after.height > 0
+        let fitsCell = movedOnScreen
+            && (after.width * after.height) < screen.width * screen.height * 0.6
         if moved > 0 && after != before && fitsCell {
             return .passed("applyLayout(.grid): \(moved) window(s) arranged; test window \(before) → \(after)")
         } else {
-            return .failed("applyLayout(.grid) did not arrange the window (moved=\(moved), before: \(before), after: \(after))")
+            return .failed("applyLayout(.grid) did not arrange the window into a grid cell (moved=\(moved), before: \(before), after: \(after))")
         }
+    }
+
+    /// Expectation: moving the focused window to the next slot actually MOVES it
+    /// to a different on-screen cell via the AX executor. The strict guarantee
+    /// that this is a non-colliding EXCHANGE (the neighbour jumps to the vacated
+    /// slot) is proven deterministically in LayoutContractTests (bijection + swap).
+    /// Here we verify the real AX mover performs a genuine relocation.
+    private static func testDirectEngineWindowExchange() -> TilingTestResult {
+        guard NSScreen.main != nil else { return .skipped("No main screen (headless)") }
+        guard AXIsProcessTrusted() else { return .skipped("AX not trusted by runner") }
+
+        let pid: pid_t
+        do {
+            pid = try UserActionSimulator.openTestWindow()
+            _ = try UserActionSimulator.openTestWindow() // second document, same pid
+        } catch {
+            return .skipped("Could not open test windows: \(error)")
+        }
+        defer { UserActionSimulator.closeWindow(pid: pid) }
+
+        Thread.sleep(forTimeInterval: 0.5)
+        do {
+            // Union of all connected displays' full frames (a moved window must
+            // always land on a physical display, never "thrown off the screen").
+            let world = NSScreen.screens.map { $0.frame }.reduce(CGRect.null) { $0.union($1) }
+            let tol: CGFloat = 4
+
+            // Establish a baseline: apply the engine's DEFAULT layout so the move
+            // has real slots to work with and we can detect a relocation.
+            let _ = UserActionSimulator.applyLayoutDirectly(.bsp)
+            Thread.sleep(forTimeInterval: 0.8)
+            let beforeFrames = try SystemEffectReader.windowFrames(pid: pid)
+            let beforeSet = Set(beforeFrames.map(stamp))
+            guard beforeFrames.count >= 1 else {
+                return .failed("No test window to move (before=\(beforeFrames))")
+            }
+
+            // Move the focused window one slot forward (an exchange with its neighbour).
+            guard UserActionSimulator.moveWindowDirectly(forward: true) else {
+                return .failed("moveFocusedWindow(forward:true) reported no movement")
+            }
+            Thread.sleep(forTimeInterval: 0.8)
+            let afterFrames = try SystemEffectReader.windowFrames(pid: pid)
+            let afterSet = Set(afterFrames.map(stamp))
+
+            // An EXCHANGE means: (a) the assignment changed — the focused window
+            // left its original cell (after != before), and (b) the occupied cell
+            // SET is preserved — the vacated cell was immediately filled by the
+            // neighbour, so no window is stranded and none collides. This is the
+            // exact "window jumps to the vacated quadrant" expectation.
+            let assignmentChanged = afterFrames != beforeFrames
+            let preservedCells = beforeSet.count >= 2 && beforeSet == afterSet
+            let onDisplay = afterFrames.allSatisfy { f in
+                world.insetBy(dx: -tol, dy: -tol).contains(CGRect(x: f.minX, y: f.minY, width: f.width, height: f.height))
+            }
+            let positive = afterFrames.allSatisfy { $0.width > 0 && $0.height > 0 }
+
+            if assignmentChanged && preservedCells && onDisplay && positive {
+                return .passed("window EXCHANGE: \(beforeFrames.map{stamp($0)}) → \(afterFrames.map{stamp($0)}) (neighbour took the vacated cell)")
+            } else {
+                return .failed("moveFocusedWindow exchange check failed (assignmentChanged=\(assignmentChanged), preservedCells=\(preservedCells), onDisplay=\(onDisplay), positive=\(positive)); before=\(beforeFrames) after=\(afterFrames)")
+            }
+        } catch {
+            return .failed("window move test threw: \(error)")
+        }
+    }
+
+    /// Compact, comparable stamp for a frame.
+    private static func stamp(_ f: CGRect) -> String {
+        "\(Int(f.minX)),\(Int(f.minY)),\(Int(f.width)),\(Int(f.height))"
     }
 
     /// Shared helper: opens a focused test window, runs an action, and asserts

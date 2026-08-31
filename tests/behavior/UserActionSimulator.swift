@@ -85,6 +85,16 @@ enum UserActionSimulator {
         return result
     }
 
+    /// Direct engine path into moving the focused window to the next/previous
+    /// slot (an exchange with its neighbour). Returns true if both moved.
+    @discardableResult
+    static func moveWindowDirectly(forward: Bool) -> Bool {
+        var result = false
+        let work = { MainActor.assumeIsolated { result = OmatilesEngine.shared.moveFocusedWindow(forward: forward) } }
+        if Thread.isMainThread { work() } else { DispatchQueue.main.sync(execute: work) }
+        return result
+    }
+
     /// Simulates a user pressing one of OUR Omatiles global hotkey bindings
     /// (⌘⌥+arrow / ⌘⌥Z). Carbon hotkey events don't dispatch reliably in a
     /// headless test process (no app run loop), so instead of posting a raw HID

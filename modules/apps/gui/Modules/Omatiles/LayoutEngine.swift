@@ -21,11 +21,14 @@ struct LayoutEngine {
 
     /// Columns x rows used by the `grid` layout; exposed so callers can derive
     /// the same frames when drawing "ghost" slot overlays before a window lands.
+    /// The whole-workspace `grid` layout adapts these to the window count, but the
+    /// default 2x2 is what the single-window quadrant picker and ghost overlay use.
     static let gridColumns = 2
     static let gridRows = 2
 
     /// Returns one frame per window, in window-index order. Gap is inset on all
-    /// sides so tiled windows don't touch each other or the screen edge.
+    /// sides so tiled windows don't touch each other or the screen edge. Every
+    /// window is guaranteed a slot (no window is ever stranded outside its spot).
     static func frames(count: Int, in screen: CGRect, layout: OwinLayout, gap: CGFloat = 8) -> [CGRect] {
         guard count > 0 else { return [] }
         if layout == .float { return [] }
@@ -46,15 +49,19 @@ struct LayoutEngine {
 
     /// All grid "slots" (one per grid cell) regardless of how many windows are
     /// open. Used by the ghost overlay so the user sees exactly where a window
-    /// will land for the 2x2 grid before they drop/press.
+    /// will land for the default 2x2 grid before they drop/press.
     static func gridSlots(in screen: CGRect, gap: CGFloat = 8) -> [CGRect] {
+        gridSlots(cols: gridColumns, rows: gridRows, in: screen, gap: gap)
+    }
+
+    /// Grid slots for an arbitrary columns x rows arrangement (top-left to
+    /// bottom-right, row-major). Reusable by adaptive layouts and ghost overlays.
+    static func gridSlots(cols: Int, rows: Int, in screen: CGRect, gap: CGFloat = 8) -> [CGRect] {
         var slots: [CGRect] = []
-        let cols = gridColumns
-        let rows = gridRows
-        let cellW = (screen.width - gap * CGFloat(cols + 1)) / CGFloat(cols)
-        let cellH = (screen.height - gap * CGFloat(rows + 1)) / CGFloat(rows)
-        for r in 0..<rows {
-            for c in 0..<cols {
+        let cellW = (screen.width - gap * CGFloat(max(cols, 1) + 1)) / CGFloat(max(cols, 1))
+        let cellH = (screen.height - gap * CGFloat(max(rows, 1) + 1)) / CGFloat(max(rows, 1))
+        for r in 0..<max(rows, 1) {
+            for c in 0..<max(cols, 1) {
                 slots.append(CGRect(
                     x: screen.minX + gap + CGFloat(c) * (cellW + gap),
                     y: screen.minY + gap + CGFloat(r) * (cellH + gap),
@@ -99,12 +106,14 @@ struct LayoutEngine {
         case left, right, top, bottom
     }
 
-    // MARK: - Grid (even columns x rows, top-left to bottom-right)
+    // MARK: - Grid (adaptive near-square grid; one slot per window, never strands one)
 
     private static func grid(count: Int, in screen: CGRect, gap: CGFloat) -> [CGRect] {
-        // Fill the 2x2 grid row-major (top-left, top-right, bottom-left, ...).
-        let slots = gridSlots(in: screen, gap: gap)
-        return Array(slots.prefix(count))
+        // Smallest near-square grid that fits `count` windows: rows = ceil(sqrt n),
+        // cols = ceil(n / rows). 4 windows → 2x2, 5–6 → 3x2, 7–9 → 3x3, etc.
+        let rows = max(1, Int(ceil(sqrt(Double(count)))))
+        let cols = max(1, Int(ceil(Double(count) / Double(rows))))
+        return Array(gridSlots(cols: cols, rows: rows, in: screen, gap: gap).prefix(count))
     }
 
     // MARK: - BSP (binary space partition, longest-edge split)

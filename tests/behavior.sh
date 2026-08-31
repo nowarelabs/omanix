@@ -58,6 +58,7 @@ xcrun swiftc \
   "$GUI_DIR/Modules/Omatiles/OmatilesEngine.swift" \
   "$TEST_DIR/UserActionSimulator.swift" \
   "$TEST_DIR/SystemEffectReader.swift" \
+  "$TEST_DIR/LayoutContractTests.swift" \
   "$TEST_DIR/TilingTests.swift" \
   "$TEST_DIR/OmabarBehaviorTests.swift" \
   "$TEST_DIR/ThemeBehaviorTests.swift" \

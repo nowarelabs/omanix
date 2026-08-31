@@ -33,10 +33,20 @@ struct BehaviorTests {
         print("AX trusted: \(AXIsProcessTrusted())")
         print("Omanix dir: \(Omanix().currentThemeId()) theme, Omatiles enabled: \(Omanix().currentOmatilesState().enable)")
 
-        // Start the engine so key events and direct simulation are handled
-        OmatilesEngine.shared.start()
+        // Start the engine so key events and direct simulation are handled.
+        // Auto-tiling is left OFF here so the deterministic manual-tiling tests
+        // (tileLeft etc.) are never disturbed by a background re-flow. A dedicated
+        // auto-tile test enables it deliberately.
+        OmatilesEngine.shared.start(settings: RuntimeSettings.Omatiles(
+            enable: true, bindings: true, gap: 8, defaultLayout: "bsp", autoTile: false
+        ))
 
         var allFailures: [String] = []
+
+        // Service 3 — PURE layout contract tests. Always run (headless-safe),
+        // they encode the exact user-visible layout expectations (4 windows → 4
+        // quadrants, no overlap, exchanges are bijections, nothing stranded).
+        allFailures.append(contentsOf: LayoutContractTests.runAll())
 
         allFailures.append(contentsOf: TilingBehaviorTests.runAll())
         allFailures.append(contentsOf: OmabarBehaviorTests.runAll())
