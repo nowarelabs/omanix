@@ -158,11 +158,10 @@ final class WorkspaceManager: NSObject {
         let windows = windows(for: workspaceName == "__default" ? nil : workspaceName)
         guard !windows.isEmpty else { return }
 
-        let frames = LayoutEngine.frames(count: windows.count, in: screenFrame, layout: layout)
-        for (window, frame) in zip(windows, frames) {
-            setFrame(frame, for: window)
-        }
-        print("WorkspaceManager: applied layout=\(layout.rawValue) to \(windows.count) windows on \"\(workspaceName)\" screen=\(targetScreen.localizedName)")
+        // One shared arrangement pipeline (frames via LayoutEngine, moves via AX),
+        // the same one OmatilesEngine uses for its whole-workspace apply.
+        let moved = WindowArranger.shared.arrange(windows, layout: layout, in: screenFrame, gap: 8)
+        print("WorkspaceManager: applied layout=\(layout.rawValue) to \(moved)/\(windows.count) windows on \"\(workspaceName)\" screen=\(targetScreen.localizedName)")
     }
 
     /// Finds the NSScreen matching the workspace's monitor name, or nil to use main.
@@ -212,18 +211,6 @@ final class WorkspaceManager: NSObject {
             }
         }
         return out
-    }
-
-    /// Sets an AX window's frame via kAXPosition + kAXSize. Requires Accessibility.
-    private func setFrame(_ frame: CGRect, for window: AXUIElement) {
-        var pos = frame.origin
-        if let posVal = AXValueCreate(.cgPoint, &pos) {
-            AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, posVal)
-        }
-        var size = frame.size
-        if let sizeVal = AXValueCreate(.cgSize, &size) {
-            AXUIElementSetAttributeValue(window, kAXSizeAttribute as CFString, sizeVal)
-        }
     }
 }
 

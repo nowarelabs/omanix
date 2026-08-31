@@ -54,6 +54,7 @@ xcrun swiftc \
   "$GUI_DIR/Modules/RuntimeSettings.swift" \
   "$GUI_DIR/Modules/Omatiles/LayoutEngine.swift" \
   "$GUI_DIR/Modules/Omatiles/RealWindowMover.swift" \
+  "$GUI_DIR/Modules/Omatiles/WindowArranger.swift" \
   "$GUI_DIR/Modules/Omatiles/GhostTilingOverlay.swift" \
   "$GUI_DIR/Modules/Omatiles/OmatilesEngine.swift" \
   "$GUI_DIR/Modules/Omatiles/KdlWorkspaceCompiler.swift" \
@@ -61,6 +62,7 @@ xcrun swiftc \
   "$TEST_DIR/UserActionSimulator.swift" \
   "$TEST_DIR/SystemEffectReader.swift" \
   "$TEST_DIR/LayoutContractTests.swift" \
+  "$TEST_DIR/WindowArrangerContractTests.swift" \
   "$TEST_DIR/KdlContractTests.swift" \
   "$TEST_DIR/KdlWorkspaceBehaviorTests.swift" \
   "$TEST_DIR/TilingTests.swift" \

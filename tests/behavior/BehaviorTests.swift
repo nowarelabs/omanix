@@ -48,6 +48,12 @@ struct BehaviorTests {
         // quadrants, no overlap, exchanges are bijections, nothing stranded).
         allFailures.append(contentsOf: LayoutContractTests.runAll())
 
+        // Service 3c — PURE WindowArranger seam contract tests. Headless and
+        // deterministic: the shared arrangement seam must hand every tiling
+        // surface (OmatilesEngine apply, WorkspaceManager event sink) the exact
+        // same canonical layout frames, so Windows always land in the one place.
+        allFailures.append(contentsOf: WindowArrangerContractTests.runAll())
+
         // Service 3b — PURE KDL -> workspaces contract tests. Headless-safe and
         // always run: they encode the user-visible expectation that a declarative
         // KDL layout document compiles to the exact workspace map Owin routes on.

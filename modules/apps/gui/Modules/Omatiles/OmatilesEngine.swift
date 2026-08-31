@@ -137,12 +137,12 @@ final class OmatilesEngine {
     func applyLayout(_ layout: OwinLayout, gap: CGFloat? = nil) -> Int {
         let g = gap ?? settings.gap
         let (windows, frames) = layoutPlan(layout: layout, gap: g)
-        guard !windows.isEmpty, !frames.isEmpty else { return 0 }
+        guard !windows.isEmpty, !frames.isEmpty, let screen = NSScreen.main else { return 0 }
         // Ghost the slots first so the parking spots are visible immediately.
-        if let screen = NSScreen.main {
-            GhostTilingOverlay.shared.showGhosts(for: LayoutEngine.gridSlots(in: screen.visibleFrame, gap: g))
-        }
-        return apply(frames: frames, to: windows, layoutName: layout.rawValue)
+        GhostTilingOverlay.shared.showGhosts(for: LayoutEngine.gridSlots(in: screen.visibleFrame, gap: g))
+        let moved = WindowArranger.shared.arrange(windows, layout: layout, in: screen.visibleFrame, gap: g)
+        print("OmatilesEngine: applied layout \(layout.rawValue) to \(moved)/\(windows.count) windows")
+        return moved
     }
 
     /// Applies the persisted default layout to all visible windows. Used by
@@ -163,18 +163,6 @@ final class OmatilesEngine {
         let windows = RealWindowMover.shared.allVisibleWindows()
         let frames = LayoutEngine.frames(count: windows.count, in: screen.visibleFrame, layout: layout, gap: gap)
         return (windows, frames)
-    }
-
-    private func apply(frames: [CGRect], to windows: [AXUIElement], layoutName: String) -> Int {
-        guard windows.count == frames.count else { return 0 }
-        var moved = 0
-        for (window, frame) in zip(windows, frames) {
-            if (try? RealWindowMover.shared.apply(frame, to: window)) != nil {
-                moved += 1
-            }
-        }
-        print("OmatilesEngine: applied layout \(layoutName) to \(moved)/\(windows.count) windows")
-        return moved
     }
 
     // MARK: - Movement / focus (⌘⌥, Aerospace-style)
