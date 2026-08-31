@@ -94,14 +94,12 @@ struct TilingBehaviorTests {
             return .failed("Could not read window frame after tileLeft")
         }
 
-        // Smoke test: tiling should not crash and window should remain on-screen.
-        // Exact half-screen geometry depends on Dock/menu bar and is flaky in CI,
-        // so we only assert the window is still readable and on-screen.
+        // Assertion: Tiling should actually change the window frame
         let onScreen = SystemEffectReader.mainScreenFrame().intersects(after)
-        if onScreen && after != .zero {
-            return .passed("tileLeft via engine: \(before) → \(after) (on-screen)")
+        if onScreen && after != .zero && after != before {
+            return .passed("tileLeft via engine: \(before) → \(after)")
         } else {
-            return .failed("tileLeft via engine: window not on-screen after tiling: \(after) (before \(before))")
+            return .failed("tileLeft via engine failed: window frame did not change from \(before) to a tiled position (after: \(after))")
         }
     }
 
@@ -127,13 +125,13 @@ struct TilingBehaviorTests {
         guard let after = try? SystemEffectReader.windowFrame(pid: pid) else {
             return .failed("Could not read window frame after tileRight")
         }
+
+        // Assertion: Tiling should actually change the window frame
         let onScreen = SystemEffectReader.mainScreenFrame().intersects(after)
         if onScreen && after != before {
-            return .passed("tileRight via engine: \(before) → \(after) (on-screen)")
-        } else if onScreen {
-            return .passed("tileRight via engine: \(before) → \(after) (no move, but on-screen — may be already tiled)")
+            return .passed("tileRight via engine: \(before) → \(after)")
         } else {
-            return .failed("tileRight via engine: window off-screen after tiling: \(after)")
+            return .failed("tileRight via engine failed: window frame did not change from \(before) (after: \(after))")
         }
     }
 
@@ -164,10 +162,10 @@ struct TilingBehaviorTests {
             return .failed("Could not read window frame after hotkey tileLeft")
         }
         let onScreen = SystemEffectReader.mainScreenFrame().intersects(after)
-        if onScreen {
-            return .passed("tileLeft via HID hotkey Ctrl+Option+Left: \(before) → \(after) (on-screen)")
+        if onScreen && after != before {
+            return .passed("tileLeft via HID hotkey Ctrl+Option+Left: \(before) → \(after)")
         } else {
-            return .failed("tileLeft via hotkey: window off-screen: \(after)")
+            return .failed("tileLeft via hotkey failed: window frame did not change from \(before) (after: \(after))")
         }
     }
 }

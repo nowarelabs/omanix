@@ -33,6 +33,9 @@ struct BehaviorTests {
         print("AX trusted: \(AXIsProcessTrusted())")
         print("Omanix dir: \(Omanix().currentThemeId()) theme, Omatiles enabled: \(Omanix().currentOmatilesState().enable)")
 
+        // Start the engine so key events and direct simulation are handled
+        OmatilesEngine.shared.start()
+
         var allFailures: [String] = []
 
         allFailures.append(contentsOf: TilingBehaviorTests.runAll())
