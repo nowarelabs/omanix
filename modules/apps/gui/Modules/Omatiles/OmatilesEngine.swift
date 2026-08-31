@@ -1,14 +1,16 @@
 // Modules/Omatiles/OmatilesEngine.swift
 // Omatiles — a thin bridge onto macOS Sequoia's BUILT-IN window tiling.
 //
-// There is deliberately NO layout engine here: no rect math, no per-monitor work
-// areas, no AX window matching, no watch mode. macOS already tiles windows (drag
-// to a screen edge, ⌃⌥+arrow keyboard shortcuts, tiled margins) — Omatiles only:
-//   1. re-binds our own keys (⌘⌥+arrows / ⌘⌥Z) to the platform's ⌃⌥+arrow
-//      shortcuts by synthesizing those key events, and
-//   2. leaves the System Settings "Window management" switches to the declarative
-//      defaults in darwin/omatiles.nix.
-// Runs either as a standalone module process ("--omatiles") or inside the GUI.
+// This type is now a FACADE: it owns lifecycle + the ⌘⌥ key bindings + the
+// auto-tiling schedule, and delegates the actual arrangement work to focused
+// collaborators, so each type has a single responsibility:
+//   - WindowTiler      — single-window tile + whole-workspace layout actions
+//   - WindowNavigator  — move/focus cycling between tiled windows
+//   - WindowArranger   — the shared frames→AX pipeline (also used by Owin)
+//   - HotkeyBindings   — Carbon global-hotkey registration & dispatch
+// The public API (start/apply/stop, tileLeft…, applyLayout, moveFocusedWindow,
+// performBinding, ensureAccessibility) is unchanged, so the GUI and the
+// behavioral tests drive it exactly as before.
 //
 // Keyboard bindings (when `omanix.omatiles.bindings` is enabled):
 //   ⌘⌥←  tile left half        ⌘⌥→  tile right half
@@ -29,9 +31,9 @@ final class OmatilesEngine {
 
     private var settings: RuntimeSettings.Omatiles = .load()
 
-    /// Carbon hot-key registration, one ref per binding id.
-    private var hotKeyRefs: [Int: EventHotKeyRef] = [:]
-    private static var hotKeyDispatcher: EventHandlerRef?
+    private let tiler = WindowTiler.shared
+    private let navigator = WindowNavigator.shared
+    private var hotkeys: HotkeyBindings!
 
     /// Auto-tile observers (re-flow on window/app activity). Kept so we can remove.
     private var autoTileObservers: [NSObjectProtocol] = []
@@ -42,11 +44,9 @@ final class OmatilesEngine {
         case moveNext = 6, movePrev = 7, focusNext = 8, focusPrev = 9
     }
 
-    private enum TilingAction {
-        case left, right, top, bottom, untile
+    private init() {
+        hotkeys = HotkeyBindings { [weak self] raw in self?.handleBinding(raw) }
     }
-
-    private init() {}
 
     // MARK: - Lifecycle
 
@@ -54,7 +54,7 @@ final class OmatilesEngine {
     func start(settings: RuntimeSettings.Omatiles = RuntimeSettings.Omatiles.load()) {
         self.settings = settings
         isRunning = true
-        if settings.bindings { installBindings() }
+        if settings.bindings { hotkeys.install() }
         installAutoTiling(if: settings.autoTile)
     }
 
@@ -66,8 +66,8 @@ final class OmatilesEngine {
         let gapChanged = settings.gap != self.settings.gap
         self.settings = settings
         if bindingsChanged {
-            removeBindings()
-            if settings.bindings { installBindings() }
+            hotkeys.remove()
+            if settings.bindings { hotkeys.install() }
         }
         if autoTileChanged {
             removeAutoTiling()
@@ -81,7 +81,7 @@ final class OmatilesEngine {
 
     func stop() {
         isRunning = false
-        removeBindings()
+        hotkeys.remove()
         removeAutoTiling()
     }
 
@@ -90,42 +90,35 @@ final class OmatilesEngine {
     /// Tiles the focused window into the left half. `@discardableResult` so the
     /// GUI can ignore success but tests can verify the window actually moved.
     @discardableResult
-    func tileLeft() -> Bool { tile(.left) }
+    func tileLeft() -> Bool { tiler.tileQuarter(.left, gap: settings.gap) }
     @discardableResult
-    func tileRight() -> Bool { tile(.right) }
+    func tileRight() -> Bool { tiler.tileQuarter(.right, gap: settings.gap) }
     @discardableResult
-    func tileTop() -> Bool { tile(.top) }
+    func tileTop() -> Bool { tiler.tileQuarter(.top, gap: settings.gap) }
     @discardableResult
-    func tileBottom() -> Bool { tile(.bottom) }
+    func tileBottom() -> Bool { tiler.tileQuarter(.bottom, gap: settings.gap) }
     @discardableResult
-    func untile() -> Bool { restore() }
+    func untile() -> Bool { tiler.untile(gap: settings.gap) }
 
     /// Tiles the focused window into one of the layout engine's grid slots
     /// (2x2, row-major: 0 = top-left, 1 = top-right, 2 = bottom-left, 3 = bottom-right).
     @discardableResult
     func tileQuadrant(_ index: Int) -> Bool {
-        guard let screen = NSScreen.main,
-              let frame = LayoutEngine.quadrant(index, in: screen.visibleFrame, gap: settings.gap) else { return false }
-        // Ghost the full 2x2 grid so the user sees every slot they can navigate.
-        GhostTilingOverlay.shared.showGhosts(for: LayoutEngine.gridSlots(in: screen.visibleFrame, gap: settings.gap))
-        return apply(frame)
+        tiler.tileQuadrant(index, gap: settings.gap)
     }
 
     /// Tiles the focused window full-visible-frame (monocle slot). Returns false
     /// if the move didn't happen.
     @discardableResult
     func tileMonocle() -> Bool {
-        guard let screen = NSScreen.main else { return false }
-        let frame = screen.visibleFrame.insetBy(dx: settings.gap, dy: settings.gap)
-        GhostTilingOverlay.shared.showGhosts(for: [frame])
-        return apply(frame)
+        tiler.tileMonocle(gap: settings.gap)
     }
 
     /// Moves the focused window to an explicit CGRect via AX. Returns false if
     /// the move didn't happen (no trust, no focused window, AX failure).
     @discardableResult
     func moveFocusedWindow(to frame: CGRect) -> Bool {
-        apply(frame)
+        tiler.moveFocused(to: frame)
     }
 
     /// Arranges every visible window on the main screen into the given layout's
@@ -135,34 +128,14 @@ final class OmatilesEngine {
     /// there via the ⌘⌥ hotkeys. Returns how many windows were actually moved.
     @discardableResult
     func applyLayout(_ layout: OwinLayout, gap: CGFloat? = nil) -> Int {
-        let g = gap ?? settings.gap
-        let (windows, frames) = layoutPlan(layout: layout, gap: g)
-        guard !windows.isEmpty, !frames.isEmpty, let screen = NSScreen.main else { return 0 }
-        // Ghost the slots first so the parking spots are visible immediately.
-        GhostTilingOverlay.shared.showGhosts(for: LayoutEngine.gridSlots(in: screen.visibleFrame, gap: g))
-        let moved = WindowArranger.shared.arrange(windows, layout: layout, in: screen.visibleFrame, gap: g)
-        print("OmatilesEngine: applied layout \(layout.rawValue) to \(moved)/\(windows.count) windows")
-        return moved
+        tiler.applyLayout(layout, gap: gap ?? settings.gap)
     }
 
     /// Applies the persisted default layout to all visible windows. Used by
     /// auto-tiling (window/focus changes) and by the Window Manager "Apply".
     @discardableResult
     func applyDefaultLayout(gap: CGFloat? = nil) -> Int {
-        let layout = OwinLayout(rawValue: settings.defaultLayout) ?? .bsp
-        return applyLayout(layout, gap: gap)
-    }
-
-    // MARK: - Whole-workspace helper
-
-    /// Orderly visible windows (topmost-last AX order is unreliable, so we use the
-    /// enumerated order across regular apps) plus their target frames for a layout.
-    /// Returns empty frames for `.float`.
-    private func layoutPlan(layout: OwinLayout, gap: CGFloat) -> ([AXUIElement], [CGRect]) {
-        guard AXIsProcessTrusted(), let screen = NSScreen.main, layout != .float else { return ([], []) }
-        let windows = RealWindowMover.shared.allVisibleWindows()
-        let frames = LayoutEngine.frames(count: windows.count, in: screen.visibleFrame, layout: layout, gap: gap)
-        return (windows, frames)
+        tiler.applyDefaultLayout(layoutName: settings.defaultLayout, gap: gap ?? settings.gap)
     }
 
     // MARK: - Movement / focus (⌘⌥, Aerospace-style)
@@ -173,45 +146,16 @@ final class OmatilesEngine {
     //   ⌘⌥PageDn/PageUp  focus the next / previous window
     @discardableResult
     func moveFocusedWindow(forward: Bool) -> Bool {
-        guard AXIsProcessTrusted(), NSScreen.main != nil, isRunning else { return false }
-        let layout = OwinLayout(rawValue: settings.defaultLayout) ?? .bsp
-        let (windows, frames) = layoutPlan(layout: layout, gap: settings.gap)
-        guard windows.count > 1,
-              let focused = RealWindowMover.shared.focusedWindowElement(),
-              let idx = windows.firstIndex(where: { CFEqual($0, focused) }) else { return false }
-        let step = (forward ? 1 : -1)
-        let next = (idx + step + windows.count) % windows.count
-        // Swap the two windows' frames so the focused window lands in the neighbor slot.
-        let fFrame = frames[idx]
-        let nFrame = frames[next]
-        let ok1 = (try? RealWindowMover.shared.apply(nFrame, to: windows[idx])) != nil
-        let ok2 = (try? RealWindowMover.shared.apply(fFrame, to: windows[next])) != nil
-        GhostTilingOverlay.shared.showGhosts(for: frames)
-        return ok1 && ok2
+        guard isRunning else { return false }
+        return navigator.moveFocusedWindow(forward: forward, defaultLayout: settings.defaultLayout, gap: settings.gap)
     }
 
     /// Puts keyboard focus on the next/previous visible window by raising and
     /// activating the owning application (and its window). Returns true on success.
     @discardableResult
     func focusNextWindow(forward: Bool) -> Bool {
-        guard AXIsProcessTrusted(), NSScreen.main != nil, isRunning else { return false }
-        let layout = OwinLayout(rawValue: settings.defaultLayout) ?? .bsp
-        let (windows, _) = layoutPlan(layout: layout, gap: settings.gap)
-        guard windows.count > 1 else { return false }
-        // Find the focused window's index in the ordered set. CFEqual compares the
-        // represented element (not wrapper pointer identity), which stays stable.
-        guard let focused = RealWindowMover.shared.focusedWindowElement(),
-              let focusedIndex = windows.firstIndex(where: { CFEqual($0, focused) }) else { return false }
-        let step = (forward ? 1 : -1)
-        let next = (focusedIndex + step + windows.count) % windows.count
-        let target = windows[next]
-        var pid: pid_t = 0
-        AXUIElementGetPid(target, &pid)
-        guard pid > 0, let app = NSRunningApplication(processIdentifier: pid) else { return false }
-        app.activate()
-        // Bring the target window to the front within its app.
-        AXUIElementPerformAction(target, kAXRaiseAction as CFString)
-        return true
+        guard isRunning else { return false }
+        return navigator.focusNextWindow(forward: forward, defaultLayout: settings.defaultLayout, gap: settings.gap)
     }
 
     // MARK: - Auto-tiling (Aerospace-style re-flow on window/app activity)
@@ -264,42 +208,6 @@ final class OmatilesEngine {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: task)
     }
 
-    /// Computes a target CGRect plus moves the focused window there via AX.
-    private func tile(_ action: TilingAction) -> Bool {
-        guard let screen = NSScreen.main else { return false }
-        let frame = LayoutEngine.half(halfEdge(action), in: screen.visibleFrame, gap: settings.gap)
-        GhostTilingOverlay.shared.showGhosts(for: [frame])
-        return apply(frame)
-    }
-
-    private func apply(_ frame: CGRect) -> Bool {
-        do {
-            try RealWindowMover.shared.moveFocusedWindow(to: frame)
-            return true
-        } catch {
-            print("OmatilesEngine: tile to \(frame) failed: \(error.localizedDescription)")
-            return false
-        }
-    }
-
-    /// Untile: raise the focused window to approximately its original position.
-    /// We don't track original frames in this lightweight engine, so untile puts
-    /// the window into the default (full visible frame minus gap) slot.
-    private func restore() -> Bool {
-        guard let screen = NSScreen.main else { return false }
-        return apply(screen.visibleFrame.insetBy(dx: settings.gap, dy: settings.gap))
-    }
-
-    private func halfEdge(_ action: TilingAction) -> LayoutEngine.Half {
-        switch action {
-        case .left: return .left
-        case .right: return .right
-        case .top: return .top
-        case .bottom: return .bottom
-        case .untile: return .left // unused
-        }
-    }
-
     // MARK: - Accessibility
 
     /// True if the Accessibility permission is granted; otherwise prompts (once).
@@ -323,61 +231,7 @@ final class OmatilesEngine {
         AXIsProcessTrustedWithOptions(opts)
     }
 
-    // MARK: - Keyboard bindings (Carbon hotkeys — consumed, not leaked)
-
-    private func installBindings() {
-        guard hotKeyRefs.isEmpty else { return }
-
-        // Install the C dispatcher exactly once per engine lifetime.
-        Self.installHotKeyDispatcher(owner: self)
-
-        _ = registerBinding(.left, keyCode: kVK_LeftArrow)
-        _ = registerBinding(.right, keyCode: kVK_RightArrow)
-        _ = registerBinding(.top, keyCode: kVK_UpArrow)
-        _ = registerBinding(.bottom, keyCode: kVK_DownArrow)
-        _ = registerBinding(.untile, keyCode: kVK_ANSI_Z)
-        _ = registerBinding(.moveNext, keyCode: kVK_ANSI_RightBracket)
-        _ = registerBinding(.movePrev, keyCode: kVK_ANSI_LeftBracket)
-        _ = registerBinding(.focusNext, keyCode: kVK_PageDown)
-        _ = registerBinding(.focusPrev, keyCode: kVK_PageUp)
-    }
-
-    private func registerBinding(_ binding: BindingID, keyCode: Int) -> Bool {
-        let hotKeyID = EventHotKeyID(signature: OSType(0x4F4D4E58), id: UInt32(binding.rawValue)) // "OMNX"
-        let modifiers = UInt32(cmdKey) | UInt32(optionKey) // ⌘⌥
-        var ref: EventHotKeyRef?
-        let status = RegisterEventHotKey(UInt32(keyCode), modifiers, hotKeyID, GetApplicationEventTarget(), 0, &ref)
-        guard status == noErr, let ref else { return false }
-        hotKeyRefs[binding.rawValue] = ref
-        return true
-    }
-
-    private func removeBindings() {
-        for ref in hotKeyRefs.values {
-            UnregisterEventHotKey(ref)
-        }
-        hotKeyRefs.removeAll()
-        if let dispatcher = Self.hotKeyDispatcher {
-            RemoveEventHandler(dispatcher)
-            Self.hotKeyDispatcher = nil
-        }
-    }
-
-    private func handleBinding(_ raw: Int) {
-        guard isRunning else { return }
-        guard let binding = BindingID(rawValue: raw) else { return }
-        switch binding {
-        case .left:   _ = tileLeft()
-        case .right:  _ = tileRight()
-        case .top:    _ = tileTop()
-        case .bottom: _ = tileBottom()
-        case .untile: _ = untile()
-        case .moveNext: _ = moveFocusedWindow(forward: true)
-        case .movePrev: _ = moveFocusedWindow(forward: false)
-        case .focusNext: _ = focusNextWindow(forward: true)
-        case .focusPrev: _ = focusNextWindow(forward: false)
-        }
-    }
+    // MARK: - Binding routing (⌘⌥ hotkeys → actions)
 
     /// Routes an Omatiles ⌘⌥ binding id to its tiling action. This is the exact
     /// code path the Carbon hotkey dispatcher runs when a user presses ⌘⌥← etc.
@@ -401,42 +255,20 @@ final class OmatilesEngine {
         }
     }
 
-    private static func installHotKeyDispatcher(owner: OmatilesEngine) {
-        guard hotKeyDispatcher == nil else { return }
-
-        var eventType = EventTypeSpec(
-            eventClass: OSType(kEventClassKeyboard),
-            eventKind: UInt32(kEventHotKeyPressed)
-        )
-        let selfPointer = Unmanaged.passUnretained(owner).toOpaque()
-
-        let handler: EventHandlerUPP = { _, event, userData in
-            guard let event, let userData else { return OSStatus(eventNotHandledErr) }
-
-            var hotKeyID = EventHotKeyID()
-            let status = GetEventParameter(
-                event,
-                EventParamName(kEventParamDirectObject),
-                EventParamType(typeEventHotKeyID),
-                nil,
-                MemoryLayout<EventHotKeyID>.size,
-                nil,
-                &hotKeyID
-            )
-            guard status == noErr else { return OSStatus(eventNotHandledErr) }
-
-            let engine = Unmanaged<OmatilesEngine>.fromOpaque(userData).takeUnretainedValue()
-            Task { @MainActor in engine.handleBinding(Int(hotKeyID.id)) }
-            return noErr
+    /// Dispatch entry point called by HotkeyBindings for a pressed ⌘⌥ hot key.
+    private func handleBinding(_ raw: Int) {
+        guard isRunning else { return }
+        guard let binding = BindingID(rawValue: raw) else { return }
+        switch binding {
+        case .left:   _ = tileLeft()
+        case .right:  _ = tileRight()
+        case .top:    _ = tileTop()
+        case .bottom: _ = tileBottom()
+        case .untile: _ = untile()
+        case .moveNext: _ = moveFocusedWindow(forward: true)
+        case .movePrev: _ = moveFocusedWindow(forward: false)
+        case .focusNext: _ = focusNextWindow(forward: true)
+        case .focusPrev: _ = focusNextWindow(forward: false)
         }
-
-        _ = InstallEventHandler(
-            GetApplicationEventTarget(),
-            handler,
-            1,
-            &eventType,
-            selfPointer,
-            &hotKeyDispatcher
-        )
     }
 }

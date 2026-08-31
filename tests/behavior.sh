@@ -55,6 +55,9 @@ xcrun swiftc \
   "$GUI_DIR/Modules/Omatiles/LayoutEngine.swift" \
   "$GUI_DIR/Modules/Omatiles/RealWindowMover.swift" \
   "$GUI_DIR/Modules/Omatiles/WindowArranger.swift" \
+  "$GUI_DIR/Modules/Omatiles/WindowTiler.swift" \
+  "$GUI_DIR/Modules/Omatiles/WindowNavigator.swift" \
+  "$GUI_DIR/Modules/Omatiles/HotkeyBindings.swift" \
   "$GUI_DIR/Modules/Omatiles/GhostTilingOverlay.swift" \
   "$GUI_DIR/Modules/Omatiles/OmatilesEngine.swift" \
   "$GUI_DIR/Modules/Omatiles/KdlWorkspaceCompiler.swift" \
