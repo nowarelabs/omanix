@@ -94,7 +94,7 @@ if [ -x "$XCRUN" ] || command -v xcrun >/dev/null 2>&1; then
         -framework IOKit \
         -framework CoreWLAN \
         -o "$BIN" \
-        $(find "$GUI_DIR" -name '*.swift' | sort)
+        $(find "$GUI_DIR" -name '*.swift' -not -path '*/Tests/*' | sort)
       echo "Omanix GUI rebuilt"
     else
       echo "Omanix GUI up to date — skipping rebuild (keeps the Accessibility grant)"

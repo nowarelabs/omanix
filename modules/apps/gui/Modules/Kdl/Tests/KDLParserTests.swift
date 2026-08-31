@@ -1,5 +1,4 @@
 import Foundation
-import BigDecimal
 import Testing
 @testable import KDL
 

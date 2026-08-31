@@ -1,5 +1,4 @@
 import Testing
-import BigDecimal
 @testable import KDL
 
 @Suite("Value tests")
