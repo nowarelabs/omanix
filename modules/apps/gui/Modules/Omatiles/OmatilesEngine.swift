@@ -110,6 +110,35 @@ final class OmatilesEngine {
         apply(frame)
     }
 
+    /// Arranges every visible window on the main screen into the given layout's
+    /// slots (BSP / Grid / Monocle / Stack / Spiral). The slots act as persistent
+    /// "parking spots": each window is moved and resized to fill its slot, and the
+    /// ghost overlay is left showing the spots so the user can park further windows
+    /// there via the ⌘⌥ hotkeys. Returns how many windows were actually moved.
+    @discardableResult
+    func applyLayout(_ layout: OwinLayout, gap: CGFloat? = nil) -> Int {
+        let g = gap ?? settings.gap
+        guard AXIsProcessTrusted(), let screen = NSScreen.main else { return 0 }
+        // Ghost the slots first so the parking spots are visible immediately.
+        let slots = LayoutEngine.gridSlots(in: screen.visibleFrame, gap: g)
+        GhostTilingOverlay.shared.showGhosts(for: slots)
+
+        let windows = RealWindowMover.shared.allVisibleWindows()
+        guard !windows.isEmpty else { return 0 }
+
+        let frames = LayoutEngine.frames(count: windows.count, in: screen.visibleFrame, layout: layout, gap: g)
+        guard !frames.isEmpty else { return 0 }
+
+        var moved = 0
+        for (window, frame) in zip(windows, frames) {
+            if (try? RealWindowMover.shared.apply(frame, to: window)) != nil {
+                moved += 1
+            }
+        }
+        print("OmatilesEngine: applied layout=\(layout.rawValue) to \(moved)/\(windows.count) windows")
+        return moved
+    }
+
     /// Computes a target CGRect plus moves the focused window there via AX.
     private func tile(_ action: TilingAction) -> Bool {
         guard let screen = NSScreen.main else { return false }

@@ -75,6 +75,16 @@ enum UserActionSimulator {
         return result
     }
 
+    /// Direct engine path into whole-workspace layout application (arranges every
+    /// visible window into the layout's slots). Returns how many windows moved.
+    @discardableResult
+    static func applyLayoutDirectly(_ layout: OwinLayout) -> Int {
+        var result = 0
+        let work = { MainActor.assumeIsolated { result = OmatilesEngine.shared.applyLayout(layout) } }
+        if Thread.isMainThread { work() } else { DispatchQueue.main.sync(execute: work) }
+        return result
+    }
+
     /// Simulates a user pressing one of OUR Omatiles global hotkey bindings
     /// (⌘⌥+arrow / ⌘⌥Z). Carbon hotkey events don't dispatch reliably in a
     /// headless test process (no app run loop), so instead of posting a raw HID

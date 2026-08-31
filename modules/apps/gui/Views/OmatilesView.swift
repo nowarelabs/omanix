@@ -236,6 +236,9 @@ struct OmatilesView: View {
         } else {
             vm.stopOmatiles()
         }
+        // Apply the selected layout to the visible windows and leave the ghost
+        // "parking spots" up so the user can park further windows into them.
+        vm.applyOmatilesLayout(layout.rawValue)
     }
 
     /// Shows translucent ghost drop-boxes on the actual desktop for the chosen

@@ -517,6 +517,25 @@ final class OmanixViewModel: ObservableObject {
         OmatilesEngine.shared.tileLeft()
     }
 
+    /// Applies the chosen layout to all visible windows (whole-workspace tiling).
+    /// The layout's slots become "parking spots" the user can drop windows into.
+    func applyOmatilesLayout(_ raw: String) {
+        guard let layout = OwinLayout(rawValue: raw), layout != .float else {
+            showMessage("Float has no layout slots to arrange windows into", .error)
+            return
+        }
+        guard OmatilesEngine.ensureAccessibility() else {
+            showMessage("Omanix needs Accessibility permission to tile windows", .error)
+            return
+        }
+        let moved = OmatilesEngine.shared.applyLayout(layout)
+        if moved > 0 {
+            showMessage("Arranged \(moved) window\(moved == 1 ? "" : "s") into \(layout.rawValue.capitalized)", .success)
+        } else {
+            showMessage("No windows arranged — open a window or grant Accessibility access", .error)
+        }
+    }
+
     func setOmatilesEnabled(_ enabled: Bool) {
         omatilesEnabled = enabled
         do { try store.setOmatilesEnabled(enabled); needsRebuild = true; applyOmatilesToRuntime() }

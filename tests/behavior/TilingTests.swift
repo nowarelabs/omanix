@@ -39,6 +39,7 @@ struct TilingBehaviorTests {
         record(testDirectEngineTileBottom())
         record(testDirectEngineQuadrant()) // grid slot
         record(testDirectEngineMonocle())
+        record(testDirectEngineApplyGrid()) // whole-workspace layout application
 
         // 3. Hotkey/binding tiling (requires AX trust)
         record(testHotkeyTileLeft())
@@ -194,6 +195,44 @@ struct TilingBehaviorTests {
                                  after.width > screen.width * 0.85 && after.height > screen.height * 0.85
                              },
                              expected: "window near full-screen (monocle)")
+    }
+
+    private static func testDirectEngineApplyGrid() -> TilingTestResult {
+        guard NSScreen.main != nil else { return .skipped("No main screen (headless)") }
+        guard AXIsProcessTrusted() else { return .skipped("AX not trusted") }
+
+        let pid: pid_t
+        do {
+            pid = try UserActionSimulator.openTestWindow()
+        } catch {
+            return .skipped("Could not open test window: \(error)")
+        }
+        defer { UserActionSimulator.closeWindow(pid: pid) }
+
+        Thread.sleep(forTimeInterval: 0.4)
+        guard let before = Self.readInitialFrame(pid: pid) else {
+            return .skipped("Could not read initial window frame (AX)")
+        }
+
+        let moved = UserActionSimulator.applyLayoutDirectly(.grid)
+        Thread.sleep(forTimeInterval: 0.8)
+
+        guard let after = try? SystemEffectReader.windowFrame(pid: pid) else {
+            return .failed("Could not read window frame after applyLayout(.grid)")
+        }
+        let screen = SystemEffectReader.mainScreenFrame()
+
+        // The layout should actually move windows into grid cells: the test window
+        // lands on-screen at a material fraction of the visible frame's width,
+        // having been re-fitted into a 2x2 cell.
+        let fitsCell = after.width > screen.width * 0.30
+            && after.width < screen.width * 0.95
+            && screen.intersects(after)
+        if moved > 0 && after != before && fitsCell {
+            return .passed("applyLayout(.grid): \(moved) window(s) arranged; test window \(before) → \(after)")
+        } else {
+            return .failed("applyLayout(.grid) did not arrange the window (moved=\(moved), before: \(before), after: \(after))")
+        }
     }
 
     /// Shared helper: opens a focused test window, runs an action, and asserts
