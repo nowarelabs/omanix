@@ -48,6 +48,14 @@ struct BehaviorTests {
         // quadrants, no overlap, exchanges are bijections, nothing stranded).
         allFailures.append(contentsOf: LayoutContractTests.runAll())
 
+        // Service 3b — PURE KDL -> workspaces contract tests. Headless-safe and
+        // always run: they encode the user-visible expectation that a declarative
+        // KDL layout document compiles to the exact workspace map Owin routes on.
+        allFailures.append(contentsOf: KdlContractTests.runAll())
+
+        // Live seam: writing layout.kdl makes Owin's reader see those workspaces.
+        allFailures.append(contentsOf: KdlWorkspaceBehaviorTests.runAll())
+
         allFailures.append(contentsOf: TilingBehaviorTests.runAll())
         allFailures.append(contentsOf: OmabarBehaviorTests.runAll())
         allFailures.append(contentsOf: ThemeBehaviorTests.runAll())

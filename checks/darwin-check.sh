@@ -21,4 +21,10 @@ echo ""
 echo "=== Two-way Swift <-> Nix contract tests ==="
 bash "$(dirname "$0")/../tests/two-way.sh"
 echo ""
+echo "=== Behavioral (action -> effect) tests ==="
+# Expectation-driven suite: User does X (move window, apply layout, toggle, compile
+# a KDL workspace map) -> System shows Y. Touches the live OS for tiling so window
+# tests SKIP on headless CI while the pure contract/KDL/prefs checks still run.
+bash "$(dirname "$0")/../tests/behavior.sh"
+echo ""
 echo "=== All checks passed ==="
