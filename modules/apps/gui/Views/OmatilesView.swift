@@ -39,6 +39,11 @@ struct OmatilesView: View {
 
             footer
         }
+        .onAppear {
+            if let saved = TilingLayout(rawValue: vm.omatilesLayout) {
+                layout = saved
+            }
+        }
     }
 
     // MARK: Header
@@ -158,6 +163,7 @@ struct OmatilesView: View {
                     ForEach(TilingLayout.allCases) { option in
                         LayoutTile(layout: option, selected: layout == option) {
                             withAnimation(.easeInOut(duration: 0.15)) { layout = option }
+                            vm.setOmatilesLayout(option.rawValue)
                             showDesktopGhosts(for: option)
                         }
                     }
@@ -238,7 +244,9 @@ struct OmatilesView: View {
         }
         // Apply the selected layout to the visible windows and leave the ghost
         // "parking spots" up so the user can park further windows into them.
-        vm.applyOmatilesLayout(layout.rawValue)
+        // `setOmatilesLayout` (already called when the tile was selected) persists
+        // the choice so it also drives auto-tiling going forward.
+        vm.applyOmatilesLayout()
     }
 
     /// Shows translucent ghost drop-boxes on the actual desktop for the chosen

@@ -336,6 +336,8 @@ final class Omanix {
     func setOmatilesEdgeDrag(_ v: Bool) throws { try setOmatilesOption("enableEdgeDrag", v ? "true" : "false") }
     func setOmatilesKeyboardShortcuts(_ v: Bool) throws { try setOmatilesOption("enableKeyboardShortcuts", v ? "true" : "false") }
     func setOmatilesMargins(_ v: Bool) throws { try setOmatilesOption("enableMargins", v ? "true" : "false") }
+    func setOmatilesDefaultLayout(_ v: String) throws { try setOmatilesOption("defaultLayout", v) }
+    func setOmatilesAutoTile(_ v: Bool) throws { try setOmatilesOption("autoTile", v ? "true" : "false") }
 
     /// Applies the resolved omatiles declarative state to the live system via the
     /// Nix-owned `omanix state apply omatiles` path (mirrors the activation script).

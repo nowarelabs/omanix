@@ -33,8 +33,13 @@ final class OmatilesEngine {
     private var hotKeyRefs: [Int: EventHotKeyRef] = [:]
     private static var hotKeyDispatcher: EventHandlerRef?
 
+    /// Auto-tile observers (re-flow on window/app activity). Kept so we can remove.
+    private var autoTileObservers: [NSObjectProtocol] = []
+    private var autoTileTask: DispatchWorkItem?
+
     private enum BindingID: Int {
         case left = 1, right = 2, top = 3, bottom = 4, untile = 5
+        case moveNext = 6, movePrev = 7, focusNext = 8, focusPrev = 9
     }
 
     private enum TilingAction {
@@ -50,21 +55,34 @@ final class OmatilesEngine {
         self.settings = settings
         isRunning = true
         if settings.bindings { installBindings() }
+        installAutoTiling(if: settings.autoTile)
     }
 
     /// Applies new declarative settings to a running engine (no rebuild needed).
     func apply(settings: RuntimeSettings.Omatiles) {
         let bindingsChanged = settings.bindings != self.settings.bindings
+        let autoTileChanged = settings.autoTile != self.settings.autoTile
+        let layoutChanged = settings.defaultLayout != self.settings.defaultLayout
+        let gapChanged = settings.gap != self.settings.gap
         self.settings = settings
         if bindingsChanged {
             removeBindings()
             if settings.bindings { installBindings() }
+        }
+        if autoTileChanged {
+            removeAutoTiling()
+            installAutoTiling(if: settings.autoTile)
+        }
+        // A layout or gap change should re-flow the open windows immediately.
+        if layoutChanged || gapChanged {
+            scheduleAutoTiling()
         }
     }
 
     func stop() {
         isRunning = false
         removeBindings()
+        removeAutoTiling()
     }
 
     // MARK: - Real tiling actions (AX window moves; public, used by GUI + tests)
@@ -118,25 +136,144 @@ final class OmatilesEngine {
     @discardableResult
     func applyLayout(_ layout: OwinLayout, gap: CGFloat? = nil) -> Int {
         let g = gap ?? settings.gap
-        guard AXIsProcessTrusted(), let screen = NSScreen.main else { return 0 }
+        let (windows, frames) = layoutPlan(layout: layout, gap: g)
+        guard !windows.isEmpty, !frames.isEmpty else { return 0 }
         // Ghost the slots first so the parking spots are visible immediately.
-        let slots = LayoutEngine.gridSlots(in: screen.visibleFrame, gap: g)
-        GhostTilingOverlay.shared.showGhosts(for: slots)
+        if let screen = NSScreen.main {
+            GhostTilingOverlay.shared.showGhosts(for: LayoutEngine.gridSlots(in: screen.visibleFrame, gap: g))
+        }
+        return apply(frames: frames, to: windows, layoutName: layout.rawValue)
+    }
 
+    /// Applies the persisted default layout to all visible windows. Used by
+    /// auto-tiling (window/focus changes) and by the Window Manager "Apply".
+    @discardableResult
+    func applyDefaultLayout(gap: CGFloat? = nil) -> Int {
+        let layout = OwinLayout(rawValue: settings.defaultLayout) ?? .bsp
+        return applyLayout(layout, gap: gap)
+    }
+
+    // MARK: - Whole-workspace helper
+
+    /// Orderly visible windows (topmost-last AX order is unreliable, so we use the
+    /// enumerated order across regular apps) plus their target frames for a layout.
+    /// Returns empty frames for `.float`.
+    private func layoutPlan(layout: OwinLayout, gap: CGFloat) -> ([AXUIElement], [CGRect]) {
+        guard AXIsProcessTrusted(), let screen = NSScreen.main, layout != .float else { return ([], []) }
         let windows = RealWindowMover.shared.allVisibleWindows()
-        guard !windows.isEmpty else { return 0 }
+        let frames = LayoutEngine.frames(count: windows.count, in: screen.visibleFrame, layout: layout, gap: gap)
+        return (windows, frames)
+    }
 
-        let frames = LayoutEngine.frames(count: windows.count, in: screen.visibleFrame, layout: layout, gap: g)
-        guard !frames.isEmpty else { return 0 }
-
+    private func apply(frames: [CGRect], to windows: [AXUIElement], layoutName: String) -> Int {
+        guard windows.count == frames.count else { return 0 }
         var moved = 0
         for (window, frame) in zip(windows, frames) {
             if (try? RealWindowMover.shared.apply(frame, to: window)) != nil {
                 moved += 1
             }
         }
-        print("OmatilesEngine: applied layout=\(layout.rawValue) to \(moved)/\(windows.count) windows")
+        print("OmatilesEngine: applied layout \(layoutName) to \(moved)/\(windows.count) windows")
         return moved
+    }
+
+    // MARK: - Movement / focus (⌘⌥, Aerospace-style)
+    // Binds set:
+    //   ⌘⌥←/→/↑/↓  tile focused window to that screen region
+    //   ⌘⌥]        move focused window to the next slot
+    //   ⌘⌥[        move focused window to the previous slot
+    //   ⌘⌥PageDn/PageUp  focus the next / previous window
+    @discardableResult
+    func moveFocusedWindow(forward: Bool) -> Bool {
+        guard AXIsProcessTrusted(), let screen = NSScreen.main, isRunning else { return false }
+        let layout = OwinLayout(rawValue: settings.defaultLayout) ?? .bsp
+        let (windows, frames) = layoutPlan(layout: layout, gap: settings.gap)
+        // Find the focused window's index in the ordered set.
+        guard let focused = RealWindowMover.shared.focusedWindowElement(),
+              let idx = windows.firstIndex(where: { $0 === focused }),
+              windows.count > 1 else { return false }
+        let step = (forward ? 1 : -1)
+        let next = (idx + step + windows.count) % windows.count
+        // Swap the two windows' frames so the focused window lands in the neighbor slot.
+        let fFrame = frames[idx]
+        let nFrame = frames[next]
+        let ok1 = (try? RealWindowMover.shared.apply(nFrame, to: windows[idx])) != nil
+        let ok2 = (try? RealWindowMover.shared.apply(fFrame, to: windows[next])) != nil
+        GhostTilingOverlay.shared.showGhosts(for: frames)
+        return ok1 && ok2
+    }
+
+    /// Puts keyboard focus on the next/previous visible window by raising and
+    /// activating the owning application (and its window). Returns true on success.
+    @discardableResult
+    func focusNextWindow(forward: Bool) -> Bool {
+        guard AXIsProcessTrusted(), let screen = NSScreen.main, isRunning else { return false }
+        let layout = OwinLayout(rawValue: settings.defaultLayout) ?? .bsp
+        let (windows, frames) = layoutPlan(layout: layout, gap: settings.gap)
+        guard windows.count > 1 else { return false }
+        let focusedIndex: Int
+        if let focused = RealWindowMover.shared.focusedWindowElement(),
+           let idx = windows.firstIndex(where: { $0 === focused }) {
+            focusedIndex = idx
+        } else {
+            return false
+        }
+        let step = (forward ? 1 : -1)
+        let next = (focusedIndex + step + windows.count) % windows.count
+        let target = windows[next]
+        var pid: pid_t = 0
+        AXUIElementGetPid(target, &pid)
+        guard pid > 0, let app = NSRunningApplication(processIdentifier: pid) else { return false }
+        app.activate(options: [.activateIgnoringOtherApps])
+        // Bring the target window to the front within its app.
+        AXUIElementPerformAction(target, kAXRaiseAction as CFString)
+        return true
+    }
+
+    // MARK: - Auto-tiling (Aerospace-style re-flow on window/app activity)
+
+    /// Installs NSWorkspace observers so that when a window or app appears,
+    /// hides, or activates, every visible window is re-arranged into the default
+    /// layout. Debounced so bursts of window creation re-flow once.
+    private func installAutoTiling(if enabled: Bool) {
+        guard enabled, autoTileObservers.isEmpty else { return }
+        let center = NSWorkspace.shared.notificationCenter
+        autoTileObservers = [
+            center.addObserver(forName: NSWorkspace.didLaunchApplicationNotification,
+                               object: nil, queue: .main) { [weak self] _ in self?.scheduleAutoTiling() },
+            center.addObserver(forName: NSWorkspace.didActivateApplicationNotification,
+                               object: nil, queue: .main) { [weak self] _ in self?.scheduleAutoTiling() },
+            center.addObserver(forName: NSWorkspace.didHideApplicationNotification,
+                               object: nil, queue: .main) { [weak self] _ in self?.scheduleAutoTiling() },
+            center.addObserver(forName: NSWorkspace.didUnhideApplicationNotification,
+                               object: nil, queue: .main) { [weak self] _ in self?.scheduleAutoTiling() },
+            center.addObserver(forName: NSWorkspace.didTerminateApplicationNotification,
+                               object: nil, queue: .main) { [weak self] _ in self?.scheduleAutoTiling() }
+        ]
+        // Re-flow once on startup so a freshly-launched manager tiles existing windows.
+        scheduleAutoTiling()
+    }
+
+    private func removeAutoTiling() {
+        autoTileTask?.cancel()
+        autoTileTask = nil
+        for obs in autoTileObservers {
+            NSWorkspace.shared.notificationCenter.removeObserver(obs)
+        }
+        autoTileObservers.removeAll()
+    }
+
+    /// Debounces re-flow into the default layout so a burst of window events
+    /// triggers a single arrangement.
+    private func scheduleAutoTiling() {
+        guard settings.autoTile, AXIsProcessTrusted() else { return }
+        autoTileTask?.cancel()
+        let task = DispatchWorkItem { [weak self] in
+            guard let self, self.isRunning else { return }
+            _ = self.applyDefaultLayout()
+        }
+        autoTileTask = task
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: task)
     }
 
     /// Computes a target CGRect plus moves the focused window there via AX.

@@ -477,13 +477,19 @@ final class OmanixViewModel: ObservableObject {
     @Published var omatilesEdgeDrag: Bool = true
     @Published var omatilesKeyboardShortcuts: Bool = true
     @Published var omatilesMargins: Bool = false
+    @Published var omatilesGap: Double = 8
+    @Published var omatilesLayout: String = "bsp"
+    @Published var omatilesAutoTile: Bool = true
 
     var omatilesRunning: Bool { OmatilesEngine.shared.isRunning }
 
     private func omatilesSettings() -> RuntimeSettings.Omatiles {
         RuntimeSettings.Omatiles(
             enable: omatilesEnabled,
-            bindings: omatilesBindings
+            bindings: omatilesBindings,
+            gap: omatilesGap,
+            defaultLayout: omatilesLayout,
+            autoTile: omatilesAutoTile
         )
     }
 
@@ -519,8 +525,10 @@ final class OmanixViewModel: ObservableObject {
 
     /// Applies the chosen layout to all visible windows (whole-workspace tiling).
     /// The layout's slots become "parking spots" the user can drop windows into.
-    func applyOmatilesLayout(_ raw: String) {
-        guard let layout = OwinLayout(rawValue: raw), layout != .float else {
+    /// The selected layout is persisted via `setOmatilesLayout` so it also drives
+    /// future auto-tiling.
+    func applyOmatilesLayout() {
+        guard let layout = OwinLayout(rawValue: omatilesLayout), layout != .float else {
             showMessage("Float has no layout slots to arrange windows into", .error)
             return
         }
@@ -528,13 +536,22 @@ final class OmanixViewModel: ObservableObject {
             showMessage("Omanix needs Accessibility permission to tile windows", .error)
             return
         }
-        let moved = OmatilesEngine.shared.applyLayout(layout)
+        let moved = OmatilesEngine.shared.applyLayout(layout, gap: CGFloat(omatilesGap))
         if moved > 0 {
             showMessage("Arranged \(moved) window\(moved == 1 ? "" : "s") into \(layout.rawValue.capitalized)", .success)
         } else {
             showMessage("No windows arranged — open a window or grant Accessibility access", .error)
         }
     }
+
+    /// Persists the chosen default layout and re-applies it to open windows.
+    func setOmatilesLayout(_ raw: String) {
+        omatilesLayout = raw
+        applyOmatilesToRuntime()
+        do { try store.setOmatilesDefaultLayout(raw) }
+        catch { showMessage("Could not save default layout: \(error.localizedDescription)", .error) }
+    }
+
 
     func setOmatilesEnabled(_ enabled: Bool) {
         omatilesEnabled = enabled

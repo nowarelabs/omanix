@@ -100,12 +100,20 @@ enum RuntimeSettings {
         var enable = true
         var bindings = true
         var gap: CGFloat = 8
+        /// Layout applied to ALL visible windows when auto-tiling or the user
+        /// presses Apply. One of bsp/grid/monocle/stack/spiral/float.
+        var defaultLayout = "bsp"
+        /// When true, windows are automatically re-arranged into `defaultLayout`
+        /// as they open (and when the layout/focus changes), Aerospace-style.
+        var autoTile = true
 
         static func load() -> Omatiles {
             Omatiles(
                 enable: bool("omanix.omatiles.enable", default: true),
                 bindings: bool("omanix.omatiles.bindings", default: true),
-                gap: CGFloat(option("omanix.omatiles.gap").flatMap(Double.init) ?? 8)
+                gap: CGFloat(option("omanix.omatiles.gap").flatMap(Double.init) ?? 8),
+                defaultLayout: option("omanix.omatiles.defaultLayout") ?? "bsp",
+                autoTile: bool("omanix.omatiles.autoTile", default: true)
             )
         }
     }
