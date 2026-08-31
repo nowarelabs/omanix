@@ -69,8 +69,9 @@ struct LayoutEngine {
     // MARK: - Single-window placement (⌘⌥ hotkeys / auto-tile)
 
     /// Half of the screen, inset by `gap` on every side, along the given edge.
-    /// Window reports frames in bottom-left origin (Cocoa), so "top" means the
-    /// larger y range and "bottom" the smaller.
+    /// Window position/size reported via AX here uses the global screen space
+    /// where y increases DOWNWARD (top-left origin), so "top" is the smaller-y
+    /// half and "bottom" the larger-y half.
     static func half(_ edge: Half, in screen: CGRect, gap: CGFloat = 8) -> CGRect {
         let inset = screen.insetBy(dx: gap, dy: gap)
         switch edge {
@@ -79,9 +80,11 @@ struct LayoutEngine {
         case .right:
             return CGRect(x: inset.midX, y: inset.minY, width: inset.width / 2, height: inset.height)
         case .top:
-            return CGRect(x: inset.minX, y: inset.midY, width: inset.width, height: inset.height / 2)
-        case .bottom:
+            // Small y = top of screen (top-left origin).
             return CGRect(x: inset.minX, y: inset.minY, width: inset.width, height: inset.height / 2)
+        case .bottom:
+            // Large y = bottom of screen (top-left origin).
+            return CGRect(x: inset.minX, y: inset.midY, width: inset.width, height: inset.height / 2)
         }
     }
 

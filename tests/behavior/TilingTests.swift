@@ -35,6 +35,8 @@ struct TilingBehaviorTests {
         // 2. Direct engine tiling (requires a real window + AX)
         record(testDirectEngineTileLeft())
         record(testDirectEngineTileRight())
+        record(testDirectEngineTileTop())
+        record(testDirectEngineTileBottom())
         record(testDirectEngineQuadrant()) // grid slot
         record(testDirectEngineMonocle())
 
@@ -146,6 +148,32 @@ struct TilingBehaviorTests {
         } else {
             return .failed("tileRight via engine failed: window frame did not change from \(before) (after: \(after))")
         }
+    }
+
+    private static func testDirectEngineTileTop() -> TilingTestResult {
+        return tileAndAssert(label: "tileTop",
+                             before: { _ in }, action: { _ in UserActionSimulator.tileDirectly(.top) },
+                             matches: { before, after, screen in
+                                 // Top half: window's vertical center in the upper half, resized to (near) half-height.
+                                 after.width > screen.width * 0.85
+                                     && after.midY < screen.midY
+                                     && after.height < screen.height * 0.6
+                                     && after != before
+                             },
+                             expected: "window in top half, resized to fit")
+    }
+
+    private static func testDirectEngineTileBottom() -> TilingTestResult {
+        return tileAndAssert(label: "tileBottom",
+                             before: { _ in }, action: { _ in UserActionSimulator.tileDirectly(.bottom) },
+                             matches: { before, after, screen in
+                                 // Bottom half: window's vertical center in the lower half, resized to (near) half-height.
+                                 after.width > screen.width * 0.85
+                                     && after.midY >= screen.midY
+                                     && after.height < screen.height * 0.6
+                                     && after != before
+                             },
+                             expected: "window in bottom half, resized to fit")
     }
 
     private static func testDirectEngineQuadrant() -> TilingTestResult {
