@@ -14,14 +14,14 @@
 # Packages: use `omanix add <name>` (routes nixpkgs → brew) or add below.
 # Contributor rule: packages/ is ONLY for Omanix adapters. Before any packages/foo.nix,
 # nix search + brew search miss must be pasted in PR description (conventions.md:6).
-{ pkgs, ... }: {
+{ pkgs, lib, ... }: {
   # Machine-produced option values (written by the Omanix GUI / `omanix state set`).
   # This file is generated and validated — the app never hand-edits this config directly.
   imports = [ ./state.nix ];
 
   omanix.host = "Vances-MacBook-Pro"; # `scutil --get LocalHostName`
   omanix.user = "vanceworks"; # `whoami` — also system.primaryUser
-  omanix.theme = "omanix"; # signature Omakase light — see `ls themes/` and docs/themes.md (13 themes: omanix + 12)
+  omanix.theme = lib.mkDefault "omanix"; # signature Omakase light — see `ls themes/` and docs/themes.md (13 themes: omanix + 12)
   # omanix.themeOverrides.accent = "#FF00FF"; # global per-color override (see docs/themes.md)
   # omanix.themeOverrides.background = "#0a0a12";
   # Per-app overrides — e.g. terminal darker than UI (Nix path is omanix.perApp due to theme being a string enum):
@@ -38,4 +38,5 @@
   # Packages: use `omanix add <name>` or add below.
   # environment.systemPackages = with pkgs; [ ripgrep ];
   # homebrew.casks = [ "google-chrome" ];
+  environment.systemPackages = with pkgs; [ pkgs.symfony-cli pkgs.laravel ];
 }
