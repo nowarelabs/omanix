@@ -38,5 +38,5 @@
   # Packages: use `omanix add <name>` or add below.
   # environment.systemPackages = with pkgs; [ ripgrep ];
   # homebrew.casks = [ "google-chrome" ];
-  environment.systemPackages = with pkgs; [ pkgs.symfony-cli pkgs.laravel ];
+  environment.systemPackages = with pkgs [ pkgs.symfony-cli pkgs.laravel pkgs.docling ];
 }
