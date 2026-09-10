@@ -37,5 +37,5 @@
 
   # Packages: use `omanix add <name>` or add below.
   # environment.systemPackages = with pkgs; [ ripgrep ];
-  environment.systemPackages = with pkgs; [ symfony-cli laravel docling ];
+  environment.systemPackages = with pkgs; [ symfony-cli laravel ];
 }
