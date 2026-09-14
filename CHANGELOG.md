@@ -15,11 +15,13 @@
 - **Omabar deleted:** `Modules/Omabar/`, `Modules/Plugins/`, `Views/OmabarView.swift`, `Modules/Desktop.swift`, the SysEvents monitors (BarState, BatteryMonitor, ClockTicker, CoreAudioVolumeMonitor, WifiMonitor) and `--omabar` mode removed. `EventBus.swift` trimmed to window events only (Omatiles uses them). `omanix.omabar.*` options, CLI setters, and `--omabar` launchd agent (`om.omanix.omabar`) all removed; the CLI/`spacebar` schema and GUI widget now use `omanix.spacebar.*`.
 - **Docs/tests:** themes.md tables, conventions/principles/philosophies, and the agent skill updated to the spacebar architecture; two-way + behavior test suites updated to the spacebar state.
 
-### `omanix update` no longer conflicts on machine-owned files
+### Flake-source integrity: state.nix tracked again; overlays preview fixed
 
-- `state.nix` and `version` are now machine-owned and gitignored (created on demand by `state ensure`), so a pull can never produce merge-conflict markers in `state.nix` again. The previous flow stashed+pulled+popped those tracked files, which collided whenever upstream also touched `state.nix` (e.g. the omabar→spacebar rename) and then rebuilt on top of `<<<<<<<` markers.
-- `omanix update` now uses `git pull --rebase --autostash` (only genuine local edits like `configuration.nix` are stashed), prunes stale option keys after the pull, and aborts with instructions instead of rebuilding if any resolution is still pending.
-- New `omanix state prune` / `omanix state ensure` commands; `state set` and `rebuild` also drop stale option paths automatically.
+- **`state.nix` is tracked again.** Nix flakes copy ONLY git-tracked files into the build source — the 0.2.x "gitignore state.nix" approach silently removed the file `configuration.nix` imports, so every rebuild failed with `path '/nix/store/…-source/state.nix' does not exist`. `state.nix` is now a tracked-but-machine-written file: an empty committed template provides the baseline, `state set`/`prune`/`reset` rewrite the working tree copy (which builds pick up), and `omanix update` autostashes + restores machine edits across pulls. `version` stays ignored (read by the update script only, never evaluated).
+- **`overlays/` previews actually reach the build now.** The gitignored `overlays/` dir was invisible to every eval (`builtins.pathExists ../overlays` = false inside the store copy), so `--preview` and impure overlays silently did nothing. `omanix rebuild` now stages `overlays/` into the git index for the eval (the only way ignored files enter the flake source copy), then unstages it afterwards, so throwaway previews stay throwaway.
+- **`omanix update` no longer conflicts on machine-owned files:** `git pull --rebase --autostash` covers machine edits to `state.nix`, `state prune` drops stale option keys after the pull, and the script aborts with instructions instead of rebuilding if any resolution is still pending.
+- Fixed remaining `ensure_state` → `ensure` typos in `libexec/omanix-rebuild.sh` + `libexec/install.sh`.
+- tests/pristine gains a flake-source guard: `state.nix` must be tracked and no untracked `.nix` files may exist — the exact failure class that caused the state.nix incident.
 
 ## 0.2.0-dev (2026-08-29)
 

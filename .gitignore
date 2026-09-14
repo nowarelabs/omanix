@@ -10,4 +10,3 @@ overlays/
 # and the script aborts before rebuild if a resolution is ever pending.
 # `version` is ignored (read by the update script only, never imported at eval).
 version
-state.nix.dirty

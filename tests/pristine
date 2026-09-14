@@ -15,28 +15,29 @@ echo "  OK: flake evaluates"
 
 # Step 2: Verify omanix add/edit would work (dry run)
 echo "Step 2: Verify add routing..."
-if [[ -f "lib/omanix-add.sh" ]]; then
-  echo "  OK: omanix-add.sh exists"
+if [[ -f "libexec/omanix-add.sh" ]]; then
+  echo "  OK: libexec/omanix-add.sh exists"
 else
-  echo "FAIL: lib/omanix-add.sh missing"
+  echo "FAIL: libexec/omanix-add.sh missing"
   exit 1
 fi
 
 # Step 3: Verify omanix remove would work (dry run)
 echo "Step 3: Verify remove routing..."
-if [[ -f "lib/omanix-remove.sh" ]]; then
-  echo "  OK: omanix-remove.sh exists"
+if [[ -f "libexec/omanix-remove.sh" ]]; then
+  echo "  OK: libexec/omanix-remove.sh exists"
 else
-  echo "FAIL: lib/omanix-remove.sh missing"
+  echo "FAIL: libexec/omanix-remove.sh missing"
   exit 1
 fi
 
 # Step 4: Verify homebrew cleanup config
 echo "Step 4: Verify homebrew pristine config..."
-if grep -q 'cleanup = "uninstall"' modules/darwin/homebrew.nix; then
-  echo "  OK: homebrew cleanup = uninstall"
+if grep -q 'cleanup = config.omanix.homebrew.cleanup' modules/darwin/homebrew.nix && \
+   grep -q 'default = "uninstall"' modules/core/options.nix; then
+  echo "  OK: homebrew cleanup wired to option, default = uninstall (pristine)"
 else
-  echo "FAIL: homebrew cleanup not set to uninstall"
+  echo "FAIL: homebrew cleanup wiring not pristine"
   exit 1
 fi
 
@@ -68,6 +69,23 @@ for test in tests/cli tests/shell; do
     exit 1
   fi
 done
+
+# Step 8: Nix flakes copy ONLY git-tracked files into the build source — an imported
+# file that is untracked/ignored silently vanishes from every build (the state.nix
+# incident, see docs/principles.md). Guard the class: every .nix must be tracked, and
+# state.nix specifically must never be gitignored again.
+echo "Step 8: Verify flake-visible files are git-tracked..."
+if ! git ls-files --error-unmatch -- state.nix >/dev/null 2>&1; then
+  echo "FAIL: state.nix is not tracked by git (flake builds cannot see it)"
+  exit 1
+fi
+UNEXPECTED_UNTRACKED_NIX=$(git ls-files --others --exclude-standard 2>/dev/null | grep '\.nix$' || true)
+if [[ -n "$UNEXPECTED_UNTRACKED_NIX" ]]; then
+  echo "FAIL: untracked .nix files are invisible to flake builds:"
+  echo "$UNEXPECTED_UNTRACKED_NIX"
+  exit 1
+fi
+echo "  OK: state.nix tracked; no untracked .nix files exist"
 
 echo ""
 echo "=== tests/pristine passed (dry run) ==="
