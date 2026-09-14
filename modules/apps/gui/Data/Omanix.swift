@@ -304,6 +304,9 @@ final class Omanix {
     func setOmabarShowBatteryPercent(_ v: Bool) throws { try setOmabarOption("showBatteryPercent", v ? "true" : "false") }
     func setOmabarUse24Hour(_ v: Bool) throws { try setOmabarOption("use24Hour", v ? "true" : "false") }
     func setOmabarClockFormat(_ v: String) throws { try setOmabarOption("clockFormat", v) }
+    func setOmabarTint(_ v: String?) throws {
+        try setOmabarOption("tint", v ?? "null")
+    }
 
     // MARK: - Structured components (Phase 3: components.<name>.* overrides flat show*)
 

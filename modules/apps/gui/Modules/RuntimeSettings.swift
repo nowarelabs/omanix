@@ -67,6 +67,8 @@ enum RuntimeSettings {
         var showBatteryPercent = true
         var use24Hour = false
         var clockFormat = "digital"
+        /// "#RRGGBB" tint for every status item ("light glass blue"); nil = native.
+        var tint: String? = "#0A7CFF"
 
         static func load() -> Omabar {
             // Structured `components.<name>.*` overrides flat `show*` when set (Phase 3).
@@ -89,7 +91,11 @@ enum RuntimeSettings {
                 showDate: bool("omanix.omabar.showDate", default: true),
                 showBatteryPercent: compBool("battery", "showText", flat: "omanix.omabar.showBatteryPercent", default: true),
                 use24Hour: bool("omanix.omabar.use24Hour", default: false),
-                clockFormat: compString("clock", "style", flat: "omanix.omabar.clockFormat", default: "digital")
+                clockFormat: compString("clock", "style", flat: "omanix.omabar.clockFormat", default: "digital"),
+                tint: {
+                    let raw = option("omanix.omabar.tint")
+                    return (raw == nil || raw == "null" || raw?.isEmpty == true) ? nil : raw
+                }()
             )
         }
     }

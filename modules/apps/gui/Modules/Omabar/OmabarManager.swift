@@ -27,6 +27,9 @@ final class OmabarManager: NSObject, OmanixMenubarHost {
 
     private(set) var isRunning = false
 
+    /// Blue tint applied to every status item (the "light glass blue" look). nil = native.
+    private var tintColor: NSColor?
+
     /// id -> live renderer for every enabled plugin currently shown.
     private var renderers: [String: any OmanixMenubarRenderer] = [:]
 
@@ -45,6 +48,7 @@ final class OmabarManager: NSObject, OmanixMenubarHost {
     func start(settings: RuntimeSettings.Omabar = RuntimeSettings.Omabar.load()) -> Bool {
         guard !isRunning else { return true }
         isRunning = true
+        tintColor = Self.resolveTint(settings)
         installAll()
         startWatching()
         return true
@@ -52,6 +56,7 @@ final class OmabarManager: NSObject, OmanixMenubarHost {
 
     func apply(settings: RuntimeSettings.Omabar = RuntimeSettings.Omabar.load()) {
         guard isRunning else { return }
+        tintColor = Self.resolveTint(settings)
         removeAll()
         installAll()
     }
@@ -134,10 +139,17 @@ final class OmabarManager: NSObject, OmanixMenubarHost {
 
     func makeStatusItem(menuable: Bool) -> NSStatusItem {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        item.button?.contentTintColor = tintColor
         if menuable {
             item.menu = NSMenu()
         }
         return item
+    }
+
+    /// Resolves the declarative `omanix.omabar.tint` hex into an NSColor (nil = native).
+    private static func resolveTint(_ settings: RuntimeSettings.Omabar) -> NSColor? {
+        guard let raw = settings.tint else { return nil }
+        return NSColor(omabarHex: raw)
     }
 
     func menu(for item: NSStatusItem) -> NSMenu {
@@ -182,6 +194,32 @@ final class OmabarManager: NSObject, OmanixMenubarHost {
         default:
             if let v = RuntimeSettings.option("omanix.omabar.components.\(id).enable") { return v == "true" }
             return true
+        }
+    }
+}
+
+extension NSColor {
+    /// Parses "#RRGGBB" or "#RRGGBBAA" into an sRGB NSColor; nil on malformed input.
+    convenience init?(omabarHex hex: String) {
+        var value = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard value.hasPrefix("#") else { return nil }
+        value.removeFirst()
+        var rgb: UInt64 = 0
+        guard Scanner(string: value).scanHexInt64(&rgb) else { return nil }
+        let scale: (UInt64) -> CGFloat = { CGFloat($0) / 255.0 }
+        switch value.count {
+        case 6:
+            self.init(srgbRed: scale((rgb & 0xFF0000) >> 16),
+                      green: scale((rgb & 0x00FF00) >> 8),
+                      blue: scale(rgb & 0x0000FF),
+                      alpha: 1)
+        case 8:
+            self.init(srgbRed: scale((rgb & 0xFF000000) >> 24),
+                      green: scale((rgb & 0x00FF0000) >> 16),
+                      blue: scale((rgb & 0x0000FF00) >> 8),
+                      alpha: scale(rgb & 0x000000FF))
+        default:
+            return nil
         }
     }
 }

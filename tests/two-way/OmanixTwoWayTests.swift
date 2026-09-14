@@ -138,6 +138,10 @@ func writeTestFlake(_ env: TestEnv) throws {
           options.omanix.omabar.showBatteryPercent = lib.mkOption { type = lib.types.bool; default = true; };
           options.omanix.omabar.use24Hour = lib.mkOption { type = lib.types.bool; default = false; };
           options.omanix.omabar.clockFormat = lib.mkOption { type = lib.types.str; default = "digital"; };
+          options.omanix.omabar.tint = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = "#0A7CFF";
+          };
           options.omanix.omabar.components = lib.mkOption {
             type = lib.types.attrsOf (lib.types.submodule {
               options.enable = lib.mkOption { type = lib.types.bool; default = true; };
@@ -267,6 +271,14 @@ func run() throws {
     checkEq(nixEval("omanix.omabar.showDate"), "false", "Swift setOmabarShowDate(false) -> nix eval reflects false")
     checkEq(nixEval("omanix.omabar.use24Hour"), "true", "Swift setOmabarUse24Hour(true) -> nix eval reflects true")
     checkEq(nixEval("omanix.omabar.clockFormat"), "analog", "Swift setOmabarClockFormat('analog') -> nix eval reflects 'analog'")
+
+    print("\n[3c] omabar tint (light glass blue hex / null)")
+    try store.setOmabarTint("#0A7CFF")
+    checkEq(store.readOption("omanix.omabar.tint") ?? "", "#0A7CFF", "readOption('omanix.omabar.tint') == '#0A7CFF'")
+    checkEq(nixEval("omanix.omabar.tint"), "#0A7CFF", "Swift setOmabarTint('#0A7CFF') -> nix eval reflects '#0A7CFF'")
+    try store.setOmabarTint(nil)
+    checkEq(store.readOption("omanix.omabar.tint") ?? "", "null", "setOmabarTint(nil) writes null -> readOption == 'null'")
+    checkEq(nixEval("omanix.omabar.tint"), "null", "Swift setOmabarTint(nil) -> nix eval reflects null")
 
     print("\n[3b] structured components (enable/showText/style) overrides flat")
     try store.setComponentEnabled("clock", false)

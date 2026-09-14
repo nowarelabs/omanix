@@ -92,6 +92,13 @@
       example = "analog";
     };
 
+    tint = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = "#0A7CFF";
+      description = "Tint color applied to every Omabar status item (icon + text) for a tinted-glass look. The default is the light glass blue of the omanix theme; set null for Apple's native template rendering (black in light mode, white in dark mode).";
+      example = "#64D2FF";
+    };
+
     # --- Structured declarative components (Phase 3: Module-Based Configuration) ---
     # The canonical, Nix-owned surface for bar layout. When set, `components.<name>.enable`
     # overrides the flat `show*` toggles above; this makes the entire desktop layout a

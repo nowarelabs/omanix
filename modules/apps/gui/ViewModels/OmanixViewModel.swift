@@ -304,6 +304,7 @@ final class OmanixViewModel: ObservableObject {
     @Published var mbShowBatteryPercent: Bool = true
     @Published var mbUse24Hour: Bool = false
     @Published var mbClockFormat: String = "digital"
+    @Published var mbGlassBlueTint: Bool = true
 
     /// Re-load pluginItems from the registry + persisted store (order + enabled).
     func loadPlugins() {
@@ -323,6 +324,7 @@ final class OmanixViewModel: ObservableObject {
         mbShowBatteryPercent = p.showBatteryPercent
         mbUse24Hour = p.use24Hour
         mbClockFormat = p.clockFormat
+        mbGlassBlueTint = RuntimeSettings.Omabar.load().tint != nil
     }
 
     /// Apply the display preferences to the running menu bar and the macOS auto-hide
@@ -374,6 +376,19 @@ final class OmanixViewModel: ObservableObject {
     }
     func setMBClockFormat(_ value: String) {
         applyMenuBarPrefs { $0.clockFormat = value }
+    }
+
+    /// Toggle the light glass blue tint on the menu bar items (writes omanix.omabar.tint).
+    func setMBGlassBlueTint(_ value: Bool) {
+        mbGlassBlueTint = value
+        do {
+            try store.setOmabarTint(value ? "#0A7CFF" : nil)
+            needsRebuild = true
+            OmabarManager.shared.apply()
+        } catch {
+            mbGlassBlueTint = !value
+            showMessage("Could not update menu bar tint: \(error.localizedDescription)", .error)
+        }
     }
 
     /// Move a plugin to a new index in the persisted order, then refresh the UI.

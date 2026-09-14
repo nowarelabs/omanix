@@ -22,7 +22,7 @@ STATE_FILE="$FLAKE_DIR/state.nix"
 schema() {
   case "$1" in
     omanix.omabar.enable|omanix.omabar.showClock|omanix.omabar.showBattery|omanix.omabar.showVolume|omanix.omabar.showVolumeText|omanix.omabar.showWifi|omanix.omabar.showApps|omanix.omabar.autoHide|omanix.omabar.showDate|omanix.omabar.showBatteryPercent|omanix.omabar.use24Hour) echo bool ;;
-    omanix.omabar.clockFormat) echo string ;;
+    omanix.omabar.clockFormat|omanix.omabar.tint) echo string ;;
     omanix.omabar.components.*.enable|omanix.omabar.components.*.showText) echo bool ;;
     omanix.omabar.components.*.style|omanix.omabar.components.*.colorScheme) echo string ;;
     omanix.omatiles.enable|omanix.omatiles.bindings|omanix.omatiles.enableEdgeDrag|omanix.omatiles.enableKeyboardShortcuts|omanix.omatiles.enableMargins) echo bool ;;
@@ -42,6 +42,10 @@ to_literal() {
         *) echo "ERROR: expected true|false for bool option" >&2; return 1 ;;
       esac ;;
     string)
+      # Bare `null` maps to a Nix null literal (nullable string options).
+      if [[ "$value" == "null" ]]; then
+        echo "null"; return 0
+      fi
       esc="${value//\\/\\\\}"
       esc="${esc//\"/\\\"}"
       echo "\"$esc\"" ;;
@@ -128,7 +132,7 @@ get_option() {
 list_options() {
   local path v
   printf '%-45s %-16s %s\n' "OPTION" "TYPE" "CURRENT"
-  for path in omanix.omabar.enable omanix.omabar.showClock omanix.omabar.showBattery omanix.omabar.showVolume omanix.omabar.showVolumeText omanix.omabar.showWifi omanix.omabar.showApps omanix.omabar.autoHide omanix.omabar.showDate omanix.omabar.showBatteryPercent omanix.omabar.use24Hour omanix.omabar.clockFormat \
+  for path in omanix.omabar.enable omanix.omabar.showClock omanix.omabar.showBattery omanix.omabar.showVolume omanix.omabar.showVolumeText omanix.omabar.showWifi omanix.omabar.showApps omanix.omabar.autoHide omanix.omabar.showDate omanix.omabar.showBatteryPercent omanix.omabar.use24Hour omanix.omabar.clockFormat omanix.omabar.tint \
                omanix.omabar.components.clock.enable omanix.omabar.components.clock.style omanix.omabar.components.battery.enable omanix.omabar.components.battery.showText omanix.omabar.components.volume.enable omanix.omabar.components.volume.showText omanix.omabar.components.wifi.enable omanix.omabar.components.apps.enable \
                omanix.omatiles.enable omanix.omatiles.bindings omanix.omatiles.enableEdgeDrag omanix.omatiles.enableKeyboardShortcuts omanix.omatiles.enableMargins \
                omanix.widgets.gui.enable omanix.widgets.store.enable omanix.widgets.pomodoro.enable omanix.widgets.clock.enable \

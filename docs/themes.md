@@ -90,6 +90,7 @@ Both `omanix.omabar.*` (status items in the native menu bar) and `omanix.omatile
 | `omanix.omabar.showVolume` | `bool` | Volume item (native volume icon hidden when shown) |
 | `omanix.omabar.showWifi` | `bool` | Wi-Fi item (native Wi-Fi icon hidden when shown) |
 | `omanix.omabar.showApps` | `bool` | Running-apps menu item |
+| `omanix.omabar.tint` | `null`/`#RRGGBB` | Tint every status item (icon + text) for a tinted-glass look. Default `#0A7CFF` (light glass blue); `null` = Apple's native template rendering |
 | `omanix.omatiles.enable` | `bool` | Enable the macOS Sequoia tiling system and start the ⌘⌥ bindings at login |
 | `omanix.omatiles.enableEdgeDrag` | `bool` | Drag a window to a screen edge to tile it |
 | `omanix.omatiles.enableKeyboardShortcuts` | `bool` | The system ⌃⌥ + arrow tiling shortcuts |

@@ -101,6 +101,13 @@ struct OmabarView: View {
                         icon: "clock",
                         isOn: Binding(get: { vm.mbUse24Hour }, set: { vm.setMBUse24Hour($0) })
                     )
+                    divider
+                    PrefToggleRow(
+                        title: "Light glass blue tint",
+                        description: "Tint the menu bar icons and text in the glass blue accent",
+                        icon: "drop.fill",
+                        isOn: Binding(get: { vm.mbGlassBlueTint }, set: { vm.setMBGlassBlueTint($0) })
+                    )
                 }
                 .background(OC.cardBackground)
                 .overlay(RoundedRectangle(cornerRadius: OMetrics.cardCorner).stroke(OC.border, lineWidth: 1))
