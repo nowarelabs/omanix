@@ -127,7 +127,7 @@ if [[ -n "$TARGET_REF" ]]; then
 
   # Machine-owned state file is gitignored; back it up so a checkout of an older
   # tree (which may still track state.nix) cannot clobber local machine values.
-  "$FLAKE_DIR/libexec/omanix-state.sh" ensure_state
+  "$FLAKE_DIR/libexec/omanix-state.sh" ensure
   local STATE_BAK
   STATE_BAK="$(mktemp)"
   cp state.nix "$STATE_BAK" 2>/dev/null || true
@@ -197,7 +197,7 @@ else
   # Machine-owned files (state.nix, version) are gitignored, so they are never
   # stashed or merged — a pull can no longer conflict on them. --autostash covers
   # any genuine local edits (e.g. configuration.nix) and restores them on success.
-  "$FLAKE_DIR/libexec/omanix-state.sh" ensure_state
+  "$FLAKE_DIR/libexec/omanix-state.sh" ensure
 
   # Pull with rebase
   log_info "update" "pulling latest from origin/main"
