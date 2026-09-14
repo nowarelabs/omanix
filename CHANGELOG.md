@@ -2,6 +2,13 @@
 
 ## 0.3.0-dev (2026-09-14)
 
+### Native macOS menu bar (spacebar removed); Omabar archived in ice/
+
+- **Spacebar removed:** the external `spacebar` daemon, the `omanix.spacebar.*` options, and `modules/darwin/spacebar.nix` (nix-darwin `services.spacebar`) are gone from the build — the menu bar is now the native macOS menu bar.
+- **`_HIHideMenuBar` now false:** the native macOS menu bar is shown (no custom bar daemon draws over it).
+- **Archived in `ice/`:** the old in-app Omabar plugin-host code is under `ice/omabar/` (restored from commit 8991666), and `spacebar.nix` under `ice/spacebar/` — none of it is in the build chain.
+- **Docs/tests updated:** themes.md/conventions/principles/philosophies and the agent skill now describe the native menu bar; tests updated.
+
 ### Spacebar replaces the in-app Omabar module
 
 - **Spacebar daemon:** the menu bar is now the external `spacebar` daemon (`modules/darwin/spacebar.nix` → nix-darwin `services.spacebar`), fully configured from new `omanix.spacebar.*` options (enable, position, display, height, showClock, clockFormat, showPower, showTitle, showSpaces, showDnd, paddingLeft/Right, spacingLeft/Right, textFont, iconFont). Theme colors map to spacebar's `0xffRRGGBB` form (`background_color`/`foreground_color` from `background`/`foreground`, icon colors from `accent`); bar font is `font-awesome` installed via `fonts.packages`; native Control Center clock/battery hidden when the corresponding items are shown.

@@ -175,8 +175,8 @@ ensure_state_file() {
 }
 
 # Drop any entry whose option path is not in the schema. After an upgrade that
-# renames/removes options (e.g. omabar -> spacebar), stale keys would otherwise
-# fail the rebuild with "option `x' does not exist".
+# renames/removes options, stale keys would otherwise fail the rebuild with
+# "option `x' does not exist".
 prune_state() {
   local clean
   clean="$(mktemp)"

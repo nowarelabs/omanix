@@ -22,15 +22,14 @@ omanix/                              # flake root — cloned to ~/.omanix (begin
 │   └── common.nix                   # shared between darwin + future linux (theme, widgets, add/remove helpers)
 ├── modules/
 │   ├── core/                        # shared: nix.enable, home-manager, fonts — you never touch
-│   ├── darwin/                      # mac-only: homebrew (pristine), pam Touch ID, system.defaults, spacebar, omatiles
+│   ├── darwin/                      # mac-only: homebrew (pristine), pam Touch ID, system.defaults, omatiles
 │   │   ├── homebrew.nix
-│   │   ├── spacebar.nix             # menu bar via the external `spacebar` daemon (launchd agent, config emitted as `spacebar -m config` lines)
 │   │   ├── omatiles.nix             # native window tiling (launchd agent om.omanix.omatiles → Omanix.app --omatiles)
 │   │   └── pam.nix
 │   ├── linux/                       # future linux: hyprland, quickshell, sddm — not evaluated on darwin, same omanix.theme/widgets
 │   │   ├── hyprland.nix
 │   │   └── quickshell.nix
-│   ├── desktop/                     # branch: if isDarwin then darwin/spacebar.nix + omatiles.nix else linux/hyprland.nix — you just set omanix.theme
+│   ├── desktop/                     # branch: if isDarwin then darwin/omatiles.nix else linux/hyprland.nix — you just set omanix.theme
 │   ├── theme/                       # themed.nix: themes/*/colors.toml + default/themed/*.tpl → /nix/store
 │   ├── widgets/                     # omanix.widgets.* — pomodoro etc. (launchd on mac, systemd on linux via same option)
 │   │   ├── pomodoro.nix             # uses lib/mkWidget: launchd timer + optional Swift app
@@ -80,13 +79,12 @@ omanix/                              # flake root — cloned to ~/.omanix (begin
   # ~/.omanix/flake.nix — the only file you edit
   omanix.theme = "tokyo-night";                 # not themes/tokyo-night/colors.toml
   omanix.omatiles.enableMargins = true;          # not a tiling config file
-  omanix.spacebar.showClock = true;              # not a menubar app / remote process
   omanix.widgets.pomodoro.enable = true;        # not git clone manifest.json
   omanix.widgets.pomodoro.enable = true;        # Swift app → /Applications/Pomodoro.app via lib/mkApp (launchd on mac, systemd on linux)
 }
 ```
 
-No raw escape hatch for the desktop in normal use: bar/tiling are `omanix.spacebar.*` / `omanix.omatiles.*` options — the bar is served by the external `spacebar` daemon configured from Nix, tiling by the native Omatiles module. If you need a raw file to make something work, the option is missing — add the option, don't document a raw edit. This is linted: `tests/cli` fails if a home config contains `xdg.configFile.*.text` that duplicates an existing `omarchy`/`omanix` option.
+No raw escape hatch for the desktop in normal use: tiling is `omanix.omatiles.*` options — the menu bar is the native macOS menu bar, tiling by the native Omatiles module. If you need a raw file to make something work, the option is missing — add the option, don't document a raw edit. This is linted: `tests/cli` fails if a home config contains `xdg.configFile.*.text` that duplicates an existing `omarchy`/`omanix` option.
 
 Installer (`curl | sh`):
 
@@ -113,9 +111,9 @@ esac
 
 ---
 
-## 3. Bar + Tiling — spacebar (External, Declared) + Omatiles (Native)
+## 3. Menu Bar + Tiling — Native macOS Menu Bar + Omatiles (Native)
 
-Hyprland tiling is rebuilt as the native **Omatiles** Swift module (`Modules/Omatiles/OmatilesEngine.swift`); the Quickshell bar is served by the external **spacebar** daemon (`modules/darwin/spacebar.nix` → nix-darwin `services.spacebar`). No `lib/hypr-to-aerospace.nix`, no `aerospace`, no `sketchybar` — spacebar is the dependable nixpkgs bar binary, configured entirely from Nix.
+Hyprland tiling is rebuilt as the native **Omatiles** Swift module (`Modules/Omatiles/OmatilesEngine.swift`); the menu bar stays the **native macOS menu bar** (the old bar daemon and Omabar plugin-host code are archived in `ice/`). No `lib/hypr-to-aerospace.nix`, no `aerospace`, no `sketchybar`.
 
 | Omarchy (Hyprland) | Omanix (native module) |
 |---|---|
@@ -127,17 +125,16 @@ If no native equivalent, delete shim and document in `docs/porting.md`.
 
 ---
 
-## 4. Spacebar + Omatiles — Declarative, Themed from the Flake
+## 4. Tiling — Declarative, Themed from the Flake
 
-`lib/themed.nix` reads `themes/<name>/colors.toml` (`accent`, `background`, `foreground`…) and writes `~/.config/omanix/theme.json` (full palette for SwiftUI) at build time. The user toggles the modules via options — the tiling renders inside the Omanix app, the bar is wholly configured from Nix (`spacebar -m config` lines with theme colors), not via a themed config file:
+`lib/themed.nix` reads `themes/<name>/colors.toml` (`accent`, `background`, `foreground`…) and writes `~/.config/omanix/theme.json` (full palette for SwiftUI) at build time. The user toggles the modules via options — the tiling renders inside the Omanix app, the menu bar is the native macOS menu bar:
 
 ```nix
 omanix.theme = "tokyo-night";
-omanix.spacebar = { showClock = true; showPower = true; };
 omanix.omatiles = { enableEdgeDrag = true; enableMargins = false; };
 ```
 
-`spacebar.nix` maps `background`/`foreground`/`accent` → `0xffRRGGBB` for `background_color`/`foreground_color`/`clock_icon_color` etc., installs the bar icon font (`fonts.packages = [ pkgs.font-awesome ]`), and hides the native Control Center clock/battery when the corresponding items are shown. No `sketchybar/plugins/*.nix` exists anymore.
+The menu bar is the native macOS menu bar; the old bar daemon module is archived at `ice/spacebar/spacebar.nix`. No `sketchybar/plugins/*.nix` exists anymore.
 
 ---
 
@@ -176,7 +173,7 @@ Rules:
 - No `manifest.json`. No `omarchy-plugin-add` git clone. No `home.activation` bash that `mkdir -p ~/.config/omarchy/plugins && git clone`.
 - Publishing: author publishes a flake with `omanixWidgets.pomodoro` or `packages.pomodoro`. User adds `inputs.pomodoro.url = "github:you/pomodoro-omanix"` and enables `omanix.widgets.pomodoro.enable = true` + rebuild. `omanix add pomodoro` can automate the `inputs` edit (see 6).
 - Build uses `nixpkgs` Swift toolchain or `xcodebuild` wrapper; result is a derivation in `/nix/store/...-Pomodoro.app`, symlinked to `/Applications/Pomodoro.app` via activation. Uninstall unlinks it (Pristine, Principles 12).
-- `launchd` plists are similarly generated — never hand-written to `~/Library/LaunchAgents`. (The bar is the spacebar daemon via `services.spacebar`; widgets live as launchd agents, not sketchybar plugins.)
+- `launchd` plists are similarly generated — never hand-written to `~/Library/LaunchAgents`. (The menu bar is the native macOS menu bar; widgets live as launchd agents, not sketchybar plugins.)
 
 ---
 
@@ -247,7 +244,7 @@ New `brews`/`casks` need comment ` # not in nixpkgs: <reason>`. `brew install` o
 
 ## 9. Config Injection — No One Opens a .config to Understand
 
-`default/themed/*.tpl` is not a user surface. User never edits a tpl or a generated bar/tiling file — bar and tiling options (`omanix.spacebar.*`, `omanix.omatiles.*`) are set in Nix and read at runtime (bar by the spacebar daemon, tiling by the Omanix app via `RuntimeSettings` + `theme.json`).
+`default/themed/*.tpl` is not a user surface. User never edits a tpl or a generated tiling file — tiling options (`omanix.omatiles.*`) are set in Nix and read at runtime (by the Omanix app via `RuntimeSettings` + `theme.json`). The menu bar is the native macOS menu bar.
 
 **Approved: Forbid duplicates (strict).** `xdg.configFile."...".text` is a privileged escape hatch for truly novel software with no Omanix abstraction. `tests/cli` **fails** (not warns) if a raw config duplicates an existing `omarchy`/`omanix` option. If you need a raw file to make it work, add the typed option — don't document a raw edit.
 
@@ -324,7 +321,7 @@ Omanix is ready for `Claude Code`/`OpenCode` to drop a pomodoro that *just appea
    - **Permanent impure (fast, no lock, instant, no generation):** Keep `overlays/pomodoro/` and `omanix rebuild` (no `--preview` flag needed after approval) — `configuration.nix` keeps importing `overlays/*` impurely every rebuild, no `flake.lock` entry, no generation beyond overlay file existence. Agent documents `overlays/pomodoro/README.md: impure — delete folder to remove`. Allowed for throwaway AI experiments; `omanix uninstall` still deletes `overlays/` so pristine holds, but `rollback` is `rm -rf overlays/pomodoro && omanix rebuild --preview`.
 4. **Undo:** Pure: `omanix rebuild --rollback` or `omanix remove pomodoro`; impure: `rm -rf overlays/pomodoro && omanix rebuild --preview`.
 
-**Why not friend's *only* `--impure` forever:** We keep preview speed but make persistence a choice — pure for teams/Store visibility/rollback, impure for rapid AI iteration where lock churn is unwanted. Linters are ready day one, so agent never writes invalid Nix. Linux path reuses same `SKILL.md` but picks `qmlSrc` + `systemd` branch — `lib/mkWidget` abstracts `launchd` vs `systemd`. The mac bar is the external spacebar daemon; tiling is native Swift; future Linux uses Quickshell.
+**Why not friend's *only* `--impure` forever:** We keep preview speed but make persistence a choice — pure for teams/Store visibility/rollback, impure for rapid AI iteration where lock churn is unwanted. Linters are ready day one, so agent never writes invalid Nix. Linux path reuses same `SKILL.md` but picks `qmlSrc` + `systemd` branch — `lib/mkWidget` abstracts `launchd` vs `systemd`. The mac menu bar is the native macOS menu bar; tiling is native Swift; future Linux uses Quickshell.
 
 **Contributor rule for agent authors:** Use `pkgs` deps (`pkgs.libnotify`, `pkgs.mpv`), not `which mpv`; use `${config.lib.omanixTheme.colors.accent}`, not hardcoded `#7aa2f7`; never write to `/nix/store` or `~/.config` outside `overlays/`.
 

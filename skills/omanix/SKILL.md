@@ -7,8 +7,8 @@
 
 You are building for Omanix, a declarative desktop for macOS (and future Linux).
 Everything is a Nix derivation. You write Nix modules, not bash scripts.
-The macOS menu bar is the external `spacebar` daemon (configured declaratively from
-`omanix.spacebar.*` in `modules/darwin/spacebar.nix`) and window tiling is the native
+The macOS menu bar is the native macOS menu bar (no bar daemon or bar options exist;
+the old bar daemon code is archived in `ice/`) and window tiling is the native
 Omatiles module (`Modules/Omatiles/*`) — never add a sketchybar/aerospace config.
 
 ### Core Helpers
@@ -25,7 +25,7 @@ Never hardcode `#7aa2f7` — always use `${config.lib.omanixTheme.colors.accent}
 
 ### Widget Pattern
 
-Widgets are `launchd` agents on mac (systemd on future linux) — optionally a Swift app via `lib/mkApp`. Bar/tiling items are NOT sketchybar plugins; the menu bar itself is spacebar (`omanix.spacebar.*`).
+Widgets are `launchd` agents on mac (systemd on future linux) — optionally a Swift app via `lib/mkApp`. Bar/tiling items are NOT sketchybar plugins; the menu bar is the native macOS menu bar (no bar daemon options exist).
 
 ```nix
 { config, lib, pkgs, ... }:
