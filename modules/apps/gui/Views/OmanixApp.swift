@@ -1,9 +1,9 @@
 // Views/OmanixApp.swift
 // Omanix — main app entry point. Creates the ViewModel once and injects it.
-// Also acts as the Omatiles module host: launchd starts this same binary with
+// Also acts as the module host: launchd starts this same binary with
 // "--omatiles" (see modules/darwin/omatiles.nix), and normal launches start
-// whichever modules are enabled in configuration. Spacebar is fully external
-// (its own launchd agent via modules/darwin/spacebar.nix), so it is not hosted here.
+// whichever modules are enabled in configuration. The macOS menu bar is the
+// native one — nothing is served in the menu bar, so nothing is hosted here.
 
 import SwiftUI
 import AppKit

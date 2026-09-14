@@ -62,28 +62,6 @@ struct WidgetItem: Identifiable {
     var isEnabled: Bool
 }
 
-// MARK: - Spacebar (spacebar daemon) state
-
-/// Mirrors `omanix.spacebar.*` from configuration.nix.
-struct SpacebarState: Equatable {
-    var enable = true
-    var position = "top"
-    var display = "all"
-    var height = 26
-    var showClock = true
-    var clockFormat = "%R"
-    var showPower = true
-    var showTitle = false
-    var showSpaces = false
-    var showDnd = false
-    var paddingLeft = 20
-    var paddingRight = 20
-    var spacingLeft = 15
-    var spacingRight = 15
-    var textFont = "Helvetica Neue:Regular:12.0"
-    var iconFont = "Font Awesome 7 Free:Solid:12.0"
-}
-
 // MARK: - Omatiles (bridge onto macOS' built-in tiling) state
 
 /// Mirrors `omanix.omatiles.*` from configuration.nix.

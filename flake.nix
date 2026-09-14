@@ -44,7 +44,6 @@
           ./modules/darwin/services.nix  # redis, postgresql
           ./modules/darwin/env.nix       # environment variables
           ./modules/darwin/shell.nix     # zsh config, aliases, direnv
-          ./modules/darwin/spacebar.nix   # Omanix Spacebar (spacebar daemon, omanix.spacebar.*) — full-width status bar
           ./modules/darwin/omatiles.nix   # Omatiles (native Sequoia tiling, omanix.omatiles.*)
 
           # Apps

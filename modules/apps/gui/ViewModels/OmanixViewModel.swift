@@ -193,9 +193,7 @@ final class OmanixViewModel: ObservableObject {
     // MARK: - Widgets
 
     func loadWidgets() {
-        let barState = store.currentSpacebarState()
         let tilesState = store.currentOmatilesState()
-        spacebarEnabled = barState.enable
         omatilesEnabled = tilesState.enable
         omatilesBindings = tilesState.bindings
         omatilesEdgeDrag = tilesState.enableEdgeDrag
@@ -204,7 +202,6 @@ final class OmanixViewModel: ObservableObject {
 
         widgets = [
             WidgetItem(id: "store", name: "Omanix", icon: "bag", isEnabled: true),
-            WidgetItem(id: "spacebar", name: "Spacebar", icon: "rectangle.topthird.inset.filled", isEnabled: spacebarEnabled),
             WidgetItem(id: "omatiles", name: "Omatiles", icon: "rectangle.3.group", isEnabled: omatilesEnabled),
             WidgetItem(id: "pomodoro", name: "Pomodoro Timer", icon: "timer", isEnabled: false),
             WidgetItem(id: "clock", name: "Clock", icon: "clock", isEnabled: false),
@@ -213,13 +210,9 @@ final class OmanixViewModel: ObservableObject {
 
     func toggleWidget(_ widget: WidgetItem) {
         guard let i = widgets.firstIndex(where: { $0.id == widget.id }) else { return }
-        // Spacebar + Omatiles are desktop modules (omanix.spacebar./omanix.omatiles.),
-        // handled here so you can switch them on/off right from the Widgets page.
+        // Omatiles is a desktop module (omanix.omatiles.*), handled here so you can
+        // switch it on/off right from the Widgets page.
         switch widget.id {
-        case "spacebar":
-            setSpacebarEnabled(!widgets[i].isEnabled)
-            widgets[i].isEnabled = spacebarEnabled
-            return
         case "omatiles":
             setOmatilesEnabled(!widgets[i].isEnabled)
             widgets[i].isEnabled = omatilesEnabled
@@ -235,19 +228,6 @@ final class OmanixViewModel: ObservableObject {
             widgets[i].isEnabled.toggle()
             showMessage("Could not update widget: \(error.localizedDescription)", .error)
         }
-    }
-
-    // MARK: - Spacebar (spacebar daemon status bar, mirrors omanix.spacebar.*)
-
-    @Published var spacebarEnabled: Bool = true
-
-    /// Spacebar runs as its own launchd user agent configured from Nix
-    /// (modules/darwin/spacebar.nix), so there is no live runtime to poke — toggling
-    /// enable re-marks the system for rebuild, which (re)creates the agent.
-    func setSpacebarEnabled(_ enabled: Bool) {
-        spacebarEnabled = enabled
-        do { try store.setSpacebarEnabled(enabled); needsRebuild = true }
-        catch { spacebarEnabled = !enabled; showMessage("Could not set Spacebar: \(error.localizedDescription)", .error) }
     }
 
     // MARK: - Omatiles (bridge onto macOS' built-in tiling, mirrors omanix.omatiles.*)

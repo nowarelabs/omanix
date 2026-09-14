@@ -1,11 +1,10 @@
 // Modules/RuntimeSettings.swift
-// Runtime reads of the declarative `omanix.spacebar.*` / `omanix.omatiles.*` options
-// from ~/.omanix/state.nix (machine-written) then configuration.nix. The GUI writes
-// these options through `omanix state set` -> state.nix; this module is what lets the
-// runtimes obey them without a rebuild (and what launchd module-mode uses directly).
+// Runtime reads of the declarative `omanix.omatiles.*` options from ~/.omanix/state.nix
+// (machine-written) then configuration.nix. The GUI writes these options through
+// `omanix state set` -> state.nix; this module is what lets the runtimes obey them
+// without a rebuild (and what launchd module-mode uses directly).
 //
-// Spacebar is configured from Nix at build time (modules/darwin/spacebar.nix), so the
-// GUI only reads state for parity checks and falls back to the same defaults. Omatiles
+// The macOS menu bar is the native macOS menu bar — no custom bar daemon. Omatiles
 // bridges onto macOS Sequoia's built-in tiling, which owns the look & feel.
 //
 // Foundation ONLY — no SwiftUI/AppKit.

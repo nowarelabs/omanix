@@ -27,9 +27,9 @@ if [[ ! -e "$APP_BUNDLE/Contents/MacOS/Omanix" ]]; then
   echo "Run 'omanix rebuild' first" >&2
   exit 1
 fi
-# -n: force a fresh GUI instance. The spacebar/omatiles launchd agents run the
-# same bundle, so LaunchServices would otherwise route the open event to that
-# CLI-mode process (error -600) instead of launching the Store.
+# -n: force a fresh GUI instance. The omatiles launchd agent runs the same bundle,
+# so LaunchServices would otherwise route the open event to that CLI-mode process
+# (error -600) instead of launching the Store.
 open -n -a "Omanix" 2>/dev/null || {
   log_error "could not open Omanix app"
   exit 1

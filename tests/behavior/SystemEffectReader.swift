@@ -122,10 +122,6 @@ enum SystemEffectReader {
 
     // MARK: - Omanix declarative state (via Omanix reader)
 
-    static func spacebarState() -> SpacebarState {
-        Omanix().currentSpacebarState()
-    }
-
     static func omatilesState() -> OmatilesState {
         Omanix().currentOmatilesState()
     }

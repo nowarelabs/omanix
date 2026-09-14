@@ -2,9 +2,10 @@
 # Takes { name, launchdConfig, systemdConfig, ... } → module
 # Branches on isDarwin → launchd.user.agents
 # Theme tokens ${colors.accent} injected at eval
-# The macOS menu bar is served by the external `spacebar` daemon (configured from
-# Nix in modules/darwin/spacebar.nix) and window tiling by the native Omatiles
-# module — no sketchybar item generation here.
+# The macOS menu bar is the native macOS menu bar (full-width bar daemons and the
+# older in-app Omabar are archived under ice/ — not part of the active chain).
+# Window tiling is served by the native Omatiles module — no sketchybar item
+# generation here.
 # See conventions.md:5 and principles.md:10
 { lib, pkgs, config }:
 

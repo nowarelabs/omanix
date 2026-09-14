@@ -127,11 +127,7 @@ enum UserActionSimulator {
         if !result { throw UserActionError.failed("hotkey binding \(raw) did not move a window (engine not started?)") }
     }
 
-    // MARK: - Spacebar / Omatiles declarative toggles (via Omanix)
-
-    static func setSpacebar(_ key: String, to value: Bool) throws {
-        try Omanix().setSpacebarOption(key, value ? "true" : "false")
-    }
+    // MARK: - Omatiles declarative toggles (via Omanix)
 
     static func setOmatiles(_ key: String, to value: Bool) throws {
         try Omanix().setOmatilesOption(key, value ? "true" : "false")

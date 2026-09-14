@@ -7,7 +7,7 @@
 
   system.defaults = {
     NSGlobalDomain = {
-      _HIHideMenuBar = true;
+      _HIHideMenuBar = false;
       AppleEnableMouseSwipeNavigateWithScrolls = true;
       AppleEnableSwipeNavigateWithScrolls = false;
       AppleFontSmoothing = 2;

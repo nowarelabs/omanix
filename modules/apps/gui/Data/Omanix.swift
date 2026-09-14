@@ -287,27 +287,6 @@ final class Omanix {
         return "tokyo-night"
     }
 
-    func setSpacebarOption(_ key: String, _ value: String) throws {
-        try setState("omanix.spacebar.\(key)", value)
-    }
-
-    func setSpacebarEnabled(_ v: Bool) throws { try setSpacebarOption("enable", v ? "true" : "false") }
-    func setSpacebarShowClock(_ v: Bool) throws { try setSpacebarOption("showClock", v ? "true" : "false") }
-    func setSpacebarShowPower(_ v: Bool) throws { try setSpacebarOption("showPower", v ? "true" : "false") }
-    func setSpacebarShowTitle(_ v: Bool) throws { try setSpacebarOption("showTitle", v ? "true" : "false") }
-    func setSpacebarShowSpaces(_ v: Bool) throws { try setSpacebarOption("showSpaces", v ? "true" : "false") }
-    func setSpacebarShowDnd(_ v: Bool) throws { try setSpacebarOption("showDnd", v ? "true" : "false") }
-    func setSpacebarPosition(_ v: String) throws { try setSpacebarOption("position", v) }
-    func setSpacebarDisplay(_ v: String) throws { try setSpacebarOption("display", v) }
-    func setSpacebarHeight(_ v: Int) throws { try setSpacebarOption("height", "\(v)") }
-    func setSpacebarClockFormat(_ v: String) throws { try setSpacebarOption("clockFormat", v) }
-    func setSpacebarPaddingLeft(_ v: Int) throws { try setSpacebarOption("paddingLeft", "\(v)") }
-    func setSpacebarPaddingRight(_ v: Int) throws { try setSpacebarOption("paddingRight", "\(v)") }
-    func setSpacebarSpacingLeft(_ v: Int) throws { try setSpacebarOption("spacingLeft", "\(v)") }
-    func setSpacebarSpacingRight(_ v: Int) throws { try setSpacebarOption("spacingRight", "\(v)") }
-    func setSpacebarTextFont(_ v: String) throws { try setSpacebarOption("textFont", v) }
-    func setSpacebarIconFont(_ v: String) throws { try setSpacebarOption("iconFont", v) }
-
     func setOmatilesOption(_ key: String, _ value: String) throws {
         try setState("omanix.omatiles.\(key)", value)
     }
@@ -357,28 +336,6 @@ final class Omanix {
     func readBoolOption(_ option: String) -> Bool? {
         guard let v = readOption(option) else { return nil }
         return v == "true"
-    }
-
-    /// Reads the current `omanix.spacebar.*` values with defaults for anything unset.
-    func currentSpacebarState() -> SpacebarState {
-        SpacebarState(
-            enable: readBoolOption("omanix.spacebar.enable") ?? true,
-            position: readOption("omanix.spacebar.position") ?? "top",
-            display: readOption("omanix.spacebar.display") ?? "all",
-            height: Int(readOption("omanix.spacebar.height") ?? "") ?? 26,
-            showClock: readBoolOption("omanix.spacebar.showClock") ?? true,
-            clockFormat: readOption("omanix.spacebar.clockFormat") ?? "%R",
-            showPower: readBoolOption("omanix.spacebar.showPower") ?? true,
-            showTitle: readBoolOption("omanix.spacebar.showTitle") ?? false,
-            showSpaces: readBoolOption("omanix.spacebar.showSpaces") ?? false,
-            showDnd: readBoolOption("omanix.spacebar.showDnd") ?? false,
-            paddingLeft: Int(readOption("omanix.spacebar.paddingLeft") ?? "") ?? 20,
-            paddingRight: Int(readOption("omanix.spacebar.paddingRight") ?? "") ?? 20,
-            spacingLeft: Int(readOption("omanix.spacebar.spacingLeft") ?? "") ?? 15,
-            spacingRight: Int(readOption("omanix.spacebar.spacingRight") ?? "") ?? 15,
-            textFont: readOption("omanix.spacebar.textFont") ?? "Helvetica Neue:Regular:12.0",
-            iconFont: readOption("omanix.spacebar.iconFont") ?? "Font Awesome 7 Free:Solid:12.0"
-        )
     }
 
     /// Reads the current `omanix.omatiles.*` values with defaults for anything unset.

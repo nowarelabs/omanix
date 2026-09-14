@@ -209,8 +209,8 @@ else
     exit 1
   fi
 
-  # Drop stale option keys (e.g. the omabar -> spacebar rename) from the rewritten
-  # upstream so the rebuild can never trip on options that no longer exist.
+  # Drop stale option keys that no longer exist upstream (e.g. after an option
+  # rename) so the rebuild can never trip on options that no longer exist.
   if ! "$FLAKE_DIR/libexec/omanix-state.sh" prune >/dev/null 2>&1; then
     log_warn "update" "state prune failed; continuing"
   fi

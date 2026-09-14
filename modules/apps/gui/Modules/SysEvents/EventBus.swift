@@ -8,7 +8,7 @@
 // exactly the events it cares about.
 //
 // The old Omabar status-item sources (CoreAudio, IOKit, CoreWLAN, clock ticker)
-// are gone — the Spacebar daemon owns clock/power/DND rendering now, so this bus
+// are gone — the native macOS menu bar handles status items now, so this bus
 // carries only window lifecycle events.
 //
 // Thread model: publishers may call `publish` from any queue. Delivery always hops

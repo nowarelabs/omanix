@@ -23,9 +23,6 @@ STATE_FILE="$FLAKE_DIR/state.nix"
 # Keep in sync with the lib.mkOption declarations in modules/*/options.nix.
 schema() {
   case "$1" in
-    omanix.spacebar.enable|omanix.spacebar.showClock|omanix.spacebar.showPower|omanix.spacebar.showTitle|omanix.spacebar.showSpaces|omanix.spacebar.showDnd) echo bool ;;
-    omanix.spacebar.position|omanix.spacebar.display|omanix.spacebar.clockFormat|omanix.spacebar.textFont|omanix.spacebar.iconFont) echo string ;;
-    omanix.spacebar.height|omanix.spacebar.paddingLeft|omanix.spacebar.paddingRight|omanix.spacebar.spacingLeft|omanix.spacebar.spacingRight) echo int ;;
     omanix.omatiles.enable|omanix.omatiles.bindings|omanix.omatiles.enableEdgeDrag|omanix.omatiles.enableKeyboardShortcuts|omanix.omatiles.enableMargins) echo bool ;;
     omanix.widgets.gui.enable|omanix.widgets.store.enable|omanix.widgets.pomodoro.enable|omanix.widgets.clock.enable) echo bool ;;
     omanix.theme) echo string ;;
@@ -155,8 +152,7 @@ get_option() {
 list_options() {
   local path v
   printf '%-45s %-16s %s\n' "OPTION" "TYPE" "CURRENT"
-  for path in omanix.spacebar.enable omanix.spacebar.position omanix.spacebar.display omanix.spacebar.height omanix.spacebar.showClock omanix.spacebar.clockFormat omanix.spacebar.showPower omanix.spacebar.showTitle omanix.spacebar.showSpaces omanix.spacebar.showDnd omanix.spacebar.paddingLeft omanix.spacebar.paddingRight omanix.spacebar.spacingLeft omanix.spacebar.spacingRight omanix.spacebar.textFont omanix.spacebar.iconFont \
-               omanix.omatiles.enable omanix.omatiles.bindings omanix.omatiles.enableEdgeDrag omanix.omatiles.enableKeyboardShortcuts omanix.omatiles.enableMargins \
+  for path in omanix.omatiles.enable omanix.omatiles.bindings omanix.omatiles.enableEdgeDrag omanix.omatiles.enableKeyboardShortcuts omanix.omatiles.enableMargins \
                omanix.widgets.gui.enable omanix.widgets.store.enable omanix.widgets.pomodoro.enable omanix.widgets.clock.enable \
                omanix.theme; do
     v="$(get_option "$path")"
