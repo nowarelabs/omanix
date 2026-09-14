@@ -12,6 +12,8 @@
 #   omanix state get <option.path>           Print current value (or "unset")
 #   omanix state list                        List known options + current values
 #   omanix state reset                       Empty state.nix back to defaults
+#   omanix state ensure                      Create state.nix if missing (machine-owned, gitignored)
+#   omanix state prune                       Drop stale option paths, if any forgot to disappear
 set -euo pipefail
 
 FLAKE_DIR="${FLAKE_DIR:-$HOME/.omanix}"
@@ -58,6 +60,21 @@ to_literal() {
   esac
 }
 
+# Is an existing Nix literal well-formed for its type? Used to drop corrupt
+# leftovers (e.g. an unterminated string) when regenerating state.nix.
+literal_ok() {
+  local type="$1" lit="$2"
+  case "$type" in
+    bool)
+      [[ "$lit" == "true" || "$lit" == "false" ]] ;;
+    string)
+      [[ "$lit" == "null" || ( "$lit" =~ ^\".*\"$ ) ]] ;;
+    int)
+      [[ "$lit" =~ ^[0-9]+$ ]] ;;
+    *) return 1 ;;
+  esac
+}
+
 # --- state.nix IO --------------------------------------------------------------
 # Read existing entries from state.nix as lines: `path<TAB>literal`.
 read_entries() {
@@ -95,14 +112,15 @@ set_option() {
   [[ -z "$type" ]] && { echo "ERROR: unknown option '$path'. Run 'omanix state list'." >&2; exit 1; }
   literal="$(to_literal "$type" "$value")" || exit 1
 
-  # Build an updated entries list (existing paths preserved, target updated/added).
+  # Build an updated entries list (known paths preserved, target updated/added;
+  # stale paths dropped so one set also heals state.nix after option renames).
   local entries updated found=0
   entries="$(read_entries)"
   updated="$(mktemp)"
   while IFS=$'\t' read -r p l; do
     if [[ "$p" == "$path" ]]; then
       printf '%s\t%s\n' "$path" "$literal"; found=1
-    elif [[ -n "$p" ]]; then
+    elif [[ -n "$p" ]] && [[ -n "$(schema "$p")" ]] && literal_ok "$(schema "$p")" "$l"; then
       printf '%s\t%s\n' "$p" "$l"
     fi
   done <<< "$entries" > "$updated"
@@ -151,6 +169,32 @@ reset_state() {
   echo "state.nix reset to defaults."
 }
 
+# Create state.nix from the default template if missing. state.nix is a
+# machine-owned, gitignored file — never tracked/committed.
+ensure_state_file() {
+  if [[ ! -f "$STATE_FILE" ]]; then
+    write_state <(printf '')
+    echo "state: created $STATE_FILE"
+  fi
+}
+
+# Drop any entry whose option path is not in the schema. After an upgrade that
+# renames/removes options (e.g. omabar -> spacebar), stale keys would otherwise
+# fail the rebuild with "option `x' does not exist".
+prune_state() {
+  local clean
+  clean="$(mktemp)"
+  while IFS=$'\t' read -r p l; do
+    if [[ -n "$p" ]] && [[ -n "$(schema "$p")" ]] && literal_ok "$(schema "$p")" "$l"; then
+      printf '%s\t%s\n' "$p" "$l"
+    fi
+  done <<< "$(read_entries)" > "$clean"
+  sort -t$'\t' -k1,1 "$clean" -o "$clean"
+  write_state "$clean"
+  rm -f "$clean"
+  echo "state: pruned to schema-known options."
+}
+
 # --- Live apply ---------------------------------------------------------------
 # Applies the resolved declarative state to the running system NOW, without waiting for
 # a rebuild. This is the Nix-owned live-apply path: the actual OS mutation (macro
@@ -195,6 +239,8 @@ case "${1:-help}" in
   get)   get_option "${2:-}" ;;
   list)  list_options ;;
   reset) reset_state ;;
+  ensure) ensure_state_file ;;
+  prune) prune_state ;;
   apply) apply_area "${2:-}" ;;
   help|--help|-h|"")
     cat <<'EOF'
@@ -205,6 +251,8 @@ Usage: omanix state <subcommand> [args]
   apply <area>                Apply resolved declarative state to the live system NOW
                               (currently supported: omatiles). No rebuild needed.
   reset                       Empty state.nix back to defaults.
+  ensure                      Create state.nix from the default template if missing.
+  prune                       Drop stale option paths that no longer exist in the schema.
 EOF
     ;;
   *) echo "Unknown state subcommand: $1" >&2; exit 1 ;;

@@ -1,6 +1,8 @@
 #!/bin/bash
 # libexec/omanix-update.sh — update Omanix to latest or specific version
-# Handles smart merge: stashes local changes, pulls, pops stash
+# Machine-owned files (state.nix, version) are gitignored, so the pull can never
+# conflict on them; genuine local edits (e.g. configuration.nix) are handled with
+# `--autostash`. Stale state options are pruned after the pull.
 set -euo pipefail
 
 FLAKE_DIR="${FLAKE_DIR:-$HOME/.omanix}"
@@ -90,6 +92,11 @@ CURRENT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 CURRENT_TAG=$(git describe --tags --exact-match 2>/dev/null || echo "")
 echo "Current version: ${CURRENT_TAG:-$CURRENT_SHA}"
 
+# True if any tracked file is still unmerged (UU/AA/...).
+git_unresolved() {
+  ! git diff --name-only --diff-filter=U --quiet
+}
+
 # Fetch latest from remote
 echo "Fetching from origin..."
 git fetch origin 2>&1
@@ -118,6 +125,13 @@ if [[ -n "$TARGET_REF" ]]; then
     exit 0
   fi
 
+  # Machine-owned state file is gitignored; back it up so a checkout of an older
+  # tree (which may still track state.nix) cannot clobber local machine values.
+  "$FLAKE_DIR/libexec/omanix-state.sh" ensure_state
+  local STATE_BAK
+  STATE_BAK="$(mktemp)"
+  cp state.nix "$STATE_BAK" 2>/dev/null || true
+
   # Check for uncommitted changes
   if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
     echo "Stashing local changes..."
@@ -131,6 +145,11 @@ if [[ -n "$TARGET_REF" ]]; then
   log_info "update" "checking out $TARGET_REF"
   git checkout "$TARGET_REF" 2>&1
 
+  # Restore machine-owned state, then prune against the target's schema.
+  cp "$STATE_BAK" state.nix 2>/dev/null || true
+  rm -f "$STATE_BAK"
+  "$FLAKE_DIR/libexec/omanix-state.sh" prune >/dev/null 2>&1 || true
+
   # Pop stash if we stashed
   if [[ "$STASHED" == "true" ]]; then
     echo "Restoring local changes..."
@@ -138,7 +157,14 @@ if [[ -n "$TARGET_REF" ]]; then
       log_error "update" "conflict while restoring local changes"
       echo "Your changes are in 'git stash list'. Resolve manually:" >&2
       echo "  cd ~/.omanix && git stash pop" >&2
+      exit 1
     fi
+  fi
+
+  if git_unresolved; then
+    log_error "update" "unresolved conflicts after checkout"
+    echo "Aborting before rebuild. Resolve manually, then re-run 'omanix update'." >&2
+    exit 1
   fi
 else
   # Update to latest from origin/main
@@ -168,32 +194,31 @@ else
     exit 0
   fi
 
-  # Stash local uncommitted changes
-  STASHED=false
-  if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
-    echo ""
-    echo "Stashing uncommitted changes..."
-    git stash push -m "omanix-update-$(date +%Y%m%d-%H%M%S)"
-    STASHED=true
-  fi
+  # Machine-owned files (state.nix, version) are gitignored, so they are never
+  # stashed or merged — a pull can no longer conflict on them. --autostash covers
+  # any genuine local edits (e.g. configuration.nix) and restores them on success.
+  "$FLAKE_DIR/libexec/omanix-state.sh" ensure_state
 
   # Pull with rebase
   log_info "update" "pulling latest from origin/main"
-  git pull --rebase origin main 2>&1 || {
-    log_error "update" "pull failed"
-    echo "Resolve conflicts manually:" >&2
-    echo "  cd ~/.omanix && git pull --rebase origin main" >&2
+  if ! git pull --rebase --autostash origin main 2>&1; then
+    log_error "update" "pull failed (conflicts)"
+    echo "Resolve conflicts manually, then run 'omanix update' again:" >&2
+    echo "  cd ~/.omanix && git status" >&2
+    echo "  (git rebase --continue   or: git rebase --abort)" >&2
     exit 1
-  }
+  fi
 
-  # Pop stash
-  if [[ "$STASHED" == "true" ]]; then
-    echo "Restoring local changes..."
-    if ! git stash pop 2>&1; then
-      log_error "update" "conflict while restoring local changes"
-      echo "Your changes are in 'git stash list'. Resolve manually:" >&2
-      echo "  cd ~/.omanix && git stash pop" >&2
-    fi
+  # Drop stale option keys (e.g. the omabar -> spacebar rename) from the rewritten
+  # upstream so the rebuild can never trip on options that no longer exist.
+  if ! "$FLAKE_DIR/libexec/omanix-state.sh" prune >/dev/null 2>&1; then
+    log_warn "update" "state prune failed; continuing"
+  fi
+
+  if git_unresolved; then
+    log_error "update" "unresolved conflicts after pull"
+    echo "Aborting before rebuild. Resolve manually, then re-run 'omanix update'." >&2
+    exit 1
   fi
 fi
 

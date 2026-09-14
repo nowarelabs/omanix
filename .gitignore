@@ -1,3 +1,7 @@
 .DS_Store
 development/
 overlays/
+
+# Machine-owned files — written by `omanix state set` / `omanix update`, never committed.
+state.nix
+version

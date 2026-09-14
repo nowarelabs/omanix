@@ -151,6 +151,10 @@ install_clone() {
 
   echo "Cloning Omanix to $FLAKE_DIR..."
   git clone https://github.com/nowarelabs/omanix.git "$FLAKE_DIR"
+
+  # Machine-owned files are gitignored — create them at install time.
+  git -C "$FLAKE_DIR" rev-parse --short HEAD > "$FLAKE_DIR/version" 2>/dev/null || true
+  "$FLAKE_DIR/libexec/omanix-state.sh" ensure_state >/dev/null 2>&1 || true
   return 0  # Signal: freshly cloned
 }
 

@@ -8,6 +8,12 @@
 - **Omabar deleted:** `Modules/Omabar/`, `Modules/Plugins/`, `Views/OmabarView.swift`, `Modules/Desktop.swift`, the SysEvents monitors (BarState, BatteryMonitor, ClockTicker, CoreAudioVolumeMonitor, WifiMonitor) and `--omabar` mode removed. `EventBus.swift` trimmed to window events only (Omatiles uses them). `omanix.omabar.*` options, CLI setters, and `--omabar` launchd agent (`om.omanix.omabar`) all removed; the CLI/`spacebar` schema and GUI widget now use `omanix.spacebar.*`.
 - **Docs/tests:** themes.md tables, conventions/principles/philosophies, and the agent skill updated to the spacebar architecture; two-way + behavior test suites updated to the spacebar state.
 
+### `omanix update` no longer conflicts on machine-owned files
+
+- `state.nix` and `version` are now machine-owned and gitignored (created on demand by `state ensure`), so a pull can never produce merge-conflict markers in `state.nix` again. The previous flow stashed+pulled+popped those tracked files, which collided whenever upstream also touched `state.nix` (e.g. the omabar→spacebar rename) and then rebuilt on top of `<<<<<<<` markers.
+- `omanix update` now uses `git pull --rebase --autostash` (only genuine local edits like `configuration.nix` are stashed), prunes stale option keys after the pull, and aborts with instructions instead of rebuilding if any resolution is still pending.
+- New `omanix state prune` / `omanix state ensure` commands; `state set` and `rebuild` also drop stale option paths automatically.
+
 ## 0.2.0-dev (2026-08-29)
 
 ### Native desktop modules — no external bar/tiler
