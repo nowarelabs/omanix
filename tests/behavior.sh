@@ -69,7 +69,6 @@ xcrun swiftc \
   "$TEST_DIR/KdlContractTests.swift" \
   "$TEST_DIR/KdlWorkspaceBehaviorTests.swift" \
   "$TEST_DIR/TilingTests.swift" \
-  "$TEST_DIR/OmabarBehaviorTests.swift" \
   "$TEST_DIR/ThemeBehaviorTests.swift" \
   "$TEST_DIR/BehaviorTests.swift" 2>&1 \
   || { echo "ERROR: behavioral harness failed to build"; exit 1; }

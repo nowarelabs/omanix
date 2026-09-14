@@ -126,31 +126,22 @@ func writeTestFlake(_ env: TestEnv) throws {
             default = "omanix";
             description = "test";
           };
-          options.omanix.omabar.enable = lib.mkOption { type = lib.types.bool; default = true; };
-          options.omanix.omabar.showClock = lib.mkOption { type = lib.types.bool; default = true; };
-          options.omanix.omabar.showBattery = lib.mkOption { type = lib.types.bool; default = true; };
-          options.omanix.omabar.showVolume = lib.mkOption { type = lib.types.bool; default = true; };
-          options.omanix.omabar.showVolumeText = lib.mkOption { type = lib.types.bool; default = true; };
-          options.omanix.omabar.showWifi = lib.mkOption { type = lib.types.bool; default = true; };
-          options.omanix.omabar.showApps = lib.mkOption { type = lib.types.bool; default = false; };
-          options.omanix.omabar.autoHide = lib.mkOption { type = lib.types.bool; default = false; };
-          options.omanix.omabar.showDate = lib.mkOption { type = lib.types.bool; default = true; };
-          options.omanix.omabar.showBatteryPercent = lib.mkOption { type = lib.types.bool; default = true; };
-          options.omanix.omabar.use24Hour = lib.mkOption { type = lib.types.bool; default = false; };
-          options.omanix.omabar.clockFormat = lib.mkOption { type = lib.types.str; default = "digital"; };
-          options.omanix.omabar.tint = lib.mkOption {
-            type = lib.types.nullOr lib.types.str;
-            default = "#0A7CFF";
-          };
-          options.omanix.omabar.components = lib.mkOption {
-            type = lib.types.attrsOf (lib.types.submodule {
-              options.enable = lib.mkOption { type = lib.types.bool; default = true; };
-              options.showText = lib.mkOption { type = lib.types.nullOr lib.types.bool; default = null; };
-              options.style = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; };
-              options.colorScheme = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; };
-            });
-            default = {};
-          };
+          options.omanix.spacebar.enable = lib.mkOption { type = lib.types.bool; default = true; };
+          options.omanix.spacebar.position = lib.mkOption { type = lib.types.str; default = "top"; };
+          options.omanix.spacebar.display = lib.mkOption { type = lib.types.str; default = "all"; };
+          options.omanix.spacebar.height = lib.mkOption { type = lib.types.int; default = 26; };
+          options.omanix.spacebar.showClock = lib.mkOption { type = lib.types.bool; default = true; };
+          options.omanix.spacebar.clockFormat = lib.mkOption { type = lib.types.str; default = "%R"; };
+          options.omanix.spacebar.showPower = lib.mkOption { type = lib.types.bool; default = true; };
+          options.omanix.spacebar.showTitle = lib.mkOption { type = lib.types.bool; default = false; };
+          options.omanix.spacebar.showSpaces = lib.mkOption { type = lib.types.bool; default = false; };
+          options.omanix.spacebar.showDnd = lib.mkOption { type = lib.types.bool; default = false; };
+          options.omanix.spacebar.paddingLeft = lib.mkOption { type = lib.types.int; default = 20; };
+          options.omanix.spacebar.paddingRight = lib.mkOption { type = lib.types.int; default = 20; };
+          options.omanix.spacebar.spacingLeft = lib.mkOption { type = lib.types.int; default = 15; };
+          options.omanix.spacebar.spacingRight = lib.mkOption { type = lib.types.int; default = 15; };
+          options.omanix.spacebar.textFont = lib.mkOption { type = lib.types.str; default = "Helvetica Neue:Regular:12.0"; };
+          options.omanix.spacebar.iconFont = lib.mkOption { type = lib.types.str; default = "Font Awesome 7 Free:Solid:12.0"; };
           options.omanix.omatiles.enable = lib.mkOption { type = lib.types.bool; default = true; };
           options.omanix.omatiles.bindings = lib.mkOption { type = lib.types.bool; default = true; };
           options.omanix.omatiles.enableEdgeDrag = lib.mkOption { type = lib.types.bool; default = true; };
@@ -229,71 +220,53 @@ func run() throws {
     checkEq(nixEval("omanix.omatiles.bindings"), "false", "Swift setOmatilesBindings(false) -> nix eval reflects false")
     checkEq(nixEval("omanix.omatiles.enableKeyboardShortcuts"), "false", "Swift setOmatilesKeyboardShortcuts(false) -> nix eval reflects false")
 
-    // ---------------- Swift -> Nix: omabar ----------------
-    print("\n[2] setOmabarShowClock(false) / setOmabarEnabled(true)")
-    try store.setOmabarShowClock(false)
-    checkBool(store.currentOmabarState().showClock == false, "currentOmabarState().showClock == false")
-    checkEq(readAssignment("omanix.omabar.showClock", inFile: env.flakeDir + "/state.nix") ?? "", "false", "state.nix has omanix.omabar.showClock = false")
-    try store.setOmabarEnabled(true)
-    checkBool(store.currentOmabarState().enable == true, "currentOmabarState().enable == true")
-    try store.setOmabarShowBattery(false)
-    checkBool(store.currentOmabarState().showBattery == false, "currentOmabarState().showBattery == false")
-    try store.setOmabarShowVolume(false)
-    checkBool(store.currentOmabarState().showVolume == false, "currentOmabarState().showVolume == false")
-    try store.setOmabarShowWifi(true)
-    checkBool(store.currentOmabarState().showWifi == true, "currentOmabarState().showWifi == true")
-    try store.setOmabarShowApps(true)
-    checkBool(store.currentOmabarState().showApps == true, "currentOmabarState().showApps == true")
-    checkEq(nixEval("omanix.omabar.showClock"), "false", "Swift setOmabarShowClock(false) -> nix eval reflects false")
-    checkEq(nixEval("omanix.omabar.enable"), "true", "Swift setOmabarEnabled(true) -> nix eval reflects true")
-    checkEq(nixEval("omanix.omabar.showBattery"), "false", "Swift setOmabarShowBattery(false) -> nix eval reflects false")
-    checkEq(nixEval("omanix.omabar.showVolume"), "false", "Swift setOmabarShowVolume(false) -> nix eval reflects false")
-    checkEq(nixEval("omanix.omabar.showWifi"), "true", "Swift setOmabarShowWifi(true) -> nix eval reflects true")
-    checkEq(nixEval("omanix.omabar.showApps"), "true", "Swift setOmabarShowApps(true) -> nix eval reflects true")
-
-    print("\n[3] menu-bar display options (autoHide/showDate/showBatteryPercent/use24Hour/clockFormat)")
-    try store.setOmabarAutoHide(true)
-    checkBool(store.currentOmabarState().autoHide == true, "currentOmabarState().autoHide == true")
-    try store.setOmabarShowDate(false)
-    checkBool(store.currentOmabarState().showDate == false, "currentOmabarState().showDate == false")
-    try store.setOmabarShowBatteryPercent(false)
-    checkBool(store.currentOmabarState().showBatteryPercent == false, "currentOmabarState().showBatteryPercent == false")
-    try store.setOmabarUse24Hour(true)
-    checkBool(store.currentOmabarState().use24Hour == true, "currentOmabarState().use24Hour == true")
-    try store.setOmabarClockFormat("analog")
-    checkEq(store.currentOmabarState().clockFormat, "analog", "currentOmabarState().clockFormat == 'analog'")
-    try store.setOmabarShowVolumeText(false)
-    checkBool(store.currentOmabarState().showVolumeText == false, "currentOmabarState().showVolumeText == false")
-    checkEq(readAssignment("omanix.omabar.autoHide", inFile: env.flakeDir + "/state.nix") ?? "", "true", "state.nix has omanix.omabar.autoHide = true")
-    checkEq(readAssignment("omanix.omabar.clockFormat", inFile: env.flakeDir + "/state.nix") ?? "", "analog", "state.nix has omanix.omabar.clockFormat = \"analog\"")
-    checkEq(readAssignment("omanix.omabar.showVolumeText", inFile: env.flakeDir + "/state.nix") ?? "", "false", "state.nix has omanix.omabar.showVolumeText = false")
-    checkEq(nixEval("omanix.omabar.autoHide"), "true", "Swift setOmabarAutoHide(true) -> nix eval reflects true")
-    checkEq(nixEval("omanix.omabar.showDate"), "false", "Swift setOmabarShowDate(false) -> nix eval reflects false")
-    checkEq(nixEval("omanix.omabar.use24Hour"), "true", "Swift setOmabarUse24Hour(true) -> nix eval reflects true")
-    checkEq(nixEval("omanix.omabar.clockFormat"), "analog", "Swift setOmabarClockFormat('analog') -> nix eval reflects 'analog'")
-
-    print("\n[3c] omabar tint (light glass blue hex / null)")
-    try store.setOmabarTint("#0A7CFF")
-    checkEq(store.readOption("omanix.omabar.tint") ?? "", "#0A7CFF", "readOption('omanix.omabar.tint') == '#0A7CFF'")
-    checkEq(nixEval("omanix.omabar.tint"), "#0A7CFF", "Swift setOmabarTint('#0A7CFF') -> nix eval reflects '#0A7CFF'")
-    try store.setOmabarTint(nil)
-    checkEq(store.readOption("omanix.omabar.tint") ?? "", "null", "setOmabarTint(nil) writes null -> readOption == 'null'")
-    checkEq(nixEval("omanix.omabar.tint"), "null", "Swift setOmabarTint(nil) -> nix eval reflects null")
-
-    print("\n[3b] structured components (enable/showText/style) overrides flat")
-    try store.setComponentEnabled("clock", false)
-    checkBool(store.currentOmabarState().showClock == false, "components.clock.enable false overrides showClock -> showClock == false")
-    try store.setComponentShowText("battery", false)
-    checkBool(store.currentOmabarState().showBatteryPercent == false, "components.battery.showText false overrides showBatteryPercent -> false")
-    try store.setComponentEnabled("volume", false)
-    checkBool(store.currentOmabarState().showVolume == false, "components.volume.enable false overrides showVolume -> false")
-    try store.setComponentOption("clock", "style", "analog")
-    checkEq(store.currentOmabarState().clockFormat, "analog", "components.clock.style 'analog' overrides clockFormat")
-    checkEq(readAssignment("omanix.omabar.components.clock.enable", inFile: env.flakeDir + "/state.nix") ?? "", "false", "state.nix has omanix.omabar.components.clock.enable = false")
-    checkEq(readAssignment("omanix.omabar.components.battery.showText", inFile: env.flakeDir + "/state.nix") ?? "", "false", "state.nix has omanix.omabar.components.battery.showText = false")
-    checkEq(nixEval("omanix.omabar.components.clock.enable"), "false", "Swift setComponentEnabled('clock', false) -> nix eval reflects false")
-    checkEq(nixEval("omanix.omabar.components.battery.showText"), "false", "Swift setComponentShowText('battery', false) -> nix eval reflects false")
-    checkEq(nixEval("omanix.omabar.components.clock.style"), "analog", "Swift setComponentOption clock.style analog -> nix eval reflects analog")
+    // ---------------- Swift -> Nix: spacebar ----------------
+    print("\n[2] setSpacebar* items & layout")
+    try store.setSpacebarShowClock(false)
+    checkBool(store.currentSpacebarState().showClock == false, "currentSpacebarState().showClock == false")
+    checkEq(readAssignment("omanix.spacebar.showClock", inFile: env.flakeDir + "/state.nix") ?? "", "false", "state.nix has omanix.spacebar.showClock = false")
+    try store.setSpacebarEnabled(true)
+    checkBool(store.currentSpacebarState().enable == true, "currentSpacebarState().enable == true")
+    try store.setSpacebarShowPower(false)
+    checkBool(store.currentSpacebarState().showPower == false, "currentSpacebarState().showPower == false")
+    try store.setSpacebarShowTitle(true)
+    checkBool(store.currentSpacebarState().showTitle == true, "currentSpacebarState().showTitle == true")
+    try store.setSpacebarShowSpaces(true)
+    checkBool(store.currentSpacebarState().showSpaces == true, "currentSpacebarState().showSpaces == true")
+    try store.setSpacebarShowDnd(true)
+    checkBool(store.currentSpacebarState().showDnd == true, "currentSpacebarState().showDnd == true")
+    try store.setSpacebarPosition("bottom")
+    checkEq(store.currentSpacebarState().position, "bottom", "currentSpacebarState().position == 'bottom'")
+    try store.setSpacebarDisplay("main")
+    checkEq(store.currentSpacebarState().display, "main", "currentSpacebarState().display == 'main'")
+    try store.setSpacebarHeight(32)
+    checkBool(store.currentSpacebarState().height == 32, "currentSpacebarState().height == 32")
+    try store.setSpacebarClockFormat("%I:%M %p")
+    checkEq(store.currentSpacebarState().clockFormat, "%I:%M %p", "currentSpacebarState().clockFormat == '%I:%M %p'")
+    try store.setSpacebarPaddingLeft(12)
+    checkBool(store.currentSpacebarState().paddingLeft == 12, "currentSpacebarState().paddingLeft == 12")
+    try store.setSpacebarPaddingRight(24)
+    checkBool(store.currentSpacebarState().paddingRight == 24, "currentSpacebarState().paddingRight == 24")
+    try store.setSpacebarSpacingLeft(8)
+    checkBool(store.currentSpacebarState().spacingLeft == 8, "currentSpacebarState().spacingLeft == 8")
+    try store.setSpacebarSpacingRight(10)
+    checkBool(store.currentSpacebarState().spacingRight == 10, "currentSpacebarState().spacingRight == 10")
+    try store.setSpacebarTextFont("SF Pro Text:Medium:13.0")
+    checkEq(store.currentSpacebarState().textFont, "SF Pro Text:Medium:13.0", "currentSpacebarState().textFont == 'SF Pro Text:Medium:13.0'")
+    try store.setSpacebarIconFont("Font Awesome 6 Free:Solid:12.0")
+    checkEq(store.currentSpacebarState().iconFont, "Font Awesome 6 Free:Solid:12.0", "currentSpacebarState().iconFont == 'Font Awesome 6 Free:Solid:12.0'")
+    checkEq(readAssignment("omanix.spacebar.position", inFile: env.flakeDir + "/state.nix") ?? "", "bottom", "state.nix has omanix.spacebar.position = \"bottom\"")
+    checkEq(readAssignment("omanix.spacebar.height", inFile: env.flakeDir + "/state.nix") ?? "", "32", "state.nix has omanix.spacebar.height = 32")
+    checkEq(readAssignment("omanix.spacebar.paddingRight", inFile: env.flakeDir + "/state.nix") ?? "", "24", "state.nix has omanix.spacebar.paddingRight = 24")
+    checkEq(readAssignment("omanix.spacebar.spacingRight", inFile: env.flakeDir + "/state.nix") ?? "", "10", "state.nix has omanix.spacebar.spacingRight = 10")
+    checkEq(readAssignment("omanix.spacebar.clockFormat", inFile: env.flakeDir + "/state.nix") ?? "", "%I:%M %p", "state.nix has omanix.spacebar.clockFormat = \"%I:%M %p\"")
+    checkEq(nixEval("omanix.spacebar.showClock"), "false", "Swift setSpacebarShowClock(false) -> nix eval reflects false")
+    checkEq(nixEval("omanix.spacebar.enable"), "true", "Swift setSpacebarEnabled(true) -> nix eval reflects true")
+    checkEq(nixEval("omanix.spacebar.showPower"), "false", "Swift setSpacebarShowPower(false) -> nix eval reflects false")
+    checkEq(nixEval("omanix.spacebar.position"), "bottom", "Swift setSpacebarPosition('bottom') -> nix eval reflects 'bottom'")
+    checkEq(nixEval("omanix.spacebar.display"), "main", "Swift setSpacebarDisplay('main') -> nix eval reflects 'main'")
+    checkEq(nixEval("omanix.spacebar.height"), "32", "Swift setSpacebarHeight(32) -> nix eval reflects 32")
+    checkEq(nixEval("omanix.spacebar.clockFormat"), "%I:%M %p", "Swift setSpacebarClockFormat('%I:%M %p') -> nix eval reflects '%I:%M %p'")
 
     // ---------------- Swift -> Nix: theme (string) ----------------
     print("\n[4] setTheme('solstice') ")
@@ -332,7 +305,7 @@ func run() throws {
       omanix.omatiles.enableEdgeDrag = false;
       omanix.omatiles.bindings = false;
       omanix.theme = "tokyo-night";
-      omanix.omabar.showWifi = true;
+      omanix.spacebar.showClock = true;
       omanix.widgets.clock.enable = true;
     }
     """
@@ -341,7 +314,8 @@ func run() throws {
     checkBool(store.currentOmatilesState().enableEdgeDrag == false, "currentOmatilesState().enableEdgeDrag == false (from Nix-written state)")
     checkBool(store.currentOmatilesState().bindings == false, "currentOmatilesState().bindings == false (from Nix-written state)")
     checkEq(store.readOption("omanix.theme") ?? "", "tokyo-night", "readOption('omanix.theme') == 'tokyo-night' (from Nix-written state)")
-    checkBool(store.readBoolOption("omanix.omabar.showWifi") == .some(true), "readBoolOption('omanix.omabar.showWifi') == true")
+    checkBool(store.readBoolOption("omanix.spacebar.showClock") == .some(true), "readBoolOption('omanix.spacebar.showClock') == true")
+    checkBool(store.currentSpacebarState().showClock == true, "currentSpacebarState().showClock == true (from Nix-written state)")
     checkBool(store.readBoolOption("omanix.widgets.clock.enable") == .some(true), "readBoolOption('omanix.widgets.clock.enable') == true")
     checkEq(nixEval("omanix.omatiles.enable"), "true", "Nix-written state.nix -> nix eval sees omanix.omatiles.enable == true")
     checkEq(nixEval("omanix.theme"), "tokyo-night", "Nix-written state.nix -> nix eval sees omanix.theme == 'tokyo-night'")
@@ -351,15 +325,19 @@ func run() throws {
     let freshDir = env.flakeDir + "/fresh"
     try FileManager.default.createDirectory(atPath: freshDir, withIntermediateDirectories: true)
     let store2 = Omanix(omanixDir: freshDir)
-    checkBool(store2.currentOmabarState().showClock == true, "fresh: currentOmabarState().showClock == true default")
+    checkBool(store2.currentSpacebarState().showClock == true, "fresh: currentSpacebarState().showClock == true default")
+    checkBool(store2.currentSpacebarState().enable == true, "fresh: currentSpacebarState().enable == true default")
+    checkBool(store2.currentSpacebarState().showPower == true, "fresh: currentSpacebarState().showPower == true default")
+    checkBool(store2.currentSpacebarState().showTitle == false, "fresh: currentSpacebarState().showTitle == false default")
+    checkBool(store2.currentSpacebarState().showSpaces == false, "fresh: currentSpacebarState().showSpaces == false default")
+    checkBool(store2.currentSpacebarState().showDnd == false, "fresh: currentSpacebarState().showDnd == false default")
+    checkEq(store2.currentSpacebarState().position, "top", "fresh: currentSpacebarState().position == 'top' default")
+    checkEq(store2.currentSpacebarState().display, "all", "fresh: currentSpacebarState().display == 'all' default")
+    checkBool(store2.currentSpacebarState().height == 26, "fresh: currentSpacebarState().height == 26 default")
+    checkEq(store2.currentSpacebarState().clockFormat, "%R", "fresh: currentSpacebarState().clockFormat == '%R' default")
+    checkEq(store2.currentSpacebarState().iconFont, "Font Awesome 7 Free:Solid:12.0", "fresh: currentSpacebarState().iconFont == 'Font Awesome 7 Free:Solid:12.0' default")
     checkBool(store2.currentOmatilesState().enableEdgeDrag == true, "fresh: currentOmatilesState().enableEdgeDrag == true default")
     checkBool(store2.currentOmatilesState().enableMargins == false, "fresh: currentOmatilesState().enableMargins == false default")
-    checkBool(store2.currentOmabarState().autoHide == false, "fresh: currentOmabarState().autoHide == false default")
-    checkBool(store2.currentOmabarState().showDate == true, "fresh: currentOmabarState().showDate == true default")
-    checkBool(store2.currentOmabarState().showBatteryPercent == true, "fresh: currentOmabarState().showBatteryPercent == true default")
-    checkBool(store2.currentOmabarState().use24Hour == false, "fresh: currentOmabarState().use24Hour == false default")
-    checkBool(store2.currentOmabarState().showVolumeText == true, "fresh: currentOmabarState().showVolumeText == true default")
-    checkEq(store2.currentOmabarState().clockFormat, "digital", "fresh: currentOmabarState().clockFormat == 'digital' default")
 
     print("\n=== RESULTS ===")
     if failures.isEmpty {

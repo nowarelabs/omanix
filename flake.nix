@@ -33,7 +33,6 @@
           ./modules/theme/theme.nix   # themed distribution -> Ghostty (lib/themed.nix)
           # Desktop (Phase 4: Owin workspaces — AXUI + declarative mappings)
           ./modules/desktop/workspaces.nix
-          ./modules/desktop/plugins.nix
           # Darwin-only
           ./modules/darwin/system.nix # system.defaults (dock, finder, loginwindow)
           ./modules/darwin/pam.nix    # Touch ID, primary user, users.users
@@ -45,8 +44,8 @@
           ./modules/darwin/services.nix  # redis, postgresql
           ./modules/darwin/env.nix       # environment variables
           ./modules/darwin/shell.nix     # zsh config, aliases, direnv
-          ./modules/darwin/omabar.nix    # Omanix Omabar (menu bar) + Omatiles (tiling), native SwiftUI modules (omanix.omabar.*, omanix.omatiles.*)
-          ./modules/darwin/omatiles.nix
+          ./modules/darwin/spacebar.nix   # Omanix Spacebar (spacebar daemon, omanix.spacebar.*) — full-width status bar
+          ./modules/darwin/omatiles.nix   # Omatiles (native Sequoia tiling, omanix.omatiles.*)
 
           # Apps
           ./modules/apps/gui/options.nix   # Omanix app options

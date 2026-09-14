@@ -62,22 +62,26 @@ struct WidgetItem: Identifiable {
     var isEnabled: Bool
 }
 
-// MARK: - Omabar (native menu bar status items) state
+// MARK: - Spacebar (spacebar daemon) state
 
-/// Mirrors `omanix.omabar.*` from configuration.nix.
-struct OmabarState: Equatable {
+/// Mirrors `omanix.spacebar.*` from configuration.nix.
+struct SpacebarState: Equatable {
     var enable = true
+    var position = "top"
+    var display = "all"
+    var height = 26
     var showClock = true
-    var showBattery = true
-    var showVolume = true
-    var showVolumeText = true
-    var showWifi = true
-    var showApps = false
-    var autoHide = false
-    var showDate = true
-    var showBatteryPercent = true
-    var use24Hour = false
-    var clockFormat = "digital"
+    var clockFormat = "%R"
+    var showPower = true
+    var showTitle = false
+    var showSpaces = false
+    var showDnd = false
+    var paddingLeft = 20
+    var paddingRight = 20
+    var spacingLeft = 15
+    var spacingRight = 15
+    var textFont = "Helvetica Neue:Regular:12.0"
+    var iconFont = "Font Awesome 7 Free:Solid:12.0"
 }
 
 // MARK: - Omatiles (bridge onto macOS' built-in tiling) state
@@ -152,7 +156,7 @@ struct SourceItem: Identifiable {
 
 /// The pages reachable from the sidebar.
 enum SidebarItem: String, CaseIterable, Identifiable {
-    case browse, installed, widgets, omatiles, omabar, themes, settings
+    case browse, installed, widgets, omatiles, themes, settings
     var id: String { rawValue }
 
     var title: String {
@@ -161,7 +165,6 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .installed: return "Installed"
         case .widgets: return "Widgets"
         case .omatiles: return "Omatiles"
-        case .omabar: return "Omabar"
         case .themes: return "Themes"
         case .settings: return "Settings"
         }
@@ -173,7 +176,6 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .installed: return "checkmark.circle"
         case .widgets: return "archivebox"
         case .omatiles: return "rectangle.3.group"
-        case .omabar: return "rectangle.topthird.inset.filled"
         case .themes: return "tag"
         case .settings: return "gearshape"
         }

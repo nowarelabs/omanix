@@ -67,27 +67,22 @@ cat > "$T/flake.nix" <<'EOF'
     lib = nixpkgs.lib;
     schema = {
       options.omanix.theme = lib.mkOption { type = lib.types.str; default = "omanix"; };
-      options.omanix.omabar.enable = lib.mkOption { type = lib.types.bool; default = true; };
-      options.omanix.omabar.showClock = lib.mkOption { type = lib.types.bool; default = true; };
-      options.omanix.omabar.showBattery = lib.mkOption { type = lib.types.bool; default = true; };
-      options.omanix.omabar.showVolume = lib.mkOption { type = lib.types.bool; default = true; };
-      options.omanix.omabar.showVolumeText = lib.mkOption { type = lib.types.bool; default = true; };
-      options.omanix.omabar.showWifi = lib.mkOption { type = lib.types.bool; default = true; };
-      options.omanix.omabar.showApps = lib.mkOption { type = lib.types.bool; default = false; };
-      options.omanix.omabar.autoHide = lib.mkOption { type = lib.types.bool; default = false; };
-      options.omanix.omabar.showDate = lib.mkOption { type = lib.types.bool; default = true; };
-      options.omanix.omabar.showBatteryPercent = lib.mkOption { type = lib.types.bool; default = true; };
-      options.omanix.omabar.use24Hour = lib.mkOption { type = lib.types.bool; default = false; };
-      options.omanix.omabar.clockFormat = lib.mkOption { type = lib.types.str; default = "digital"; };
-      options.omanix.omabar.components = lib.mkOption {
-        type = lib.types.attrsOf (lib.types.submodule {
-          options.enable = lib.mkOption { type = lib.types.bool; default = true; };
-          options.showText = lib.mkOption { type = lib.types.nullOr lib.types.bool; default = null; };
-          options.style = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; };
-          options.colorScheme = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; };
-        });
-        default = {};
-      };
+      options.omanix.spacebar.enable = lib.mkOption { type = lib.types.bool; default = true; };
+      options.omanix.spacebar.position = lib.mkOption { type = lib.types.str; default = "top"; };
+      options.omanix.spacebar.display = lib.mkOption { type = lib.types.str; default = "all"; };
+      options.omanix.spacebar.height = lib.mkOption { type = lib.types.int; default = 26; };
+      options.omanix.spacebar.showClock = lib.mkOption { type = lib.types.bool; default = true; };
+      options.omanix.spacebar.clockFormat = lib.mkOption { type = lib.types.str; default = "%R"; };
+      options.omanix.spacebar.showPower = lib.mkOption { type = lib.types.bool; default = true; };
+      options.omanix.spacebar.showTitle = lib.mkOption { type = lib.types.bool; default = false; };
+      options.omanix.spacebar.showSpaces = lib.mkOption { type = lib.types.bool; default = false; };
+      options.omanix.spacebar.showDnd = lib.mkOption { type = lib.types.bool; default = false; };
+      options.omanix.spacebar.paddingLeft = lib.mkOption { type = lib.types.int; default = 20; };
+      options.omanix.spacebar.paddingRight = lib.mkOption { type = lib.types.int; default = 20; };
+      options.omanix.spacebar.spacingLeft = lib.mkOption { type = lib.types.int; default = 15; };
+      options.omanix.spacebar.spacingRight = lib.mkOption { type = lib.types.int; default = 15; };
+      options.omanix.spacebar.textFont = lib.mkOption { type = lib.types.str; default = "Helvetica Neue:Regular:12.0"; };
+      options.omanix.spacebar.iconFont = lib.mkOption { type = lib.types.str; default = "Font Awesome 7 Free:Solid:12.0"; };
       options.omanix.omatiles.enable = lib.mkOption { type = lib.types.bool; default = true; };
       options.omanix.omatiles.bindings = lib.mkOption { type = lib.types.bool; default = true; };
       options.omanix.omatiles.enableEdgeDrag = lib.mkOption { type = lib.types.bool; default = true; };
@@ -116,7 +111,7 @@ if state set omanix.theme solstice >/dev/null 2>&1; then ok "CLI: set omanix.the
 
 # Schema rejection: unknown key + bad value.
 if state set omanix.nope 1 >/dev/null 2>&1; then bad "CLI rejects unknown key"; else ok "CLI rejects unknown key"; fi
-if state set omanix.omabar.enable maybe >/dev/null 2>&1; then bad "CLI rejects bad bool"; else ok "CLI rejects bad bool"; fi
+if state set omanix.spacebar.enable maybe >/dev/null 2>&1; then bad "CLI rejects bad bool"; else ok "CLI rejects bad bool"; fi
 if state set omanix.theme one-dark >/dev/null 2>&1; then ok "CLI writes string theme"; else bad "CLI writes string theme"; fi
 
 # reset restores empty state.nix and nix eval falls back to default.
@@ -152,8 +147,7 @@ else
   MISSING_IN_NIX=0
   while IFS= read -r p; do
     [[ -z "$p" ]] && continue
-    # Wildcard components (e.g. omanix.omabar.components.*.enable) match the
-    # attrsOf declaration `omanix.omabar.components` in Nix options.
+    # Wildcard schema keys still match any option whose declared path has the prefix.
     if [[ "$p" == *"*"* ]]; then
       prefix="${p%%\**}"
       prefix="${prefix%.}"
@@ -187,9 +181,10 @@ fi
 step "Every GUI toggle/button backed by declarative state is covered"
 # Walk the view-model's store setters and confirm each has a Swift-level test.
 COVERED=(setOmatilesEnabled setOmatilesEdgeDrag setOmatilesMargins setOmatilesBindings setOmatilesKeyboardShortcuts
-         setOmabarEnabled setOmabarShowClock setOmabarShowBattery setOmabarShowVolume setOmabarShowVolumeText setOmabarShowWifi setOmabarShowApps
-         setOmabarAutoHide setOmabarShowDate setOmabarShowBatteryPercent setOmabarUse24Hour setOmabarClockFormat setOmabarTint
-         setComponentEnabled setComponentShowText setComponentOption
+         setSpacebarEnabled setSpacebarPosition setSpacebarDisplay setSpacebarHeight
+         setSpacebarShowClock setSpacebarClockFormat setSpacebarShowPower setSpacebarShowTitle
+         setSpacebarShowSpaces setSpacebarShowDnd setSpacebarPaddingLeft setSpacebarPaddingRight
+         setSpacebarSpacingLeft setSpacebarSpacingRight setSpacebarTextFont setSpacebarIconFont
          setTheme setWidgetEnabled)
 MISSING=0
 for s in "${COVERED[@]}"; do

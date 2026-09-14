@@ -8,7 +8,7 @@
 # system — the GUI never performs free-form Nix text surgery on the source of truth.
 #
 # Usage:
-#   omanix state set <option.path> <value>   Write a validated option (bool/string)
+#   omanix state set <option.path> <value>   Write a validated option (bool/string/int)
 #   omanix state get <option.path>           Print current value (or "unset")
 #   omanix state list                        List known options + current values
 #   omanix state reset                       Empty state.nix back to defaults
@@ -21,10 +21,9 @@ STATE_FILE="$FLAKE_DIR/state.nix"
 # Keep in sync with the lib.mkOption declarations in modules/*/options.nix.
 schema() {
   case "$1" in
-    omanix.omabar.enable|omanix.omabar.showClock|omanix.omabar.showBattery|omanix.omabar.showVolume|omanix.omabar.showVolumeText|omanix.omabar.showWifi|omanix.omabar.showApps|omanix.omabar.autoHide|omanix.omabar.showDate|omanix.omabar.showBatteryPercent|omanix.omabar.use24Hour) echo bool ;;
-    omanix.omabar.clockFormat|omanix.omabar.tint) echo string ;;
-    omanix.omabar.components.*.enable|omanix.omabar.components.*.showText) echo bool ;;
-    omanix.omabar.components.*.style|omanix.omabar.components.*.colorScheme) echo string ;;
+    omanix.spacebar.enable|omanix.spacebar.showClock|omanix.spacebar.showPower|omanix.spacebar.showTitle|omanix.spacebar.showSpaces|omanix.spacebar.showDnd) echo bool ;;
+    omanix.spacebar.position|omanix.spacebar.display|omanix.spacebar.clockFormat|omanix.spacebar.textFont|omanix.spacebar.iconFont) echo string ;;
+    omanix.spacebar.height|omanix.spacebar.paddingLeft|omanix.spacebar.paddingRight|omanix.spacebar.spacingLeft|omanix.spacebar.spacingRight) echo int ;;
     omanix.omatiles.enable|omanix.omatiles.bindings|omanix.omatiles.enableEdgeDrag|omanix.omatiles.enableKeyboardShortcuts|omanix.omatiles.enableMargins) echo bool ;;
     omanix.widgets.gui.enable|omanix.widgets.store.enable|omanix.widgets.pomodoro.enable|omanix.widgets.clock.enable) echo bool ;;
     omanix.theme) echo string ;;
@@ -49,6 +48,12 @@ to_literal() {
       esc="${value//\\/\\\\}"
       esc="${esc//\"/\\\"}"
       echo "\"$esc\"" ;;
+    int)
+      if [[ "$value" =~ ^[0-9]+$ ]]; then
+        echo "$value"
+      else
+        echo "ERROR: expected a positive integer for int option" >&2; return 1
+      fi ;;
     *) echo "ERROR: unknown option type '$type'" >&2; return 1 ;;
   esac
 }
@@ -132,8 +137,7 @@ get_option() {
 list_options() {
   local path v
   printf '%-45s %-16s %s\n' "OPTION" "TYPE" "CURRENT"
-  for path in omanix.omabar.enable omanix.omabar.showClock omanix.omabar.showBattery omanix.omabar.showVolume omanix.omabar.showVolumeText omanix.omabar.showWifi omanix.omabar.showApps omanix.omabar.autoHide omanix.omabar.showDate omanix.omabar.showBatteryPercent omanix.omabar.use24Hour omanix.omabar.clockFormat omanix.omabar.tint \
-               omanix.omabar.components.clock.enable omanix.omabar.components.clock.style omanix.omabar.components.battery.enable omanix.omabar.components.battery.showText omanix.omabar.components.volume.enable omanix.omabar.components.volume.showText omanix.omabar.components.wifi.enable omanix.omabar.components.apps.enable \
+  for path in omanix.spacebar.enable omanix.spacebar.position omanix.spacebar.display omanix.spacebar.height omanix.spacebar.showClock omanix.spacebar.clockFormat omanix.spacebar.showPower omanix.spacebar.showTitle omanix.spacebar.showSpaces omanix.spacebar.showDnd omanix.spacebar.paddingLeft omanix.spacebar.paddingRight omanix.spacebar.spacingLeft omanix.spacebar.spacingRight omanix.spacebar.textFont omanix.spacebar.iconFont \
                omanix.omatiles.enable omanix.omatiles.bindings omanix.omatiles.enableEdgeDrag omanix.omatiles.enableKeyboardShortcuts omanix.omatiles.enableMargins \
                omanix.widgets.gui.enable omanix.widgets.store.enable omanix.widgets.pomodoro.enable omanix.widgets.clock.enable \
                omanix.theme; do
@@ -195,7 +199,7 @@ case "${1:-help}" in
   help|--help|-h|"")
     cat <<'EOF'
 Usage: omanix state <subcommand> [args]
-  set <option.path> <value>   Write a validated option (bool/string). Then run `omanix rebuild`.
+  set <option.path> <value>   Write a validated option (bool/string/int). Then run `omanix rebuild`.
   get <option.path>           Print the current value ("unset" if not set).
   list                        List known options, types, and current values.
   apply <area>                Apply resolved declarative state to the live system NOW

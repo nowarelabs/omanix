@@ -1,8 +1,9 @@
 // Views/OmanixApp.swift
 // Omanix — main app entry point. Creates the ViewModel once and injects it.
-// Also acts as the Omabar / Omatiles module host: launchd starts this same binary
-// with "--omabar" or "--omatiles" (see modules/darwin/omabar.nix, omatiles.nix),
-// and normal launches start whichever modules are enabled in configuration.
+// Also acts as the Omatiles module host: launchd starts this same binary with
+// "--omatiles" (see modules/darwin/omatiles.nix), and normal launches start
+// whichever modules are enabled in configuration. Spacebar is fully external
+// (its own launchd agent via modules/darwin/spacebar.nix), so it is not hosted here.
 
 import SwiftUI
 import AppKit
@@ -12,7 +13,7 @@ struct OmanixApp: App {
     @StateObject private var viewModel = OmanixViewModel()
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
-    /// True when launched by a launchd agent with a "--omabar" / "--omatiles" flag.
+    /// True when launched by a launchd agent with a "--omatiles" flag.
     static let moduleMode = CommandLine.arguments.contains { $0.hasPrefix("--") }
 
     var body: some Scene {
@@ -39,17 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if OmanixApp.moduleMode {
             // Launchd module run: no Dock icon, no window. Start only the requested module.
             NSApp.setActivationPolicy(.accessory)
-            let args = CommandLine.arguments
-            if args.contains("--omabar") {
-                let bar = RuntimeSettings.Omabar.load()
-                if bar.enable { _ = OmabarManager.shared.start(settings: bar) }
-                let plugins = RuntimeSettings.Plugins.load()
-                if plugins.enable {
-                    PluginIPCServer.shared.start(socketPath: plugins.socketPath)
-                    IPCPluginManager.shared.start()
-                }
-            }
-            if args.contains("--omatiles") {
+            if CommandLine.arguments.contains("--omatiles") {
                 let tiles = RuntimeSettings.Omatiles.load()
                 if tiles.enable { OmatilesEngine.shared.start(settings: tiles) }
                 // Owin shares the omatiles launchd slot when enabled (Phase 4).
@@ -58,19 +49,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             // Normal GUI launch: start the enabled desktop modules so the screen
             // matches configuration without needing a rebuild.
-            let bar = RuntimeSettings.Omabar.load()
-            if bar.enable { _ = OmabarManager.shared.start(settings: bar) }
-
             let tiles = RuntimeSettings.Omatiles.load()
             if tiles.enable { OmatilesEngine.shared.start(settings: tiles) }
 
             if RuntimeSettings.Owin.load().enable { _ = WorkspaceManager.shared.start() }
-
-            let plugins = RuntimeSettings.Plugins.load()
-            if plugins.enable {
-                PluginIPCServer.shared.start(socketPath: plugins.socketPath)
-                IPCPluginManager.shared.start()
-            }
 
             // Bring the live macOS WindowManager tiling prefs in line with the current
             // declarative config even if no rebuild has run yet (so ⌃⌥+arrow works now).

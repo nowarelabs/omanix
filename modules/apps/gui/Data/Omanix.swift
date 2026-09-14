@@ -287,48 +287,26 @@ final class Omanix {
         return "tokyo-night"
     }
 
-    func setOmabarOption(_ key: String, _ value: String) throws {
-        try setState("omanix.omabar.\(key)", value)
+    func setSpacebarOption(_ key: String, _ value: String) throws {
+        try setState("omanix.spacebar.\(key)", value)
     }
 
-    func setOmabarEnabled(_ v: Bool) throws { try setOmabarOption("enable", v ? "true" : "false") }
-    func setOmabarShowClock(_ v: Bool) throws { try setOmabarOption("showClock", v ? "true" : "false") }
-    func setOmabarShowBattery(_ v: Bool) throws { try setOmabarOption("showBattery", v ? "true" : "false") }
-    func setOmabarShowVolume(_ v: Bool) throws { try setOmabarOption("showVolume", v ? "true" : "false") }
-    func setOmabarShowVolumeText(_ v: Bool) throws { try setOmabarOption("showVolumeText", v ? "true" : "false") }
-    func setOmabarShowWifi(_ v: Bool) throws { try setOmabarOption("showWifi", v ? "true" : "false") }
-    func setOmabarShowApps(_ v: Bool) throws { try setOmabarOption("showApps", v ? "true" : "false") }
-
-    func setOmabarAutoHide(_ v: Bool) throws { try setOmabarOption("autoHide", v ? "true" : "false") }
-    func setOmabarShowDate(_ v: Bool) throws { try setOmabarOption("showDate", v ? "true" : "false") }
-    func setOmabarShowBatteryPercent(_ v: Bool) throws { try setOmabarOption("showBatteryPercent", v ? "true" : "false") }
-    func setOmabarUse24Hour(_ v: Bool) throws { try setOmabarOption("use24Hour", v ? "true" : "false") }
-    func setOmabarClockFormat(_ v: String) throws { try setOmabarOption("clockFormat", v) }
-    func setOmabarTint(_ v: String?) throws {
-        try setOmabarOption("tint", v ?? "null")
-    }
-
-    // MARK: - Structured components (Phase 3: components.<name>.* overrides flat show*)
-
-    func setComponentOption(_ component: String, _ key: String, _ value: String) throws {
-        try setState("omanix.omabar.components.\(component).\(key)", value)
-    }
-
-    func setComponentEnabled(_ component: String, _ enabled: Bool) throws {
-        try setComponentOption(component, "enable", enabled ? "true" : "false")
-    }
-
-    func setComponentShowText(_ component: String, _ show: Bool) throws {
-        try setComponentOption(component, "showText", show ? "true" : "false")
-    }
-
-    func readComponentBool(_ component: String, _ key: String) -> Bool? {
-        readBoolOption("omanix.omabar.components.\(component).\(key)")
-    }
-
-    func readComponentString(_ component: String, _ key: String) -> String? {
-        readOption("omanix.omabar.components.\(component).\(key)")
-    }
+    func setSpacebarEnabled(_ v: Bool) throws { try setSpacebarOption("enable", v ? "true" : "false") }
+    func setSpacebarShowClock(_ v: Bool) throws { try setSpacebarOption("showClock", v ? "true" : "false") }
+    func setSpacebarShowPower(_ v: Bool) throws { try setSpacebarOption("showPower", v ? "true" : "false") }
+    func setSpacebarShowTitle(_ v: Bool) throws { try setSpacebarOption("showTitle", v ? "true" : "false") }
+    func setSpacebarShowSpaces(_ v: Bool) throws { try setSpacebarOption("showSpaces", v ? "true" : "false") }
+    func setSpacebarShowDnd(_ v: Bool) throws { try setSpacebarOption("showDnd", v ? "true" : "false") }
+    func setSpacebarPosition(_ v: String) throws { try setSpacebarOption("position", v) }
+    func setSpacebarDisplay(_ v: String) throws { try setSpacebarOption("display", v) }
+    func setSpacebarHeight(_ v: Int) throws { try setSpacebarOption("height", "\(v)") }
+    func setSpacebarClockFormat(_ v: String) throws { try setSpacebarOption("clockFormat", v) }
+    func setSpacebarPaddingLeft(_ v: Int) throws { try setSpacebarOption("paddingLeft", "\(v)") }
+    func setSpacebarPaddingRight(_ v: Int) throws { try setSpacebarOption("paddingRight", "\(v)") }
+    func setSpacebarSpacingLeft(_ v: Int) throws { try setSpacebarOption("spacingLeft", "\(v)") }
+    func setSpacebarSpacingRight(_ v: Int) throws { try setSpacebarOption("spacingRight", "\(v)") }
+    func setSpacebarTextFont(_ v: String) throws { try setSpacebarOption("textFont", v) }
+    func setSpacebarIconFont(_ v: String) throws { try setSpacebarOption("iconFont", v) }
 
     func setOmatilesOption(_ key: String, _ value: String) throws {
         try setState("omanix.omatiles.\(key)", value)
@@ -381,22 +359,25 @@ final class Omanix {
         return v == "true"
     }
 
-    /// Reads the current `omanix.omabar.*` values with defaults for anything unset.
-    /// Structured `components.<name>.*` overrides flat `show*` when set (Phase 3).
-    func currentOmabarState() -> OmabarState {
-        OmabarState(
-            enable: readBoolOption("omanix.omabar.enable") ?? true,
-            showClock: readComponentBool("clock", "enable") ?? readBoolOption("omanix.omabar.showClock") ?? true,
-            showBattery: readComponentBool("battery", "enable") ?? readBoolOption("omanix.omabar.showBattery") ?? true,
-            showVolume: readComponentBool("volume", "enable") ?? readBoolOption("omanix.omabar.showVolume") ?? true,
-            showVolumeText: readComponentBool("volume", "showText") ?? readBoolOption("omanix.omabar.showVolumeText") ?? true,
-            showWifi: readComponentBool("wifi", "enable") ?? readBoolOption("omanix.omabar.showWifi") ?? true,
-            showApps: readComponentBool("apps", "enable") ?? readBoolOption("omanix.omabar.showApps") ?? false,
-            autoHide: readBoolOption("omanix.omabar.autoHide") ?? false,
-            showDate: readBoolOption("omanix.omabar.showDate") ?? true,
-            showBatteryPercent: readComponentBool("battery", "showText") ?? readBoolOption("omanix.omabar.showBatteryPercent") ?? true,
-            use24Hour: readBoolOption("omanix.omabar.use24Hour") ?? false,
-            clockFormat: readComponentString("clock", "style") ?? readOption("omanix.omabar.clockFormat") ?? "digital"
+    /// Reads the current `omanix.spacebar.*` values with defaults for anything unset.
+    func currentSpacebarState() -> SpacebarState {
+        SpacebarState(
+            enable: readBoolOption("omanix.spacebar.enable") ?? true,
+            position: readOption("omanix.spacebar.position") ?? "top",
+            display: readOption("omanix.spacebar.display") ?? "all",
+            height: Int(readOption("omanix.spacebar.height") ?? "") ?? 26,
+            showClock: readBoolOption("omanix.spacebar.showClock") ?? true,
+            clockFormat: readOption("omanix.spacebar.clockFormat") ?? "%R",
+            showPower: readBoolOption("omanix.spacebar.showPower") ?? true,
+            showTitle: readBoolOption("omanix.spacebar.showTitle") ?? false,
+            showSpaces: readBoolOption("omanix.spacebar.showSpaces") ?? false,
+            showDnd: readBoolOption("omanix.spacebar.showDnd") ?? false,
+            paddingLeft: Int(readOption("omanix.spacebar.paddingLeft") ?? "") ?? 20,
+            paddingRight: Int(readOption("omanix.spacebar.paddingRight") ?? "") ?? 20,
+            spacingLeft: Int(readOption("omanix.spacebar.spacingLeft") ?? "") ?? 15,
+            spacingRight: Int(readOption("omanix.spacebar.spacingRight") ?? "") ?? 15,
+            textFont: readOption("omanix.spacebar.textFont") ?? "Helvetica Neue:Regular:12.0",
+            iconFont: readOption("omanix.spacebar.iconFont") ?? "Font Awesome 7 Free:Solid:12.0"
         )
     }
 

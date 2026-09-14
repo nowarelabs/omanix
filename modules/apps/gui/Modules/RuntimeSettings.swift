@@ -1,13 +1,12 @@
 // Modules/RuntimeSettings.swift
-// Runtime reads of the declarative `omanix.omabar.*` / `omanix.omatiles.*` options
+// Runtime reads of the declarative `omanix.spacebar.*` / `omanix.omatiles.*` options
 // from ~/.omanix/state.nix (machine-written) then configuration.nix. The GUI writes
 // these options through `omanix state set` -> state.nix; this module is what lets the
-// Omabar/Omatiles runtimes obey them without a rebuild (and what launchd module-mode
-// uses directly).
+// runtimes obey them without a rebuild (and what launchd module-mode uses directly).
 //
-// Omabar now hosts status items in the NATIVE macOS menu bar, and Omatiles now
-// bridges onto macOS Sequoia's built-in tiling — so neither needs theme color
-// knowledge at runtime (the OS bar and OS tiling own the look & feel).
+// Spacebar is configured from Nix at build time (modules/darwin/spacebar.nix), so the
+// GUI only reads state for parity checks and falls back to the same defaults. Omatiles
+// bridges onto macOS Sequoia's built-in tiling, which owns the look & feel.
 //
 // Foundation ONLY — no SwiftUI/AppKit.
 
@@ -50,54 +49,6 @@ enum RuntimeSettings {
 
     static func bool(_ path: String, default defaultVal: Bool) -> Bool {
         option(path).map { $0 == "true" } ?? defaultVal
-    }
-
-    // MARK: - Omabar (native menu bar status items)
-
-    struct Omabar {
-        var enable = true
-        var showClock = true
-        var showBattery = true
-        var showVolume = true
-        var showVolumeText = true
-        var showWifi = true
-        var showApps = false
-        var autoHide = false
-        var showDate = true
-        var showBatteryPercent = true
-        var use24Hour = false
-        var clockFormat = "digital"
-        /// "#RRGGBB" tint for every status item ("light glass blue"); nil = native.
-        var tint: String? = "#0A7CFF"
-
-        static func load() -> Omabar {
-            // Structured `components.<name>.*` overrides flat `show*` when set (Phase 3).
-            func compBool(_ name: String, _ key: String, flat: String, default def: Bool) -> Bool {
-                if let v = option("omanix.omabar.components.\(name).\(key)") { return v == "true" }
-                return bool(flat, default: def)
-            }
-            func compString(_ name: String, _ key: String, flat: String, default def: String) -> String {
-                option("omanix.omabar.components.\(name).\(key)") ?? option(flat) ?? def
-            }
-            return Omabar(
-                enable: bool("omanix.omabar.enable", default: true),
-                showClock: compBool("clock", "enable", flat: "omanix.omabar.showClock", default: true),
-                showBattery: compBool("battery", "enable", flat: "omanix.omabar.showBattery", default: true),
-                showVolume: compBool("volume", "enable", flat: "omanix.omabar.showVolume", default: true),
-                showVolumeText: compBool("volume", "showText", flat: "omanix.omabar.showVolumeText", default: true),
-                showWifi: compBool("wifi", "enable", flat: "omanix.omabar.showWifi", default: true),
-                showApps: compBool("apps", "enable", flat: "omanix.omabar.showApps", default: false),
-                autoHide: bool("omanix.omabar.autoHide", default: false),
-                showDate: bool("omanix.omabar.showDate", default: true),
-                showBatteryPercent: compBool("battery", "showText", flat: "omanix.omabar.showBatteryPercent", default: true),
-                use24Hour: bool("omanix.omabar.use24Hour", default: false),
-                clockFormat: compString("clock", "style", flat: "omanix.omabar.clockFormat", default: "digital"),
-                tint: {
-                    let raw = option("omanix.omabar.tint")
-                    return (raw == nil || raw == "null" || raw?.isEmpty == true) ? nil : raw
-                }()
-            )
-        }
     }
 
     // MARK: - Omatiles (bridge onto macOS' built-in tiling)
@@ -195,26 +146,5 @@ enum RuntimeSettings {
         var monitor: String?
         var layout: String
         var apps: [String]
-    }
-
-    // MARK: - Plugins (Phase 5: IPC socket)
-
-    struct Plugins {
-        var enable = true
-        var socketPath = NSHomeDirectory() + "/.config/omanix/omanix.sock"
-
-        static func load() -> Plugins {
-            let enable = bool("omanix.plugins.enable", default: true)
-            let raw = option("omanix.plugins.socketPath") ?? ".config/omanix/omanix.sock"
-            let abs: String
-            if raw.hasPrefix("/") {
-                abs = raw
-            } else if raw.hasPrefix("~") {
-                abs = (raw as NSString).expandingTildeInPath
-            } else {
-                abs = NSHomeDirectory() + "/" + raw
-            }
-            return Plugins(enable: enable, socketPath: abs)
-        }
     }
 }

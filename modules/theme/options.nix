@@ -1,144 +1,129 @@
 # modules/theme/options.nix — theme, bar, and tiling options (the green user surface)
-# Extends core omanix.theme enum with per-theme overrides and the native-macOS
-# Omabar (status items in Apple's menu bar) + Omatiles (bridge onto macOS's own
-# Sequoia window tiling). Both build on the OS instead of replacing it.
+# Extends core omanix.theme enum with per-theme overrides, the external Spacebar
+# (full-width status bar drawn by the spacebar daemon, github.com/cmacrae/spacebar),
+# and Omatiles (bridge onto macOS's own Sequoia window tiling). Both build on the OS
+# instead of replacing it — no yabai, no sketchybar.
 # See docs/themes.md and principles.md:3
 { lib, ... }: {
-  # --- Omabar: Omanix items INSIDE the native macOS menu bar (status items) ---
-  options.omanix.omabar = {
+  # --- Spacebar: full-width status bar OUTSIDE the native macOS menu bar ---
+  # The external `spacebar` daemon (github.com/cmacrae/spacebar) draws its own bar
+  # just below the native menu bar (position "top") or at the screen bottom, replacing
+  # the old in-menu-bar Omabar status items. It is fully configured from Nix via
+  # modules/darwin/spacebar.nix, which resolves colors + the Font Awesome icon font
+  # from the active theme. The options below only pick which items are shown and how
+  # the bar is laid out. Standalone — works without yabai (the spaces strip shows the
+  # native Mission Control count when enabled).
+  options.omanix.spacebar = {
     enable = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Install the Omabar status items (clock, battery, volume, Wi-Fi, running apps) into the native macOS menu bar.";
+      description = "Enable the spacebar daemon (runs as a launchd user agent at login).";
       example = false;
+    };
+
+    position = lib.mkOption {
+      type = lib.types.enum [ "top" "bottom" ];
+      default = "top";
+      description = "Bar placement: 'top' draws it just below the native menu bar, 'bottom' at the bottom of the screen.";
+      example = "bottom";
+    };
+
+    display = lib.mkOption {
+      type = lib.types.enum [ "all" "main" ];
+      default = "all";
+      description = "Which displays the bar appears on: 'all' (every display) or 'main' (the primary display only).";
+      example = "main";
+    };
+
+    height = lib.mkOption {
+      type = lib.types.int;
+      default = 26;
+      description = "Bar height in points.";
+      example = 32;
     };
 
     showClock = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Show the clock as a menu bar status item (click opens Calendar).";
+      description = "Show the clock, formatted per clockFormat.";
       example = false;
-    };
-
-    showBattery = lib.mkOption {
-      type = lib.types.bool;
-      default = true;
-      description = "Show battery level as a menu bar status item.";
-      example = false;
-    };
-
-    showVolume = lib.mkOption {
-      type = lib.types.bool;
-      default = true;
-      description = "Show system volume as a menu bar status item.";
-      example = false;
-    };
-
-    showVolumeText = lib.mkOption {
-      type = lib.types.bool;
-      default = true;
-      description = "Render the numeric volume percentage beside the speaker icon. When false, only the icon is shown.";
-      example = false;
-    };
-
-    showWifi = lib.mkOption {
-      type = lib.types.bool;
-      default = true;
-      description = "Show the current Wi-Fi network as a menu bar status item.";
-      example = false;
-    };
-
-    showApps = lib.mkOption {
-      type = lib.types.bool;
-      default = false;
-      description = "Show the frontmost app in the menu bar, with a menu of all on-screen apps to switch to.";
-      example = true;
-    };
-
-    # --- Omabar clock / battery display preferences (Nix-owned; GUI writes via
-    # `omanix state set` and applies live — mirrors the macOS-only live path) ---
-    autoHide = lib.mkOption {
-      type = lib.types.bool;
-      default = false;
-      description = "Hide the macOS menu bar until the pointer reaches the top of the screen.";
-      example = true;
-    };
-
-    showDate = lib.mkOption {
-      type = lib.types.bool;
-      default = true;
-      description = "Render the abbreviated date beside the time in the clock status item.";
-      example = false;
-    };
-
-    showBatteryPercent = lib.mkOption {
-      type = lib.types.bool;
-      default = true;
-      description = "Show the numeric charge percentage beside the battery icon.";
-      example = false;
-    };
-
-    use24Hour = lib.mkOption {
-      type = lib.types.bool;
-      default = false;
-      description = "Use a 24-hour clock instead of 12-hour.";
-      example = true;
     };
 
     clockFormat = lib.mkOption {
-      type = lib.types.enum [ "digital" "analog" ];
-      default = "digital";
-      description = "How the clock is drawn: 'digital' (HH:mm text) or 'analog' (small clock glyph).";
-      example = "analog";
+      type = lib.types.str;
+      default = "%R";
+      description = "strftime format for the clock. '%R' is 24-hour HH:MM; '%I:%M %p' is 12-hour with AM/PM.";
+      example = "%I:%M %p";
     };
 
-    tint = lib.mkOption {
-      type = lib.types.nullOr lib.types.str;
-      default = "#0A7CFF";
-      description = "Tint color applied to every Omabar status item (icon + text) for a tinted-glass look. The default is the light glass blue of the omanix theme; set null for Apple's native template rendering (black in light mode, white in dark mode).";
-      example = "#64D2FF";
+    showPower = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Show the power indicator (battery charge + charging bolt).";
+      example = false;
     };
 
-    # --- Structured declarative components (Phase 3: Module-Based Configuration) ---
-    # The canonical, Nix-owned surface for bar layout. When set, `components.<name>.enable`
-    # overrides the flat `show*` toggles above; this makes the entire desktop layout a
-    # strongly-typed compilation input, as the brief's declarative & state-compiled model
-    # requires. Supported built-ins: clock, battery, volume, wifi, apps. Custom keys
-    # become compile-time plugins in Phase 5.
-    components = lib.mkOption {
-      type = lib.types.attrsOf (lib.types.submodule {
-        options.enable = lib.mkOption {
-          type = lib.types.bool;
-          default = true;
-          description = "Show this component in the Omabar.";
-          example = false;
-        };
-        options.showText = lib.mkOption {
-          type = lib.types.nullOr lib.types.bool;
-          default = null;
-          description = "Show text beside the icon when applicable (battery %, volume %). Null defers to the component's default.";
-          example = false;
-        };
-        options.style = lib.mkOption {
-          type = lib.types.nullOr lib.types.str;
-          default = null;
-          description = "Visual style variant, e.g. \"digital\" / \"analog\" for clock.";
-          example = "analog";
-        };
-        options.colorScheme = lib.mkOption {
-          type = lib.types.nullOr lib.types.str;
-          default = null;
-          description = "Optional color-scheme override for this component (merged with the global theme).";
-          example = "dracula";
-        };
-      });
-      default = {};
-      description = "Declarative per-component configuration for the Omabar. Keys are component IDs (clock, battery, volume, wifi, apps, ...). When present, `components.<name>.enable` overrides the flat `show*` toggle.";
-      example = {
-        clock = { enable = true; style = "digital"; };
-        battery = { enable = true; showText = false; };
-        volume = { enable = true; showText = true; };
-      };
+    showTitle = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Show the title of the focused window in the bar.";
+      example = true;
+    };
+
+    showSpaces = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Show the Mission Control spaces strip (numbered spaces; no yabai symbols). Off by default — Omatiles drives window management here.";
+      example = true;
+    };
+
+    showDnd = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Show the Do Not Disturb toggle (click toggles DND).";
+      example = true;
+    };
+
+    paddingLeft = lib.mkOption {
+      type = lib.types.int;
+      default = 20;
+      description = "Left padding inside the bar, in points.";
+      example = 12;
+    };
+
+    paddingRight = lib.mkOption {
+      type = lib.types.int;
+      default = 20;
+      description = "Right padding inside the bar, in points.";
+      example = 12;
+    };
+
+    spacingLeft = lib.mkOption {
+      type = lib.types.int;
+      default = 15;
+      description = "Space before the first item, in points.";
+      example = 10;
+    };
+
+    spacingRight = lib.mkOption {
+      type = lib.types.int;
+      default = 15;
+      description = "Space between items, in points.";
+      example = 10;
+    };
+
+    textFont = lib.mkOption {
+      type = lib.types.str;
+      default = "Helvetica Neue:Regular:12.0";
+      description = "CoreText font for bar text: '<PostScript name>:<weight>:<point size>'.";
+      example = "SF Pro Text:Medium:13.0";
+    };
+
+    iconFont = lib.mkOption {
+      type = lib.types.str;
+      default = "Font Awesome 7 Free:Solid:12.0";
+      description = "CoreText font for bar icons. Defaults to the Font Awesome Free Solid family shipped via pkgs.font-awesome (Font Awesome 7) in modules/darwin/spacebar.nix.";
+      example = "Font Awesome 6 Free:Solid:12.0";
     };
   };
 

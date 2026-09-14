@@ -63,7 +63,6 @@ struct BehaviorTests {
         allFailures.append(contentsOf: KdlWorkspaceBehaviorTests.runAll())
 
         allFailures.append(contentsOf: TilingBehaviorTests.runAll())
-        allFailures.append(contentsOf: OmabarBehaviorTests.runAll())
         allFailures.append(contentsOf: ThemeBehaviorTests.runAll())
 
         print("\n=== BEHAVIORAL RESULTS ===")

@@ -72,7 +72,7 @@ private struct WidgetCard: View {
         switch widget.id {
         case "pomodoro": return OC.red
         case "clock": return OC.orange
-        case "omabar": return OC.purple
+        case "spacebar": return OC.purple
         case "omatiles": return OC.cyan
         default: return OC.accentBlue
         }
@@ -81,7 +81,7 @@ private struct WidgetCard: View {
     private var description: String {
         switch widget.id {
         case "store": return "Browse and install packages with the Omanix store."
-        case "omabar": return "Status items inside the native macOS menu bar."
+        case "spacebar": return "Full-width status bar outside the native menu bar."
         case "omatiles": return "Configure macOS' built-in Sequoia window tiling."
         case "pomodoro": return "Focused work sessions with break reminders."
         case "clock": return "A quiet glance at the local time."

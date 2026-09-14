@@ -1,6 +1,6 @@
 # Omanix Themes — Distribution System
 
-> **Build-time purity.** You set `omanix.theme = "tokyo-night"` — Nix renders `Ghostty` colors, and the native `Omabar` (menu bar) + `Omatiles` (window tiling) modules load the palette at runtime. You never edit `colors.toml` or `.tpl` by hand. See `principles.md:3`.
+> **Build-time purity.** You set `omanix.theme = "tokyo-night"` — Nix renders `Ghostty` colors, the menu bar (`spacebar`), and `Omatiles` (window tiling) from the palette. You never edit `colors.toml` or `.tpl` by hand. See `principles.md:3`.
 
 ---
 
@@ -34,13 +34,14 @@ Preview: `ls themes/<name>/preview.png` and `cat themes/<name>/colors.toml`.
   omanix.host = "my-mac";
   omanix.user = "yourname";
   omanix.theme = "kanagawa";          # pick any from above
-  omanix.omabar = {
-    enable = true;                    # show Omanix status items in the native menu bar
+  omanix.spacebar = {
+    enable = true;                    # serve the menu bar with the spacebar daemon
+    position = "top";                 # top | bottom
     showClock = true;                 # clock item (hides the native Control Center clock)
-    showBattery = true;               # battery level
-    showVolume = true;                # system volume (click to mute)
-    showWifi = true;                  # current Wi-Fi network
-    showApps = false;                 # running-apps menu
+    showPower = true;                 # battery + power status
+    showTitle = false;                # focused-window title
+    showSpaces = false;               # space icons (mostly obsolete with Omatiles tiling)
+    showDnd = false;                  # Do-Not-Disturb indicator
   };
   omanix.omatiles = {
     enable = true;                    # enable macOS Sequoia tiling + start the ⌘⌥ bindings
@@ -51,7 +52,7 @@ Preview: `ls themes/<name>/preview.png` and `cat themes/<name>/colors.toml`.
   };
 }
 ```
-Then: `omanix rebuild` — `Ghostty` + `Omabar` + `Omatiles` reload with new options.
+Then: `omanix rebuild` — `Ghostty` + `Spacebar` + `Omatiles` reload with new options.
 
 **Store GUI:** `Super → Omanix Store → Theme picker` shows live preview, no terminal.
 
@@ -80,17 +81,24 @@ All 24 keys overrideable: `accent`, `background`, `foreground`, `selection`, `mu
 
 ## Bar & Tiling Options
 
-Both `omanix.omabar.*` (status items in the native menu bar) and `omanix.omatiles.*` (bridge onto macOS Sequoia's built-in tiling) are **native modules inside the Omanix app** — launched by launchd agents (`om.omanix.omabar` / `om.omanix.omatiles`) that start the same `/Applications/Omanix.app` binary in `--omabar` / `--omatiles` mode. See `Modules/Omabar/*.swift` + `Modules/Omatiles/*.swift`.
+The menu bar is served by the external **spacebar** daemon (`omanix.spacebar.*`), themed from the active palette and configured declaratively in `modules/darwin/spacebar.nix` (launchd agent `spacebar` from nix-darwin's `services.spacebar`). Tiling is the native **Omatiles** module (`omanix.omatiles.*`) that bridges onto macOS Sequoia's built-in tiling.
 
 | Option | Values | Effect |
 |---|---|---|
-| `omanix.omabar.enable` | `bool` | Start the Omabar status items at login |
-| `omanix.omabar.showClock` | `bool` | Clock item (native Control Center clock hidden when shown) |
-| `omanix.omabar.showBattery` | `bool` | Battery item (native battery icon hidden when shown) |
-| `omanix.omabar.showVolume` | `bool` | Volume item (native volume icon hidden when shown) |
-| `omanix.omabar.showWifi` | `bool` | Wi-Fi item (native Wi-Fi icon hidden when shown) |
-| `omanix.omabar.showApps` | `bool` | Running-apps menu item |
-| `omanix.omabar.tint` | `null`/`#RRGGBB` | Tint every status item (icon + text) for a tinted-glass look. Default `#0A7CFF` (light glass blue); `null` = Apple's native template rendering |
+| `omanix.spacebar.enable` | `bool` | Serve the menu bar with spacebar at login |
+| `omanix.spacebar.position` | `top`/`bottom` | Bar position |
+| `omanix.spacebar.display` | `all`/`main` | Show on all displays or main only |
+| `omanix.spacebar.height` | `int` | Bar height (default 26) |
+| `omanix.spacebar.showClock` | `bool` | Clock item (native Control Center clock hidden when shown) |
+| `omanix.spacebar.clockFormat` | `str` | `strftime` format (default `"%R"`) |
+| `omanix.spacebar.showPower` | `bool` | Battery/power item (native battery icon hidden when shown) |
+| `omanix.spacebar.showTitle` | `bool` | Focused-window title |
+| `omanix.spacebar.showSpaces` | `bool` | Space icons (mostly obsolete with Omatiles tiling) |
+| `omanix.spacebar.showDnd` | `bool` | Do-Not-Disturb indicator |
+| `omanix.spacebar.paddingLeft`/`paddingRight` | `int` | Bar edge padding (default 20) |
+| `omanix.spacebar.spacingLeft`/`spacingRight` | `int` | Item spacing (default 15) |
+| `omanix.spacebar.textFont` | `str` | `family:style:size` for text (default `"Helvetica Neue:Regular:12.0"`) |
+| `omanix.spacebar.iconFont` | `str` | `family:style:size` for icons (default `"Font Awesome 7 Free:Solid:12.0"`, installed via `fonts.packages`) |
 | `omanix.omatiles.enable` | `bool` | Enable the macOS Sequoia tiling system and start the ⌘⌥ bindings at login |
 | `omanix.omatiles.enableEdgeDrag` | `bool` | Drag a window to a screen edge to tile it |
 | `omanix.omatiles.enableKeyboardShortcuts` | `bool` | The system ⌃⌥ + arrow tiling shortcuts |
@@ -98,7 +106,7 @@ Both `omanix.omabar.*` (status items in the native menu bar) and `omanix.omatile
 | `omanix.omatiles.bindings` | `bool` | Omatiles ⌘⌥ + arrow / Z bindings that forward to the system shortcuts |
 
 Examples:
-- Clock + battery in the menu bar: `omanix.omabar.showClock = true; omanix.omabar.showBattery = true;`
+- Clock + power in the menu bar: `omanix.spacebar.showClock = true; omanix.spacebar.showPower = true;`
 - Sequoia edge-drag tiling with margins: `omanix.omatiles.enableEdgeDrag = true; omanix.omatiles.enableMargins = true;`
 
 ---
@@ -112,11 +120,11 @@ themes/<name>/colors.toml  ─┐
                              ├─► lib/themed.nix:readTheme + getThemeColors (merge overrides)
                              │         │
 default/themed/*.tpl (future)─┘         ├─► ghostty/config (xdg.configFile."ghostty/config")
-                                         ├─► ~/.config/omanix/theme.json (runtime palette for Omabar + Omatiles + Store)
+                                         ├─► ~/.config/omanix/theme.json (runtime palette for Spacebar + Omatiles + Store)
                                          └─► session vars OMANIX_THEME / OMANIX_ACCENT / ...
 
 modules/theme/theme.nix — writes the above via home-manager xdg.configFile + activationScripts
-modules/darwin/omabar.nix — launchd agent om.omanix.omabar → Omanix.app --omabar (hides native menu bar, registers bar font)
+modules/darwin/spacebar.nix — nix-darwin services.spacebar → launchd agent `spacebar` (bar config emitted as `spacebar -m config` lines, colors from the active theme)
 modules/darwin/omatiles.nix — launchd agent om.omanix.omatiles → Omanix.app --omatiles (Accessibility guidance)
 modules/apps/gui/Modules/RuntimeSettings.swift — reads configuration.nix options + theme.json at runtime
 ```
@@ -126,8 +134,8 @@ modules/apps/gui/Modules/RuntimeSettings.swift — reads configuration.nix optio
 - `lib/themed.nix:11` `getThemeColors` — `base // overrides` (both `omanix.themeOverrides` and `omanix.theme.colors` supported)
 - `lib/themed.nix:93` `ghosttyConfig` — generates Ghostty `background/foreground/palette`
 - `modules/theme/theme.nix:27` — writes `omanix/theme.json` (full palette for SwiftUI) + `omanix/current-theme`
-- `modules/darwin/omabar.nix:15` — launchd agent only; the Omabar status items live inside the native menu bar via `NSStatusItem`, and the corresponding native Control Center items are hidden at activation (no `sketchybarrc`)
-- `modules/apps/gui/Modules/Omabar/OmabarManager.swift` — AppKit status-item host (clock, battery, volume, wifi, apps)
+- `modules/darwin/spacebar.nix:15` — the whole spacebar config; theme colors map to spacebar's `0xffRRGGBB` form (`background_color`, `foreground_color`, `clock/power/dnd_icon_color`), and native Control Center items are hidden at activation (no `sketchybarrc`)
+- `modules/darwin/spacebar.nix` — the spacebar launchd agent + `fonts.packages = [ pkgs.font-awesome ]` for the bar icons
 - `modules/apps/gui/Modules/Omatiles/OmatilesEngine.swift` — Swift/AppKit bridge onto macOS' built-in tiling (posts the system ⌃⌥+arrow shortcuts)
 
 No `~/.config` is ever hand-edited (principles.md:3). `omanix rebuild --rollback` reverts theme in <30s via Nix generations.
@@ -189,7 +197,7 @@ Required: all keys must be `mode` or `#RRGGBB`. Validated at `nix flake check` t
 
 6. **Use:** `omanix.theme = "my-theme";` + `omanix rebuild`.
 
-**Community submission:** PR with `themes/<name>/colors.toml` + preview + `vscode.json` + enum entry. Do not hand-edit `lib/themed.nix` — new colors automatically propagate to Ghostty/Omabar/Omatiles/widgets.
+**Community submission:** PR with `themes/<name>/colors.toml` + preview + `vscode.json` + enum entry. Do not hand-edit `lib/themed.nix` — new colors automatically propagate to Ghostty/Spacebar/Omatiles/widgets.
 
 ---
 
@@ -198,7 +206,7 @@ Required: all keys must be `mode` or `#RRGGBB`. Validated at `nix flake check` t
 | App | Config Path (generated) | Source | Colors Used |
 |---|---|---|---|
 | **Ghostty** | `~/.config/ghostty/config` | `lib/themed.nix:ghosttyConfig` | `background`, `foreground`, `accent`, `selection`, `red`-`magenta` palette 0-15 |
-| **Omabar** | `~/.config/omanix/theme.json` → SwiftUI | `modules/theme/theme.nix` → `Modules/Omabar/OmabarContentView.swift` | `background`, `foreground`, `accent`, `muted`, `selection`, `blur`, `position`, `style` |
+| **Spacebar** | `~/.config/omanix/theme.json` → spacebar daemon | `modules/theme/theme.nix` → `modules/darwin/spacebar.nix` | `background`, `foreground`, `accent` (bar bg/fg + icon colors) |
 | **Omatiles** | `~/.config/omanix/theme.json` + `configuration.nix` | `Modules/Omatiles/OmatilesEngine.swift` | `accent` (active tile), `gapInner`/`gapOuter` |
 | **Widgets** | `launchd.user.agents` + `~/.config/omanix/theme.json` | `lib/mkWidget.nix` via `themed.getThemeColors` | `accent` (icon), `foreground` (label) |
 | **System** | `NSGlobalDomain.AppleInterfaceStyle` | `modules/theme/theme.nix` | `mode` → `Dark` / `null` |
@@ -217,13 +225,13 @@ Global `omanix.themeOverrides` affects all apps. For per-app divergence (e.g. ke
   omanix.theme = "tokyo-night";
   omanix.perApp.ghostty.background = "#000000"; # alias omanix.theme.perApp.ghostty.background
   omanix.perApp.ghostty.accent = "#ff00ff";
-  # Omabar + Omatiles read the global palette (theme.json); per-app terminal divergence only.
+  # Spacebar + Omatiles read the global palette (theme.json); per-app terminal divergence only.
 }
 # CLI:
 # omanix theme per-app ghostty background "#000000"
 ```
 
-Resolution: `base = themes/<name>/colors.toml` → `// omanix.themeOverrides` → `// omanix.perApp.<app>` (via `lib/themed.nix:getAppColors`, spec alias `theme.perApp` also read if set). Ghostty uses `ghostty` delta; Omabar/Omatiles/widgets use global (`theme.json`).
+Resolution: `base = themes/<name>/colors.toml` → `// omanix.themeOverrides` → `// omanix.perApp.<app>` (via `lib/themed.nix:getAppColors`, spec alias `theme.perApp` also read if set). Ghostty uses `ghostty` delta; Spacebar/Omatiles/widgets use global (`theme.json`).
 
 ---
 
@@ -238,13 +246,13 @@ omanix.transition.type = "crossfade"; # crossfade | slide | none
 # CLI: omanix theme transition on|off
 ```
 
-Implementation: `modules/theme/theme.nix` writes `~/.config/omanix/theme.json`; the running Omabar status items live inside the native menu bar, and the macOS tiling preferences are set declaratively by the activation scripts — no `sketchybar --reload` and no custom geometry. Disable (`enable = false`) for instant cut (useful for screenshots/tests). Nix path is `omanix.transition` because `omanix.theme` is a string enum (cannot nest); spec alias `theme.transition` also honoured. All are `<30s` rollbackable via generations.
+Implementation: `modules/theme/theme.nix` writes `~/.config/omanix/theme.json`; the running spacebar daemon is configured by `modules/darwin/spacebar.nix` (re-started on rebuild), and the macOS tiling preferences are set declaratively by the activation scripts — no `sketchybar --reload` and no custom geometry. Disable (`enable = false`) for instant cut (useful for screenshots/tests). Nix path is `omanix.transition` because `omanix.theme` is a string enum (cannot nest); spec alias `theme.transition` also honoured. All are `<30s` rollbackable via generations.
 
 ---
 
 ## Store Integration
 
-`Super → Omanix Store → Themes` (12 cards) reads `vm.themes` (hardcoded from `themes/*/colors.toml`, bridged via `OColor(hex:)`) and `store.currentThemeId()` (`~/.config/omanix/theme.json` → `configuration.nix`). Tap **Select** → `store.setTheme(id)` → `needsRebuild` banner → **Rebuild**. Bar appearance controls (`position`/`style`/`transparent`/`blur` + contents) live in the same page and write `omanix.omabar.*`; tiling (`layout`/`gaps`/`bindings`/`watch`/`floatingApps`) is `omanix.omatiles.*`, both applied live to the running modules. See `modules/apps/gui/Views/ThemesView.swift:27` and `ViewModels/OmanixViewModel.swift:228`.
+`Super → Omanix Store → Themes` (12 cards) reads `vm.themes` (hardcoded from `themes/*/colors.toml`, bridged via `OColor(hex:)`) and `store.currentThemeId()` (`~/.config/omanix/theme.json` → `configuration.nix`). Tap **Select** → `store.setTheme(id)` → `needsRebuild` banner → **Rebuild**. Tiling (`layout`/`gaps`/`bindings`/`watch`/`floatingApps`) is `omanix.omatiles.*`, applied live to the running module. The spacebar daemon is external and rebuilt with the system. See `modules/apps/gui/Views/ThemesView.swift:27` and `ViewModels/OmanixViewModel.swift:228`.
 
 ---
 
@@ -255,7 +263,7 @@ We don't keep a private registry — `search.nixos.org` + `brew` are the registr
 1. **Scaffold:** `omanix theme new <my-theme>` (copies `tokyo-night/colors.toml` + `icons.theme`/`vscode.json` to `themes/<my-theme>/`), or `mkdir -p themes/<my-theme>/backgrounds` and copy `themes/tokyo-night/colors.toml`.
 2. **Edit palette:** All 25 keys `mode` + `#RRGGBB` (see `themes/tokyo-night/colors.toml:1`). Validate with `nix-instantiate --parse themes/<my-theme>/colors.toml`.
 3. **Register enum:** Add `"<my-theme>"` to `modules/core/options.nix:18` `omanix.theme` enum.
-4. **Preview:** `omanix theme set <my-theme> && omanix rebuild` (impure preview via `--preview` re-themes the running Omabar instantly from `theme.json`). Add `backgrounds/*.jpg` and `preview.png` (16:9, 1200x675).
+4. **Preview:** `omanix theme set <my-theme> && omanix rebuild` (impure preview via `--preview` re-themes the running Spacebar from `theme.json`). Add `backgrounds/*.jpg` and `preview.png` (16:9, 1200x675).
 5. **Check:** `nix flake check` (ensures `lib/themed.nix:8` can `fromTOML` your file and Store can render it). No `lib/themed.nix` edit needed — colors auto-propagate.
 6. **PR:** Include `themes/<name>/colors.toml`, `icons.theme`, `neovim.lua`, `vscode.json`, `preview.png`, enum entry, and a line in `docs/themes.md` table. CI fails if any `{{ var }}` missing.
 
@@ -266,6 +274,6 @@ Vendor sync: `themes/` at pinned rev, no hand edits to `config/`/`default/`; see
 ## Troubleshooting
 
 - `error: attribute 'my-theme' missing` — you added `themes/my-theme/` but not to `modules/core/options.nix` enum. Add it.
-- Colors not updating — Omabar/Omatiles re-read `~/.config/omanix/theme.json` on app start and on live apply from the Store; launch again if a module was stopped. (No external bar process to reload.)
+- Colors not updating — Spacebar/Omatiles re-read `~/.config/omanix/theme.json` on start and on live apply from the Store; launch again if a module was stopped. (The bar daemon is configured by Nix on rebuild.)
 - Ghostty still old — Ghostty reads `~/.config/ghostty/config` on next launch; restart Ghostty.
 - Override not working — ensure `omanix.themeOverrides.accent` (not `omanix.theme.colors.accent` if you typo). Both paths work but `themeOverrides` is preferred.

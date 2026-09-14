@@ -8,6 +8,6 @@
   # app toggles lands here as a strict, validated Nix module.
   #
   # Example entries (generated automatically):
-  #   omanix.omabar.showClock = true;
+  #   omanix.spacebar.showClock = true;
   #   omanix.omatiles.enableKeyboardShortcuts = true;
 }

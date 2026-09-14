@@ -31,8 +31,6 @@ struct ContentView: View {
                         WidgetsView()
                     case .omatiles:
                         OmatilesView()
-                    case .omabar:
-                        OmabarView()
                     case .themes:
                         ThemesView()
                     case .settings:

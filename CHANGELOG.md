@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0-dev (2026-09-14)
+
+### Spacebar replaces the in-app Omabar module
+
+- **Spacebar daemon:** the menu bar is now the external `spacebar` daemon (`modules/darwin/spacebar.nix` → nix-darwin `services.spacebar`), fully configured from new `omanix.spacebar.*` options (enable, position, display, height, showClock, clockFormat, showPower, showTitle, showSpaces, showDnd, paddingLeft/Right, spacingLeft/Right, textFont, iconFont). Theme colors map to spacebar's `0xffRRGGBB` form (`background_color`/`foreground_color` from `background`/`foreground`, icon colors from `accent`); bar font is `font-awesome` installed via `fonts.packages`; native Control Center clock/battery hidden when the corresponding items are shown.
+- **Omabar deleted:** `Modules/Omabar/`, `Modules/Plugins/`, `Views/OmabarView.swift`, `Modules/Desktop.swift`, the SysEvents monitors (BarState, BatteryMonitor, ClockTicker, CoreAudioVolumeMonitor, WifiMonitor) and `--omabar` mode removed. `EventBus.swift` trimmed to window events only (Omatiles uses them). `omanix.omabar.*` options, CLI setters, and `--omabar` launchd agent (`om.omanix.omabar`) all removed; the CLI/`spacebar` schema and GUI widget now use `omanix.spacebar.*`.
+- **Docs/tests:** themes.md tables, conventions/principles/philosophies, and the agent skill updated to the spacebar architecture; two-way + behavior test suites updated to the spacebar state.
+
 ## 0.2.0-dev (2026-08-29)
 
 ### Native desktop modules — no external bar/tiler

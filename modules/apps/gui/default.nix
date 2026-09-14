@@ -90,9 +90,7 @@ if [ -x "$XCRUN" ] || command -v xcrun >/dev/null 2>&1; then
         -framework SwiftUI \
         -framework Foundation \
         -framework AppKit \
-        -framework CoreAudio \
-        -framework IOKit \
-        -framework CoreWLAN \
+        -framework CoreGraphics \
         -o "$BIN" \
         $(find "$GUI_DIR" -name '*.swift' -not -path '*/Tests/*' | sort)
       echo "Omanix GUI rebuilt"
@@ -113,11 +111,10 @@ if [ -x "$XCRUN" ] || command -v xcrun >/dev/null 2>&1; then
      # stable identity. Required after a rebuild; no-op-identical when skipped.
      codesign --force --sign - "$BUNDLE" 2>/dev/null || true
 
-     # Restart the per-user module agents onto the (possibly rebuilt) binary so
-     # they pick it up without a logout. They run as the user, so they share the
-     # GUI's Accessibility permission rather than needing a root grant.
+     # Restart the per-user module agent onto the (possibly rebuilt) binary so it
+     # picks it up without a logout. It runs as the user, so it shares the GUI's
+     # Accessibility permission rather than needing a root grant.
      USER_UID="$(id -u ${user} 2>/dev/null || echo 501)"
-     launchctl kickstart -k "gui/$USER_UID/om.omanix.omabar" 2>/dev/null || true
      launchctl kickstart -k "gui/$USER_UID/om.omanix.omatiles" 2>/dev/null || true
 
      log "INFO" "Omanix GUI built successfully"

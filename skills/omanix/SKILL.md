@@ -7,8 +7,9 @@
 
 You are building for Omanix, a declarative desktop for macOS (and future Linux).
 Everything is a Nix derivation. You write Nix modules, not bash scripts.
-The macOS menu bar and window tiling are NATIVE modules inside the Omanix app
-(`Modules/Omabar/*`, `Modules/Omatiles/*`) — never add a sketchybar/aerospace config.
+The macOS menu bar is the external `spacebar` daemon (configured declaratively from
+`omanix.spacebar.*` in `modules/darwin/spacebar.nix`) and window tiling is the native
+Omatiles module (`Modules/Omatiles/*`) — never add a sketchybar/aerospace config.
 
 ### Core Helpers
 
@@ -24,7 +25,7 @@ Never hardcode `#7aa2f7` — always use `${config.lib.omanixTheme.colors.accent}
 
 ### Widget Pattern
 
-Widgets are `launchd` agents on mac (systemd on future linux) — optionally a Swift app via `lib/mkApp` or a bar item via the native Omabar module. Bar/tiling items are NOT sketchybar plugins.
+Widgets are `launchd` agents on mac (systemd on future linux) — optionally a Swift app via `lib/mkApp`. Bar/tiling items are NOT sketchybar plugins; the menu bar itself is spacebar (`omanix.spacebar.*`).
 
 ```nix
 { config, lib, pkgs, ... }:
@@ -45,7 +46,7 @@ in {
 ### Two-Phase Build (Preview → Commit)
 
 1. **Draft (no build):** Write `overlays/pomodoro/{default.nix}` (impure, git-ignored)
-2. **Preview (impure, instant):** `omanix rebuild --preview` — builds overlay, hot-reloads via `launchctl kickstart -k gui/$UID/om.omanix.omabar` (mac) / `quickshell ipc` (linux)
+2. **Preview (impure, instant):** `omanix rebuild --preview` — builds overlay, hot-reloads via `launchctl kickstart -k gui/$UID/om.omanix.omatiles` (mac) / `quickshell ipc` (linux)
 3. **Commit (pure):** `omanix add pomodoro --from-overlay overlays/pomodoro` → moves to `configuration.nix`
 4. **Undo:** `omanix rebuild --rollback` or `rm -rf overlays/pomodoro && omanix rebuild --preview`
 
