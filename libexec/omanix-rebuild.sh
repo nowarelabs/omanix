@@ -41,7 +41,7 @@ header "Rebuild"
 
 # state.nix is a machine-owned, gitignored file. Bootstrap it if missing and drop
 # any stale option keys from a previous release so a rename can never fail the build.
-"$FLAKE_DIR/libexec/omanix-state.sh" ensure_state >/dev/null 2>&1 || log_warn "rebuild" "unable to bootstrap state.nix"
+"$FLAKE_DIR/libexec/omanix-state.sh" ensure >/dev/null 2>&1 || log_warn "rebuild" "unable to bootstrap state.nix"
 "$FLAKE_DIR/libexec/omanix-state.sh" prune >/dev/null 2>&1 || log_warn "rebuild" "state prune failed"
 
 if [[ "$ROLLBACK" == "true" ]]; then

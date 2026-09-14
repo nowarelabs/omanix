@@ -2,6 +2,12 @@
 development/
 overlays/
 
-# Machine-owned files — written by `omanix state set` / `omanix update`, never committed.
-state.nix
+# Machine-owned files — written by `omanix state set` / `omanix update`, never hand-edited.
+# `state.nix` is deliberately NOT ignored: Nix flakes only copy tracked files into the
+# build source, and configuration.nix imports ./state.nix — an ignored/untracked
+# state.nix would be missing from every build. Machine edits to the tracked state.nix
+# are safe: `omanix update` autostashes + restores them, `state prune` drops stale keys,
+# and the script aborts before rebuild if a resolution is ever pending.
+# `version` is ignored (read by the update script only, never imported at eval).
 version
+state.nix.dirty

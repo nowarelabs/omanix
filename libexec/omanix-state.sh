@@ -12,7 +12,7 @@
 #   omanix state get <option.path>           Print current value (or "unset")
 #   omanix state list                        List known options + current values
 #   omanix state reset                       Empty state.nix back to defaults
-#   omanix state ensure                      Create state.nix if missing (machine-owned, gitignored)
+#   omanix state ensure                      Create state.nix if missing (tracked template, machine-written)
 #   omanix state prune                       Drop stale option paths, if any forgot to disappear
 set -euo pipefail
 
@@ -165,8 +165,10 @@ reset_state() {
   echo "state.nix reset to defaults."
 }
 
-# Create state.nix from the default template if missing. state.nix is a
-# machine-owned, gitignored file — never tracked/committed.
+# Create state.nix from the default template if missing. state.nix is TRACKED in
+# git (Nix flakes only copy tracked files into the build source, and configuration.nix
+# imports ./state.nix) but machine-WRITTEN: `state set`/`prune`/`reset` rewrite it, the
+# GUI edits it via the CLI, and `omanix update` autostashes + restores it across pulls.
 ensure_state_file() {
   if [[ ! -f "$STATE_FILE" ]]; then
     write_state <(printf '')
