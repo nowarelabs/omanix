@@ -12,9 +12,14 @@
     # The home module system. Same follows.
     home-manager.url = "github:nix-community/home-manager/27b93804fbef1544cb07718d3f0a451f4c4cd6c0";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
+
+    # MacOS menu bar, config entirely via Nix options.
+    omabar.url = "github:nowarelabs/omabar";
+    omabar.inputs.nixpkgs.follows = "nixpkgs";
+    omabar.inputs.nix-darwin.follows = "nix-darwin";
   };
 
-  outputs = inputs@{ self, nixpkgs, nix-darwin, home-manager }:
+  outputs = inputs@{ self, nixpkgs, nix-darwin, home-manager, omabar }:
     let
       lib = import ./lib/mkSystem.nix { inherit inputs; };
       # Read hostname from configuration.nix (single source of truth)
@@ -44,7 +49,9 @@
           ./modules/darwin/services.nix  # redis, postgresql
           ./modules/darwin/env.nix       # environment variables
           ./modules/darwin/shell.nix     # zsh config, aliases, direnv
-          ./modules/darwin/omatiles.nix   # Omatiles (native Sequoia tiling, omanix.omatiles.*)
+          ./modules/darwin/omatiles.nix  # Omatiles (native Sequoia tiling, omanix.omatiles.*)
+          ./modules/darwin/omabar.nix    # omabar menu bar (services.omabar.*)
+          omabar.darwinModules.omabar
 
           # Apps
           ./modules/apps/gui/options.nix   # Omanix app options
