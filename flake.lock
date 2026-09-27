@@ -68,11 +68,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1790419561,
-        "narHash": "sha256-mltEnzK2fgfZoJbzb/aOAzdnParyNiWRH23wMa16mfE=",
+        "lastModified": 1790493860,
+        "narHash": "sha256-+xyVbFSW5oQ46ffZa122nygIGfedw3pFZgvulJaXDIw=",
         "owner": "nowarelabs",
         "repo": "omabar",
-        "rev": "d9f4c2d0b11de818082b4105709926b573ad0ad4",
+        "rev": "efefdec80f70863b69713578236e0bf2799611a9",
         "type": "github"
       },
       "original": {
