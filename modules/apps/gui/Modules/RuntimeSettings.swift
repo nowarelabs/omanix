@@ -4,8 +4,9 @@
 // `omanix state set` -> state.nix; this module is what lets the runtimes obey them
 // without a rebuild (and what launchd module-mode uses directly).
 //
-// The macOS menu bar is the native macOS menu bar — no custom bar daemon. Omatiles
-// bridges onto macOS Sequoia's built-in tiling, which owns the look & feel.
+// The macOS menu bar is drawn by Omabar (modules/darwin/omabar.nix) into the native
+// menu bar band, with the real menu bar auto-hidden. Omatiles bridges onto macOS
+// Sequoia's built-in tiling, which owns the window-management look & feel.
 //
 // Foundation ONLY — no SwiftUI/AppKit.
 

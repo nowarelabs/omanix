@@ -24,6 +24,7 @@ STATE_FILE="$FLAKE_DIR/state.nix"
 schema() {
   case "$1" in
     omanix.omatiles.enable|omanix.omatiles.bindings|omanix.omatiles.enableEdgeDrag|omanix.omatiles.enableKeyboardShortcuts|omanix.omatiles.enableMargins) echo bool ;;
+    omanix.omabar.enable) echo bool ;;
     omanix.widgets.gui.enable|omanix.widgets.store.enable|omanix.widgets.pomodoro.enable|omanix.widgets.clock.enable) echo bool ;;
     omanix.theme) echo string ;;
     *) echo "" ;;
@@ -152,7 +153,8 @@ get_option() {
 list_options() {
   local path v
   printf '%-45s %-16s %s\n' "OPTION" "TYPE" "CURRENT"
-  for path in omanix.omatiles.enable omanix.omatiles.bindings omanix.omatiles.enableEdgeDrag omanix.omatiles.enableKeyboardShortcuts omanix.omatiles.enableMargins \
+  for path in omanix.omabar.enable \
+               omanix.omatiles.enable omanix.omatiles.bindings omanix.omatiles.enableEdgeDrag omanix.omatiles.enableKeyboardShortcuts omanix.omatiles.enableMargins \
                omanix.widgets.gui.enable omanix.widgets.store.enable omanix.widgets.pomodoro.enable omanix.widgets.clock.enable \
                omanix.theme; do
     v="$(get_option "$path")"

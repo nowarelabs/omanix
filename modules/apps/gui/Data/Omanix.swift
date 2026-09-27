@@ -291,6 +291,22 @@ final class Omanix {
         try setState("omanix.omatiles.\(key)", value)
     }
 
+    /// Omabar is a Nix-owned option like everything else: this writes
+    /// `omanix.omabar.enable` into state.nix and a rebuild is what actually
+    /// starts or removes the bar. There is deliberately no imperative
+    /// start/stop path here — toggling must never leave the running system
+    /// disagreeing with the declared configuration.
+    func setOmabarEnabled(_ v: Bool) throws {
+        try setState("omanix.omabar.enable", v ? "true" : "false")
+    }
+
+    /// Current declared value of `omanix.omabar.enable`. Defaults to true to
+    /// match the module option's own default, so an unset state.nix shows the
+    /// bar as on rather than lying about a running bar.
+    func currentOmabarEnabled() -> Bool {
+        readOption("omanix.omabar.enable").map { $0 == "true" } ?? true
+    }
+
     func setOmatilesEnabled(_ v: Bool) throws { try setOmatilesOption("enable", v ? "true" : "false") }
     func setOmatilesBindings(_ v: Bool) throws { try setOmatilesOption("bindings", v ? "true" : "false") }
     func setOmatilesEdgeDrag(_ v: Bool) throws { try setOmatilesOption("enableEdgeDrag", v ? "true" : "false") }

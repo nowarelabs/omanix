@@ -7,7 +7,11 @@
 
   system.defaults = {
     NSGlobalDomain = {
-      _HIHideMenuBar = false;
+      # omabar draws the menu bar itself, in the native menu bar band. Leaving
+      # the real menu bar on top of it means two bars stacked in the same 38pt
+      # strip, so it auto-hides. Moving the mouse to the top edge brings it
+      # back temporarily, same as the Dock.
+      _HIHideMenuBar = true;
       AppleEnableMouseSwipeNavigateWithScrolls = true;
       AppleEnableSwipeNavigateWithScrolls = false;
       AppleFontSmoothing = 2;

@@ -5,6 +5,22 @@
 # See docs/themes.md and principles.md:3
 { lib, ... }: {
 
+  # --- Omabar: the menu bar daemon ---
+  # Rendered by the omabar LaunchAgent into the native menu bar band
+  # (darwin/omabar.nix). `enable = false` is a real removal, not just a
+  # stop-managing: the agent runs in the foreground so launchd supervises the
+  # actual process and the LaunchAgent deletion stops it, and the module's
+  # unconditional postActivation script sweeps up any orphan from an older
+  # generation and deletes ~/Applications/Omabar.app.
+  options.omanix.omabar = {
+    enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Run the Omabar menu bar daemon. Setting this to false stops and removes it.";
+      example = false;
+    };
+  };
+
   # --- Omatiles: a thin bridge onto macOS Sequoia's BUILT-IN window tiling ---
   # No layout engine, no AX window moving: tiling itself is the OS's own feature
   # (drag-to-edge, ⌃⌥+arrow keyboard tiling). Omatiles just flips the System

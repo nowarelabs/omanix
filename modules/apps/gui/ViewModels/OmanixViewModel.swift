@@ -199,9 +199,11 @@ final class OmanixViewModel: ObservableObject {
         omatilesEdgeDrag = tilesState.enableEdgeDrag
         omatilesKeyboardShortcuts = tilesState.enableKeyboardShortcuts
         omatilesMargins = tilesState.enableMargins
+        omabarEnabled = store.currentOmabarEnabled()
 
         widgets = [
             WidgetItem(id: "store", name: "Omanix", icon: "bag", isEnabled: true),
+            WidgetItem(id: "omabar", name: "Omabar", icon: "menubar.rectangle", isEnabled: omabarEnabled),
             WidgetItem(id: "omatiles", name: "Omatiles", icon: "rectangle.3.group", isEnabled: omatilesEnabled),
             WidgetItem(id: "pomodoro", name: "Pomodoro Timer", icon: "timer", isEnabled: false),
             WidgetItem(id: "clock", name: "Clock", icon: "clock", isEnabled: false),
@@ -210,9 +212,13 @@ final class OmanixViewModel: ObservableObject {
 
     func toggleWidget(_ widget: WidgetItem) {
         guard let i = widgets.firstIndex(where: { $0.id == widget.id }) else { return }
-        // Omatiles is a desktop module (omanix.omatiles.*), handled here so you can
-        // switch it on/off right from the Widgets page.
+        // Omatiles and Omabar are desktop modules (omanix.omatiles.*, omanix.omabar.enable),
+        // handled here so you can switch them on/off right from the Widgets page.
         switch widget.id {
+        case "omabar":
+            setOmabarEnabled(!widgets[i].isEnabled)
+            widgets[i].isEnabled = omabarEnabled
+            return
         case "omatiles":
             setOmatilesEnabled(!widgets[i].isEnabled)
             widgets[i].isEnabled = omatilesEnabled
@@ -227,6 +233,29 @@ final class OmanixViewModel: ObservableObject {
         } catch {
             widgets[i].isEnabled.toggle()
             showMessage("Could not update widget: \(error.localizedDescription)", .error)
+        }
+    }
+
+    // MARK: - Omabar (the menu bar daemon, mirrors omanix.omabar.enable)
+
+    @Published var omabarEnabled: Bool = true
+
+    /// Toggling the bar writes the option and then rebuilds, because for
+    /// omabar the rebuild *is* the operation: `enable = false` is what stops
+    /// the daemon and deletes the installed bundle. Only the state write is
+    /// optimistically reflected; the bar itself only changes once the rebuild
+    /// has actually run.
+    func setOmabarEnabled(_ enabled: Bool) {
+        do {
+            try store.setOmabarEnabled(enabled)
+            omabarEnabled = enabled
+            needsRebuild = true
+            showMessage(enabled
+                ? "Enabling Omabar — rebuilding to start it"
+                : "Disabling Omabar — rebuilding to stop and remove it", .success)
+            rebuild()
+        } catch {
+            showMessage("Could not set Omabar: \(error.localizedDescription)", .error)
         }
     }
 
