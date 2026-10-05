@@ -9,12 +9,9 @@
     };
     taps = [ "anomalyco/tap" ];
     brews = [
-      "amber"
-      "crystal"
       "opencode"
       "portaudio"
       "ripgrep"
-      "shards"
       "ta-lib"
     ];
     casks = [
