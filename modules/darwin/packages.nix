@@ -4,64 +4,66 @@
   environment.systemPackages = with pkgs; [
     # Core tools
     curl
-    wget
-    vim
-    git
-    gh
-    tree
-    jq
-    eza
-    htop
-    direnv
-    nix-direnv
-    nixfmt
-    nixd
-    starship
     devenv
+    direnv
+    eza
+    gh
+    git
+    htop
+    jq
+    nix-direnv
+    nixd
+    nixfmt
+    starship
+    tree
+    vim
+    wget
 
     # Languages
-    go
-    python313
-    poetry
-    ruby_3_3
-    rubyPackages_3_3.solargraph
-    rubyPackages_3_3.ruby-lsp
-    rufo
-    nodejs_22
-    node-gyp
     bun
-    php
-    phpPackages.composer
     cargo
-    rustc
+    crystal
+    go
+    gradle
     jdk25
     maven
-    gradle
+    node-gyp
+    nodejs_22
+    php
+    phpPackages.composer
+    poetry
+    python313
+    ruby_3_3
+    rubyPackages_3_3.ruby-lsp
+    rubyPackages_3_3.solargraph
+    rufo
+    rustc
+    shards
 
     # Build tools
-    pkg-config
     libyaml.dev
-    openssl_3_6.dev
     nodePackages.node-gyp
+    openssl_3_6.dev
+    pkg-config
     secp256k1
 
     # Databases
+    libpqxx
     postgresql_16
     postgresql16Packages.pgvector
-    libpqxx
 
     # Dev tools
-    uv
     buf
-    subversion
-    git-subrepo
-    imagemagick
-    ffmpeg
-    nmap
-    k6
     cloudflared
+    ffmpeg
+    git-subrepo
     google-cloud-sdk
-    turso-cli
+    imagemagick
+    k6
     mailhog
+    nmap
+    subversion
+    turso-cli
+    uv
   ];
 }

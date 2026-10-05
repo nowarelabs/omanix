@@ -9,25 +9,26 @@
     };
     taps = [ "anomalyco/tap" ];
     brews = [
-      "ta-lib"
+      "amber"
       "ffmpeg"
-      "ripgrep"
       "opencode"
       "portaudio"
+      "ripgrep"
+      "ta-lib"
     ];
     casks = [
-      "google-chrome"
-      "visual-studio-code"
-      "slack"
       "caffeine"
-      "postico"
-      "github"
-      "postman"
-      "zoom"
-      "orbstack"
       "chromium"
-      "sublime-text"
+      "github"
+      "google-chrome"
       "mongodb-compass"
+      "orbstack"
+      "postico"
+      "postman"
+      "slack"
+      "sublime-text"
+      "visual-studio-code"
+      "zoom"
 
       # Dev tools
       # "android-studio" — IDE for Android development
