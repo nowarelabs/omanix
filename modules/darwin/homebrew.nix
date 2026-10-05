@@ -11,7 +11,6 @@
     brews = [
       "amber"
       "crystal"
-      "ffmpeg"
       "opencode"
       "portaudio"
       "ripgrep"

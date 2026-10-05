@@ -26,7 +26,6 @@
     gradle
     jdk25
     maven
-    node-gyp
     nodejs_22
     php
     phpPackages.composer
