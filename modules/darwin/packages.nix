@@ -22,7 +22,6 @@
     # Languages
     bun
     cargo
-    crystal
     go
     gradle
     jdk25
@@ -38,7 +37,6 @@
     rubyPackages_3_3.solargraph
     rufo
     rustc
-    shards
 
     # Build tools
     libyaml.dev
