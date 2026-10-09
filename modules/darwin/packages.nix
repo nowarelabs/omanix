@@ -63,5 +63,6 @@
     subversion
     turso-cli
     uv
+    zellij
   ];
 }
