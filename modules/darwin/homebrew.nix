@@ -13,6 +13,7 @@
       "portaudio"
       "ripgrep"
       "ta-lib"
+      "whisper-cpp"
     ];
     casks = [
       "caffeine"
