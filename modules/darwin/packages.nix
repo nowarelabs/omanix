@@ -18,6 +18,7 @@
     tree
     vim
     wget
+    whisper-cpp
 
     # Languages
     bun
