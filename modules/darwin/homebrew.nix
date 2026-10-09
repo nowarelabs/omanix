@@ -19,7 +19,6 @@
       "chromium"
       "github"
       "google-chrome"
-      "macwhisper"
       "mongodb-compass"
       "orbstack"
       "postico"
