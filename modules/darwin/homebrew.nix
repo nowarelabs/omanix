@@ -7,13 +7,12 @@
       upgrade = true;
       cleanup = config.omanix.homebrew.cleanup;
     };
-    taps = [ "anomalyco/tap" ];
+    taps = [  ]; # anomalyco/tap
     brews = [
-      "opencode"
       "portaudio"
       "ripgrep"
       "ta-lib"
-    ];
+    ]; # opencode
     casks = [
       "caffeine"
       "chromium"
