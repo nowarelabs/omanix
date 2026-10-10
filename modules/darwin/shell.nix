@@ -6,7 +6,7 @@
       initContent = ''
         plugins=(git direnv)
 
-        export PATH=/run/current-system/sw/bin:$HOME/.nix-profile/bin:$HOME/.local/bin:$PATH
+        export PATH=${config.homebrew.prefix}/bin:${config.homebrew.prefix}/sbin:/run/current-system/sw/bin:$HOME/.nix-profile/bin:$HOME/.local/bin:$PATH
         if [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then
           . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'
         fi
