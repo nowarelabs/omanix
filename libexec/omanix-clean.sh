@@ -115,14 +115,18 @@ else
 fi
 echo ""
 
-# 3. Aggressive: garbage collect store
+# 3. Aggressive: garbage collect store & stale direnv caches
 if [[ "$AGGRESSIVE" == "true" || "$STORE_GC" == "true" ]]; then
   echo "Garbage collecting nix store..."
   if [[ "$DRY_RUN" == "true" ]]; then
     echo "  [dry-run] Would run nix store gc"
+    echo "  [dry-run] Would prune stale .direnv folders older than 14 days in ~/Code"
   else
+    # Prune stale direnv directories across code repos to unblock GC roots
+    find ~/Code -name ".direnv" -type d -mtime +14 -prune -exec rm -rf "{}" + 2>/dev/null || true
+    
     nix store gc 2>/dev/null || nix-collect-garbage 2>/dev/null || true
-    echo "  Store garbage collected"
+    echo "  Store garbage collected and stale direnv roots cleared"
   fi
   echo ""
 fi
