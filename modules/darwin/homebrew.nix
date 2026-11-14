@@ -21,17 +21,7 @@
     ]; # "opencode"
     casks = [
       "caffeine"
-      "chromium"
-      "github"
-      "google-chrome"
-      "mongodb-compass"
       "orbstack"
-      "postico"
-      "postman"
-      "slack"
-      "sublime-text"
-      "visual-studio-code"
-      "zoom"
 
       # Dev tools
       # "android-studio" — IDE for Android development
