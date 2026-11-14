@@ -13,41 +13,15 @@
         lib.optional (config.omanix.homebrew.cleanup == "uninstall") "--force-cleanup"
         ++ lib.optionals (config.omanix.homebrew.cleanup == "zap") [ "--zap" "--force-cleanup" ];
     };
-    taps = [ ]; # "anomalyco/tap"
+    taps = [ ];
     brews = [
       "portaudio"
       "ripgrep"
       "ta-lib"
-    ]; # "opencode"
+    ];
     casks = [
       "caffeine"
       "orbstack"
-
-      # Dev tools
-      # "android-studio" — IDE for Android development
-      # "intellij-idea" — JetBrains IDE
-
-      # AI
-      # "ollama"
-      # "claude"
-
-      # Communication
-      # "whatsapp"
-
-      # System
-      # "cloudflare-warp" — VPN
-      # "obs" — screen recording/streaming
-
-      # Emulators
-      # "bluestacks" — Android emulator
-
-      # Media
-      # "mkplayer" — media player (like VLC)
-
-      # Utilities
-      # "screendrop" — screenshot tool
-      # "wps-office" — office suite
-      # "utorrent-web" — torrent client
     ];
     masApps = {
       # amphetamine = 937984704;
