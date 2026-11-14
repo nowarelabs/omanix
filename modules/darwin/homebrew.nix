@@ -20,7 +20,6 @@
       "ta-lib"
     ];
     casks = [
-      "caffeine"
       "orbstack"
     ];
     masApps = {
