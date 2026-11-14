@@ -20,6 +20,7 @@
       "ta-lib"
     ];
     casks = [
+      "google-chrome"
       "orbstack"
     ];
     masApps = {
