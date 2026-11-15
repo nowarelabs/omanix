@@ -52,7 +52,7 @@
           ./modules/darwin/omatiles.nix  # Omatiles (native Sequoia tiling, omanix.omatiles.*)
           ./modules/darwin/omabar.nix    # omabar menu bar (services.omabar.*)
           omabar.darwinModules.omabar    # omabar menu bar inputs
-          ./modules/darwin/vidpipe.nix   # vidpipe (services.vidpipe.*)
+          ./modules/darwin/vidpipe/   # vidpipe (services.vidpipe.*)
 
           # Apps
           ./modules/apps/gui/options.nix   # Omanix app options
