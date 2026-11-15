@@ -21,6 +21,7 @@
     ];
     casks = [
       "google-chrome"
+      "obs"
       "orbstack"
     ];
     masApps = {
