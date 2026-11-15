@@ -14,6 +14,7 @@
     nix-direnv
     nixd
     nixfmt
+    scrcpy
     starship
     tree
     vim
